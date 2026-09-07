@@ -1,7 +1,7 @@
 {
   "name": "video-chat",
   "version": "1.0.0",
-  "description": "Temporary peer-to-peer video chat with moderator dashboard",
+  "description": "Temporary peer-to-peer video chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

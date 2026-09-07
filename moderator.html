@@ -1,13 +1,12 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 
 <meta charset="UTF-8">
-
 <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
 >
 
 <title>Moderator Dashboard</title>
@@ -15,1730 +14,1652 @@
 <style>
 
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #101010;
-    color: white;
+  margin: 0;
+  background: #090b0f;
+  color: white;
+  font-family: Arial, sans-serif;
+  height: 100vh;
+  overflow: hidden;
 }
 
-header {
-    padding: 20px;
-    background: #181818;
-    text-align: center;
-    font-size: 26px;
-    font-weight: bold;
-}
-
-.container {
-    max-width: 1200px;
-    margin: auto;
-    padding: 20px;
-}
-
-.panel {
-    background: #1d1d1d;
-    padding: 20px;
-    border-radius: 15px;
-    margin-bottom: 20px;
+button,
+input {
+  font: inherit;
 }
 
 button {
-    border: none;
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin: 4px;
-    color: white;
-    background: #333;
-    cursor: pointer;
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: white;
+  background: #2563eb;
+  cursor: pointer;
 }
 
 button:hover {
-    background: #444;
+  filter: brightness(1.1);
 }
 
-.primary {
-    background: #2563eb;
+input {
+  background: #11151b;
+  border: 1px solid #303640;
+  border-radius: 9px;
+  padding: 11px;
+  color: white;
+  width: 100%;
+  margin-bottom: 8px;
 }
 
-.danger {
-    background: #dc2626;
+#layout {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 330px;
 }
 
-.warning {
-    background: #b45309;
+/* CALL SIDE */
+
+#callArea {
+  min-width: 0;
+  position: relative;
+  background: #0b0e13;
 }
 
-#rooms {
-    display: grid;
-    grid-template-columns:
-        repeat(auto-fit, minmax(300px, 1fr));
+#thumbs {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  bottom: 12px;
+  width: 160px;
 
-    gap: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 
-    margin-top: 20px;
+  overflow-y: auto;
+  z-index: 5;
 }
 
-.room {
-    background: #292929;
-    padding: 18px;
-    border-radius: 14px;
+.thumb {
+  position: relative;
+  width: 145px;
+  height: 95px;
+  flex-shrink: 0;
+
+  background: #1a1f27;
+  border-radius: 12px;
+  overflow: hidden;
+
+  border: 2px solid transparent;
+
+  cursor: pointer;
+}
+
+.thumb:hover {
+  border-color: #60a5fa;
+}
+
+.thumb.selected {
+  border-color: #60a5fa;
+}
+
+.thumb.speaking {
+  border-color: #22c55e;
+  box-shadow:
+    0 0 15px rgba(34,197,94,.55);
+}
+
+.thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbName {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  padding: 5px 7px;
+
+  background: linear-gradient(
+    transparent,
+    rgba(0,0,0,.85)
+  );
+
+  font-size: 13px;
+}
+
+#mainVideo {
+  position: absolute;
+  left: 180px;
+  right: 15px;
+  top: 15px;
+  bottom: 15px;
+}
+
+#bigBox {
+  width: 100%;
+  height: 100%;
+
+  background: black;
+  border-radius: 18px;
+
+  overflow: hidden;
+  position: relative;
+
+  cursor: pointer;
+}
+
+#bigVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: black;
+}
+
+#bigName {
+  position: absolute;
+  left: 15px;
+  bottom: 15px;
+
+  background: rgba(0,0,0,.65);
+
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+#controls {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+
+  transform: translateX(-50%);
+
+  display: flex;
+  gap: 10px;
+
+  z-index: 20;
+}
+
+#controls button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+#leave {
+  background: #dc2626;
+}
+
+
+/* DASHBOARD */
+
+#dashboard {
+  background: #14181e;
+  border-left: 1px solid #292f38;
+
+  padding: 18px;
+
+  overflow-y: auto;
+}
+
+#dashboard h2 {
+  margin-top: 0;
+}
+
+.roomCard {
+  background: #1d232b;
+  border-radius: 12px;
+  padding: 13px;
+  margin-bottom: 12px;
+}
+
+.roomHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 10px;
 }
 
 .roomCode {
-    font-size: 25px;
-    font-weight: bold;
+  font-weight: bold;
+  font-size: 18px;
 }
 
-.roomInfo {
-    color: #aaa;
-    margin: 8px 0 15px;
+.count {
+  font-size: 12px;
+  opacity: .7;
 }
 
-.user {
-    background: #1b1b1b;
-    border-radius: 9px;
-    padding: 10px;
-    margin-top: 8px;
+.participant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: #11151a;
+
+  border-radius: 8px;
+
+  padding: 7px;
+
+  margin-top: 6px;
 }
 
-.userId {
-    font-family: monospace;
-    font-size: 12px;
-    color: #aaa;
-    word-break: break-all;
+.participantName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-#roomArea {
-    display: none;
+.actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
 }
 
-#videos {
-    display: grid;
-    grid-template-columns:
-        repeat(auto-fit, minmax(280px, 1fr));
-
-    gap: 15px;
-
-    margin-top: 20px;
+.actions button {
+  flex: 1;
+  font-size: 12px;
 }
 
-.videoBox {
-    background: #000;
-    border-radius: 15px;
-    overflow: hidden;
-    position: relative;
-    min-height: 220px;
+.kick {
+  background: #d97706;
 }
 
-video {
-    width: 100%;
-    height: 100%;
-    min-height: 220px;
-    object-fit: cover;
-    background: #000;
-}
-
-.label {
-    position: absolute;
-    left: 10px;
-    bottom: 10px;
-    background: rgba(0,0,0,.7);
-    padding: 7px 10px;
-    border-radius: 8px;
+.ban {
+  background: #dc2626;
 }
 
 #status {
-    color: #aaa;
+  font-size: 13px;
+  opacity: .65;
+  margin-bottom: 15px;
+}
+
+#joinInfo {
+  margin-top: 15px;
+  padding: 10px;
+  background: #101419;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+
+  #layout {
+    grid-template-columns: 1fr;
+  }
+
+  #dashboard {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+
+    width: 300px;
+
+    z-index: 50;
+
+    transform: translateX(100%);
+    transition: transform .2s;
+  }
+
+  #dashboard.open {
+    transform: translateX(0);
+  }
+
 }
 
 </style>
-
 </head>
 
 <body>
 
-<header>
-    🛡️ Moderator Dashboard
-</header>
+<div id="layout">
 
+  <div id="callArea">
 
-<div class="container">
+    <div id="thumbs"></div>
 
-    <div class="panel">
+    <div id="mainVideo">
 
-        <div id="status">
-            Connecting...
+      <div
+        id="bigBox"
+        onclick="toggleFullscreen()"
+      >
+
+        <video
+          id="bigVideo"
+          autoplay
+          playsinline
+        ></video>
+
+        <div id="bigName">
+          Select a participant
         </div>
 
-    </div>
-
-
-    <div class="panel">
-
-        <h2>
-            Active Rooms
-        </h2>
-
-
-        <button
-            class="primary"
-            onclick="createRoom()"
-        >
-            + Create Room
-        </button>
-
-
-        <div id="rooms"></div>
+      </div>
 
     </div>
 
+    <div id="controls">
 
-    <div
-        id="roomArea"
-        class="panel"
+      <button
+        id="micButton"
+        onclick="toggleMic()"
+      >
+        🎤
+      </button>
+
+      <button
+        id="cameraButton"
+        onclick="toggleCamera()"
+      >
+        📷
+      </button>
+
+      <button
+        id="leave"
+        onclick="leaveRoom()"
+      >
+        ☎
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <aside id="dashboard">
+
+    <h2>Moderator</h2>
+
+    <div id="status">
+      Connecting...
+    </div>
+
+    <input
+      id="moderatorName"
+      maxlength="30"
+      placeholder="Your moderator name"
     >
 
-        <h2>
+    <button
+      onclick="createRoom()"
+      style="width:100%"
+    >
+      + Create Room
+    </button>
 
-            Room:
-            <span id="currentRoom">
-                None
-            </span>
-
-        </h2>
-
-
-        <button
-            onclick="leaveRoom()"
-        >
-            Leave Room
-        </button>
-
-
-        <button
-            onclick="enableModeratorMedia()"
-        >
-            📷 Join With Camera/Mic
-        </button>
-
-
-        <button
-            onclick="disableModeratorMedia()"
-        >
-            👁 Anonymous Mode
-        </button>
-
-
-        <div id="videos"></div>
-
+    <div id="joinInfo">
+      Select a room below to join it.
     </div>
+
+    <hr
+      style="
+        border:0;
+        border-top:1px solid #303640;
+        margin:18px 0;
+      "
+    >
+
+    <h3>Open Calls</h3>
+
+    <div id="rooms">
+      Loading rooms...
+    </div>
+
+  </aside>
 
 </div>
 
 
 <script>
 
-
-// =====================================================
-// SERVER ADDRESS
-// =====================================================
-
 const SERVER =
-    (
-        location.protocol === "https:"
-            ? "wss://"
-            : "ws://"
-    ) +
-    location.host +
-    "/ws";
+  (location.protocol === "https:" ? "wss://" : "ws://") +
+  location.host +
+  "/ws";
 
-
-// =====================================================
-// MODERATOR ID
-// =====================================================
+let ws;
 
 let moderatorId =
-    localStorage.getItem(
-        "videoChatModeratorId"
-    );
-
+  localStorage.getItem(
+    "videoChatModeratorId"
+  );
 
 if (!moderatorId) {
 
-    moderatorId =
-        "moderator-" +
-        crypto.randomUUID();
+  moderatorId =
+    crypto.randomUUID();
 
-    localStorage.setItem(
-        "videoChatModeratorId",
-        moderatorId
-    );
+  localStorage.setItem(
+    "videoChatModeratorId",
+    moderatorId
+  );
+
 }
 
-
-// =====================================================
-// VARIABLES
-// =====================================================
-
-let socket = null;
-
-let currentRoom = null;
-
-let currentAnonymous =
-    true;
+let moderatorName =
+  localStorage.getItem(
+    "videoChatModeratorName"
+  ) || "";
 
 let localStream = null;
 
 let peers = {};
 
+let users = {};
 
-// =====================================================
-// CONNECT
-// =====================================================
+let selectedUser = null;
+
+let currentRoom = null;
+
+let anonymousMode = false;
+
+let audioAnalyzers = {};
+
+let speakingTimers = {};
+
+document.getElementById(
+  "moderatorName"
+).value =
+  moderatorName;
+
+document.getElementById(
+  "moderatorName"
+).addEventListener(
+  "input",
+  event => {
+
+    moderatorName =
+      event.target.value;
+
+    localStorage.setItem(
+      "videoChatModeratorName",
+      moderatorName
+    );
+
+  }
+);
 
 function connect() {
 
-    socket =
-        new WebSocket(
-            SERVER
+  ws =
+    new WebSocket(SERVER);
+
+  ws.onopen = () => {
+
+    document.getElementById(
+      "status"
+    ).textContent =
+      "Connected";
+
+    ws.send(JSON.stringify({
+      type: "register",
+      role: "moderator",
+      id: moderatorId,
+      name:
+        moderatorName || "Moderator"
+    }));
+
+  };
+
+  ws.onmessage = async event => {
+
+    const msg =
+      JSON.parse(event.data);
+
+    if (
+      msg.type === "roomList" ||
+      msg.type === "roomsUpdated"
+    ) {
+
+      renderRooms(
+        msg.rooms
+      );
+
+      return;
+    }
+
+    if (
+      msg.type === "roomCreated"
+    ) {
+
+      renderRoomsFromCurrent();
+
+      return;
+    }
+
+    if (
+      msg.type === "roomJoined"
+    ) {
+
+      currentRoom =
+        msg.room;
+
+      users = {};
+
+      msg.users.forEach(user => {
+
+        users[user.id] =
+          user;
+
+      });
+
+      users[msg.self.id] = {
+        id: msg.self.id,
+        name:
+          anonymousMode
+            ? "Moderator"
+            : msg.self.name
+      };
+
+      await setupCall();
+
+      document.getElementById(
+        "joinInfo"
+      ).textContent =
+        "Joined room " +
+        currentRoom +
+        (
+          anonymousMode
+            ? " anonymously"
+            : ""
         );
 
+      return;
+    }
 
-    socket.onopen = () => {
+    if (
+      msg.type === "userJoined"
+    ) {
 
-        document
-            .getElementById(
-                "status"
-            )
-            .textContent =
-            "Connected as moderator.";
+      users[msg.user.id] =
+        msg.user;
 
-        send({
+      createPeer(
+        msg.user.id,
+        moderatorId < msg.user.id
+      );
 
-            type:
-                "register",
+      return;
+    }
 
-            role:
-                "moderator",
+    if (
+      msg.type === "signal"
+    ) {
 
-            id:
-                moderatorId
-        });
-    };
+      await handleSignal(
+        msg.from,
+        msg.data
+      );
 
+      return;
+    }
 
-    socket.onclose = () => {
+    if (
+      msg.type === "userLeft"
+    ) {
 
-        document
-            .getElementById(
-                "status"
-            )
-            .textContent =
-            "Disconnected. Reconnecting...";
+      removePeer(
+        msg.userId
+      );
 
-        setTimeout(
-            connect,
-            3000
-        );
-    };
+      return;
+    }
 
+    if (
+      msg.type === "kicked" ||
+      msg.type === "banned"
+    ) {
 
-    socket.onerror = () => {
+      alert(msg.message);
 
-        document
-            .getElementById(
-                "status"
-            )
-            .textContent =
-            "Server connection error.";
-    };
+      location.reload();
 
+      return;
+    }
 
-    socket.onmessage =
-        async event => {
+    if (
+      msg.type === "error"
+    ) {
 
-            const msg =
-                JSON.parse(
-                    event.data
-                );
+      alert(msg.message);
 
-            await handleMessage(
-                msg
-            );
-        };
+      return;
+    }
+
+  };
+
+  ws.onclose = () => {
+
+    document.getElementById(
+      "status"
+    ).textContent =
+      "Disconnected — reconnecting...";
+
+    setTimeout(
+      connect,
+      1500
+    );
+
+  };
+
 }
-
-
-// =====================================================
-// SEND
-// =====================================================
 
 function send(data) {
 
-    if (
-        socket &&
-        socket.readyState ===
-            WebSocket.OPEN
-    ) {
+  if (
+    ws &&
+    ws.readyState ===
+    WebSocket.OPEN
+  ) {
 
-        socket.send(
-            JSON.stringify(
-                data
-            )
-        );
-    }
+    ws.send(
+      JSON.stringify(data)
+    );
+
+  }
+
 }
-
-
-// =====================================================
-// CREATE ROOM
-// =====================================================
 
 function createRoom() {
 
-    send({
+  send({
+    type:
+      "moderatorCreateRoom"
+  });
 
-        type:
-            "moderatorCreateRoom"
-
-    });
 }
 
+function joinNormal(code) {
 
-// =====================================================
-// JOIN NORMAL
-// =====================================================
+  anonymousMode = false;
 
-function joinRoom(
-    room
-) {
+  send({
+    type:
+      "moderatorJoinRoom",
+    code,
+    anonymous: false
+  });
 
-    currentAnonymous =
-        false;
-
-
-    joinRoomInternal(
-        room,
-        false
-    );
 }
 
+function joinAnonymous(code) {
 
-// =====================================================
-// ANONYMOUS JOIN
-// =====================================================
+  anonymousMode = true;
 
-function anonymousJoin(
-    room
-) {
+  send({
+    type:
+      "moderatorJoinRoom",
+    code,
+    anonymous: true
+  });
 
-    currentAnonymous =
-        true;
-
-
-    joinRoomInternal(
-        room,
-        true
-    );
 }
 
+function kick(userId) {
 
-// =====================================================
-// JOIN INTERNAL
-// =====================================================
-
-async function joinRoomInternal(
-    room,
-    anonymous
-) {
-
-    // Close any previous room.
-    if (currentRoom) {
-
-        leaveRoom();
-    }
-
-
-    currentRoom =
-        room;
-
-
-    /*
-        Anonymous mode:
-
-        Do NOT ask for camera/mic.
-
-        The moderator can therefore
-        receive participants without
-        publishing their own media.
-    */
-
-    if (!anonymous) {
-
-        await enableModeratorMedia(
-            false
-        );
-
-    } else {
-
-        await disableModeratorMedia(
-            false
-        );
-    }
-
+  if (
+    confirm(
+      "Kick this participant?"
+    )
+  ) {
 
     send({
-
-        type:
-            "moderatorJoinRoom",
-
-        room:
-            room,
-
-        id:
-            moderatorId,
-
-        anonymous:
-            anonymous
+      type: "kick",
+      userId
     });
 
+  }
 
-    document
-        .getElementById(
-            "currentRoom"
-        )
-        .textContent =
-        room;
-
-
-    document
-        .getElementById(
-            "roomArea"
-        )
-        .style.display =
-        "block";
 }
 
+function ban(userId) {
 
-// =====================================================
-// ENABLE CAMERA/MIC
-// =====================================================
+  if (
+    confirm(
+      "Ban this participant?"
+    )
+  ) {
 
-async function enableModeratorMedia(
-    reconnect = true
-) {
+    send({
+      type: "ban",
+      userId
+    });
 
-    currentAnonymous =
-        false;
+  }
 
+}
 
-    if (!localStream) {
+function renderRooms(rooms) {
 
-        try {
+  const container =
+    document.getElementById(
+      "rooms"
+    );
 
-            localStream =
-                await navigator
-                    .mediaDevices
-                    .getUserMedia({
+  if (!rooms.length) {
 
-                        video: true,
+    container.innerHTML =
+      "<p>No open calls.</p>";
 
-                        audio: true
+    return;
 
-                    });
+  }
 
-        } catch (error) {
+  container.innerHTML = "";
 
-            alert(
-                "Camera/microphone permission was denied."
-            );
+  rooms.forEach(room => {
 
-            return;
-        }
-    }
+    const card =
+      document.createElement("div");
 
+    card.className =
+      "roomCard";
 
-    /*
-        Add moderator tracks to existing
-        peer connections.
+    const header =
+      document.createElement("div");
 
-        This makes the moderator visible
-        and audible.
-    */
+    header.className =
+      "roomHeader";
 
-    for (
-        const id in peers
-    ) {
+    header.innerHTML = `
+      <span class="roomCode">
+        ${escapeHtml(room.code)}
+      </span>
 
-        const pc =
-            peers[id];
+      <span class="count">
+        ${room.userCount} participant${room.userCount === 1 ? "" : "s"}
+      </span>
+    `;
 
+    card.appendChild(header);
 
-        const senders =
-            pc.getSenders();
+    room.participants.forEach(
+      participant => {
 
+        const row =
+          document.createElement(
+            "div"
+          );
 
-        for (
-            const track
-            of localStream.getTracks()
+        row.className =
+          "participant";
+
+        const name =
+          document.createElement(
+            "span"
+          );
+
+        name.className =
+          "participantName";
+
+        name.textContent =
+          participant.name;
+
+        row.appendChild(name);
+
+        if (
+          participant.role !==
+          "moderator"
         ) {
 
-            const alreadyAdded =
-                senders.some(
-                    sender =>
-                        sender.track ===
-                        track
-                );
-
-
-            if (
-                !alreadyAdded
-            ) {
-
-                pc.addTrack(
-                    track,
-                    localStream
-                );
-            }
-        }
-
-
-        try {
-
-            const offer =
-                await pc.createOffer();
-
-
-            await pc.setLocalDescription(
-                offer
+          const buttons =
+            document.createElement(
+              "span"
             );
 
+          buttons.innerHTML = `
+            <button
+              class="kick"
+              onclick="kick('${participant.id}')"
+            >
+              Kick
+            </button>
 
-            send({
+            <button
+              class="ban"
+              onclick="ban('${participant.id}')"
+            >
+              Ban
+            </button>
+          `;
 
-                type:
-                    "signal",
+          row.appendChild(
+            buttons
+          );
 
-                room:
-                    currentRoom,
-
-                to:
-                    id,
-
-                from:
-                    moderatorId,
-
-                signal: {
-
-                    offer:
-                        pc.localDescription
-
-                }
-
-            });
-
-        } catch (error) {
-
-            console.error(
-                error
-            );
         }
-    }
 
+        card.appendChild(row);
 
-    if (reconnect) {
+      }
+    );
 
-        send({
+    const actions =
+      document.createElement(
+        "div"
+      );
 
-            type:
-                "moderatorJoinRoom",
+    actions.className =
+      "actions";
 
-            room:
-                currentRoom,
+    const normal =
+      document.createElement(
+        "button"
+      );
 
-            id:
-                moderatorId,
+    normal.textContent =
+      "Join Normally";
 
-            anonymous:
-                false
-        });
-    }
+    normal.onclick =
+      () => joinNormal(room.code);
 
+    const anon =
+      document.createElement(
+        "button"
+      );
 
-    if (localStream) {
+    anon.className =
+      "secondary";
 
-        addVideo(
-            moderatorId,
-            localStream,
-            "Moderator"
-        );
-    }
+    anon.textContent =
+      "Anonymous";
+
+    anon.onclick =
+      () => joinAnonymous(room.code);
+
+    actions.appendChild(
+      normal
+    );
+
+    actions.appendChild(
+      anon
+    );
+
+    card.appendChild(
+      actions
+    );
+
+    container.appendChild(
+      card
+    );
+
+  });
+
 }
 
+let lastRooms = [];
 
-// =====================================================
-// DISABLE CAMERA/MIC
-// =====================================================
+function renderRoomsFromCurrent() {
 
-async function disableModeratorMedia(
-    reconnect = true
-) {
+  /*
+   * The next roomsUpdated message
+   * will refresh this automatically.
+   */
 
-    currentAnonymous =
-        true;
+}
 
+function escapeHtml(value) {
 
-    /*
-        Stop publishing our tracks.
-    */
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 
-    if (localStream) {
+}
 
+async function setupCall() {
+
+  /*
+   * Anonymous moderator:
+   * don't ask for camera/mic.
+   */
+
+  if (!anonymousMode) {
+
+    try {
+
+      localStream =
+        await navigator.mediaDevices
+          .getUserMedia({
+            video: true,
+            audio: true
+          });
+
+      addParticipant(
+        moderatorId,
         localStream
-            .getTracks()
-            .forEach(
-                track =>
-                    track.stop()
-            );
+      );
 
-        localStream =
-            null;
-    }
-
-
-    removeVideo(
+      selectParticipant(
         moderatorId
-    );
+      );
 
+    } catch (error) {
 
-    /*
-        Remove moderator tracks from
-        every existing peer connection.
-    */
+      alert(
+        "Camera/microphone permission was denied."
+      );
 
-    for (
-        const id in peers
-    ) {
+      return;
 
-        const pc =
-            peers[id];
-
-
-        const senders =
-            pc.getSenders();
-
-
-        for (
-            const sender
-            of senders
-        ) {
-
-            if (
-                sender.track
-            ) {
-
-                try {
-
-                    await sender.replaceTrack(
-                        null
-                    );
-
-                } catch {}
-            }
-        }
     }
 
+  }
+
+  for (
+    const id of Object.keys(users)
+  ) {
 
     if (
-        reconnect &&
-        currentRoom
-    ) {
+      id === moderatorId
+    ) continue;
 
-        send({
+    createPeer(
+      id,
+      moderatorId < id
+    );
 
-            type:
-                "moderatorJoinRoom",
+  }
 
-            room:
-                currentRoom,
-
-            id:
-                moderatorId,
-
-            anonymous:
-                true
-        });
-    }
 }
 
+function createPeer(
+  remoteId,
+  initiator
+) {
 
-// =====================================================
-// LEAVE
-// =====================================================
+  if (peers[remoteId]) {
+    return peers[remoteId];
+  }
+
+  const pc =
+    new RTCPeerConnection({
+      iceServers: [
+        {
+          urls:
+            "stun:stun.l.google.com:19302"
+        }
+      ]
+    });
+
+  peers[remoteId] =
+    pc;
+
+  if (localStream) {
+
+    localStream
+      .getTracks()
+      .forEach(track => {
+
+        pc.addTrack(
+          track,
+          localStream
+        );
+
+      });
+
+  }
+
+  pc.onicecandidate =
+    event => {
+
+      if (
+        event.candidate
+      ) {
+
+        send({
+          type: "signal",
+          target: remoteId,
+          data: {
+            type: "candidate",
+            candidate:
+              event.candidate
+          }
+        });
+
+      }
+
+    };
+
+  pc.ontrack =
+    event => {
+
+      const stream =
+        event.streams[0];
+
+      if (!stream) return;
+
+      addParticipant(
+        remoteId,
+        stream
+      );
+
+      setupSpeakingDetection(
+        remoteId,
+        stream
+      );
+
+      if (!selectedUser) {
+
+        selectParticipant(
+          remoteId
+        );
+
+      }
+
+    };
+
+  pc.onconnectionstatechange =
+    () => {
+
+      if (
+        pc.connectionState ===
+        "failed"
+      ) {
+
+        try {
+          pc.restartIce();
+        } catch {}
+
+      }
+
+    };
+
+  if (initiator) {
+
+    makeOffer(
+      remoteId,
+      pc
+    );
+
+  }
+
+  return pc;
+}
+
+async function makeOffer(
+  remoteId,
+  pc
+) {
+
+  try {
+
+    const offer =
+      await pc.createOffer();
+
+    await pc.setLocalDescription(
+      offer
+    );
+
+    send({
+      type: "signal",
+      target: remoteId,
+      data: {
+        type: "offer",
+        sdp:
+          pc.localDescription
+      }
+    });
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+  }
+
+}
+
+async function handleSignal(
+  remoteId,
+  data
+) {
+
+  let pc =
+    peers[remoteId];
+
+  if (!pc) {
+
+    pc =
+      createPeer(
+        remoteId,
+        false
+      );
+
+  }
+
+  try {
+
+    if (
+      data.type ===
+      "offer"
+    ) {
+
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(
+          data.sdp
+        )
+      );
+
+      const answer =
+        await pc.createAnswer();
+
+      await pc.setLocalDescription(
+        answer
+      );
+
+      send({
+        type: "signal",
+        target: remoteId,
+        data: {
+          type: "answer",
+          sdp:
+            pc.localDescription
+        }
+      });
+
+    }
+
+    else if (
+      data.type ===
+      "answer"
+    ) {
+
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(
+          data.sdp
+        )
+      );
+
+    }
+
+    else if (
+      data.type ===
+      "candidate"
+    ) {
+
+      if (
+        pc.remoteDescription
+      ) {
+
+        await pc.addIceCandidate(
+          new RTCIceCandidate(
+            data.candidate
+          )
+        );
+
+      }
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Signal error:",
+      error
+    );
+
+  }
+
+}
+
+function addParticipant(
+  id,
+  stream
+) {
+
+  let box =
+    document.getElementById(
+      "thumb-" + id
+    );
+
+  if (!box) {
+
+    box =
+      document.createElement(
+        "div"
+      );
+
+    box.className =
+      "thumb";
+
+    box.id =
+      "thumb-" + id;
+
+    box.onclick =
+      () => selectParticipant(id);
+
+    const video =
+      document.createElement(
+        "video"
+      );
+
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted =
+      id === moderatorId;
+
+    video.srcObject =
+      stream;
+
+    const name =
+      document.createElement(
+        "div"
+      );
+
+    name.className =
+      "thumbName";
+
+    name.textContent =
+      users[id]?.name ||
+      "Guest";
+
+    box.appendChild(
+      video
+    );
+
+    box.appendChild(
+      name
+    );
+
+    document
+      .getElementById(
+        "thumbs"
+      )
+      .appendChild(
+        box
+      );
+
+  } else {
+
+    const video =
+      box.querySelector(
+        "video"
+      );
+
+    if (video) {
+
+      video.srcObject =
+        stream;
+
+    }
+
+  }
+
+}
+
+function selectParticipant(id) {
+
+  const box =
+    document.getElementById(
+      "thumb-" + id
+    );
+
+  if (!box) return;
+
+  const video =
+    box.querySelector(
+      "video"
+    );
+
+  if (!video) return;
+
+  selectedUser =
+    id;
+
+  document
+    .querySelectorAll(
+      ".thumb"
+    )
+    .forEach(
+      el =>
+        el.classList.remove(
+          "selected"
+        )
+    );
+
+  box.classList.add(
+    "selected"
+  );
+
+  const big =
+    document.getElementById(
+      "bigVideo"
+    );
+
+  big.srcObject =
+    video.srcObject;
+
+  big.muted =
+    id === moderatorId;
+
+  document.getElementById(
+    "bigName"
+  ).textContent =
+    users[id]?.name ||
+    "Guest";
+
+}
+
+function setupSpeakingDetection(
+  id,
+  stream
+) {
+
+  if (
+    audioAnalyzers[id] ||
+    !stream.getAudioTracks()
+      .length
+  ) {
+    return;
+  }
+
+  try {
+
+    const AudioContext =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    const context =
+      new AudioContext();
+
+    const source =
+      context.createMediaStreamSource(
+        stream
+      );
+
+    const analyser =
+      context.createAnalyser();
+
+    analyser.fftSize =
+      256;
+
+    source.connect(
+      analyser
+    );
+
+    const data =
+      new Uint8Array(
+        analyser.frequencyBinCount
+      );
+
+    audioAnalyzers[id] = {
+      analyser,
+      data
+    };
+
+    function check() {
+
+      if (
+        !audioAnalyzers[id]
+      ) {
+        return;
+      }
+
+      analyser.getByteFrequencyData(
+        data
+      );
+
+      let total = 0;
+
+      for (
+        let i = 0;
+        i < data.length;
+        i++
+      ) {
+
+        total += data[i];
+
+      }
+
+      const average =
+        total / data.length;
+
+      const box =
+        document.getElementById(
+          "thumb-" + id
+        );
+
+      if (
+        box &&
+        average > 20
+      ) {
+
+        box.classList.add(
+          "speaking"
+        );
+
+        clearTimeout(
+          speakingTimers[id]
+        );
+
+        speakingTimers[id] =
+          setTimeout(
+            () => {
+
+              box.classList.remove(
+                "speaking"
+              );
+
+            },
+            500
+          );
+
+      }
+
+      requestAnimationFrame(
+        check
+      );
+
+    }
+
+    check();
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+  }
+
+}
+
+function removePeer(id) {
+
+  if (peers[id]) {
+
+    try {
+      peers[id].close();
+    } catch {}
+
+    delete peers[id];
+
+  }
+
+  const box =
+    document.getElementById(
+      "thumb-" + id
+    );
+
+  if (box) {
+    box.remove();
+  }
+
+  delete users[id];
+
+  if (
+    selectedUser === id
+  ) {
+
+    selectedUser =
+      null;
+
+    const remaining =
+      Object.keys(users)
+        .find(
+          userId =>
+            userId !==
+            moderatorId
+        );
+
+    if (remaining) {
+
+      selectParticipant(
+        remaining
+      );
+
+    }
+
+  }
+
+}
 
 function leaveRoom() {
 
-    if (!currentRoom) {
-        return;
-    }
-
-
-    send({
-
-        type:
-            "leaveRoom",
-
-        room:
-            currentRoom,
-
-        id:
-            moderatorId
-    });
-
-
-    for (
-        const id in peers
-    ) {
-
-        peers[id].close();
-    }
-
-
-    peers = {};
-
-
-    if (localStream) {
-
-        localStream
-            .getTracks()
-            .forEach(
-                track =>
-                    track.stop()
-            );
-    }
-
-
-    localStream =
-        null;
-
-
-    document
-        .getElementById(
-            "videos"
-        )
-        .innerHTML =
-        "";
-
-
-    document
-        .getElementById(
-            "roomArea"
-        )
-        .style.display =
-        "none";
-
-
-    currentRoom =
-        null;
-
-
-    document
-        .getElementById(
-            "currentRoom"
-        )
-        .textContent =
-        "None";
-}
-
-
-// =====================================================
-// KICK
-// =====================================================
-
-function kickUser(
-    userId
-) {
-
-    if (
-        !currentRoom
-    ) {
-
-        alert(
-            "Join the room first."
-        );
-
-        return;
-    }
-
-
-    send({
-
-        type:
-            "kick",
-
-        room:
-            currentRoom,
-
-        userId:
-            userId
-    });
-}
-
-
-// =====================================================
-// BAN
-// =====================================================
-
-function banUser(
-    userId
-) {
-
-    if (
-        !currentRoom
-    ) {
-
-        alert(
-            "Join the room first."
-        );
-
-        return;
-    }
-
-
-    if (
-        !confirm(
-            "Ban this user?"
-        )
-    ) {
-
-        return;
-    }
-
-
-    send({
-
-        type:
-            "ban",
-
-        room:
-            currentRoom,
-
-        userId:
-            userId
-    });
-}
-
-
-// =====================================================
-// CREATE PEER
-// =====================================================
-
-async function createPeer(
-    remoteId,
-    initiator
-) {
-
-    if (
-        peers[remoteId]
-    ) {
-
-        return peers[
-            remoteId
-        ];
-    }
-
-
-    const pc =
-        new RTCPeerConnection({
-
-            iceServers: [
-
-                {
-                    urls:
-                        "stun:stun.l.google.com:19302"
-                }
-
-            ]
-
-        });
-
-
-    peers[
-        remoteId
-    ] = pc;
-
-
-    /*
-        Only add moderator media when
-        NOT anonymous.
-    */
-
-    if (
-        localStream &&
-        !currentAnonymous
-    ) {
-
-        localStream
-            .getTracks()
-            .forEach(
-                track => {
-
-                    pc.addTrack(
-                        track,
-                        localStream
-                    );
-                }
-            );
-    }
-
-
-    pc.onicecandidate =
-        event => {
-
-            if (
-                event.candidate
-            ) {
-
-                send({
-
-                    type:
-                        "signal",
-
-                    room:
-                        currentRoom,
-
-                    to:
-                        remoteId,
-
-                    from:
-                        moderatorId,
-
-                    signal: {
-
-                        candidate:
-                            event.candidate
-
-                    }
-
-                });
-            }
-        };
-
-
-    pc.ontrack =
-        event => {
-
-            if (
-                event.streams[0]
-            ) {
-
-                addVideo(
-
-                    remoteId,
-
-                    event.streams[0],
-
-                    "Participant"
-
-                );
-            }
-        };
-
-
-    pc.onconnectionstatechange =
-        () => {
-
-            if (
-
-                pc.connectionState ===
-                    "failed" ||
-
-                pc.connectionState ===
-                    "closed"
-
-            ) {
-
-                removeVideo(
-                    remoteId
-                );
-
-                delete peers[
-                    remoteId
-                ];
-            }
-        };
-
-
-    if (initiator) {
-
-        const offer =
-            await pc.createOffer();
-
-
-        await pc.setLocalDescription(
-            offer
-        );
-
-
-        send({
-
-            type:
-                "signal",
-
-            room:
-                currentRoom,
-
-            to:
-                remoteId,
-
-            from:
-                moderatorId,
-
-            signal: {
-
-                offer:
-                    pc.localDescription
-
-            }
-
-        });
-    }
-
-
-    return pc;
-}
-
-
-// =====================================================
-// SIGNAL
-// =====================================================
-
-async function handleSignal(
-    msg
-) {
-
-    let pc =
-        peers[
-            msg.from
-        ];
-
-
-    if (!pc) {
-
-        pc =
-            await createPeer(
-
-                msg.from,
-
-                false
-
-            );
-    }
-
-
-    if (
-        msg.signal.offer
-    ) {
-
-        await pc.setRemoteDescription(
-            msg.signal.offer
-        );
-
-
-        const answer =
-            await pc.createAnswer();
-
-
-        await pc.setLocalDescription(
-            answer
-        );
-
-
-        send({
-
-            type:
-                "signal",
-
-            room:
-                currentRoom,
-
-            to:
-                msg.from,
-
-            from:
-                moderatorId,
-
-            signal: {
-
-                answer:
-                    pc.localDescription
-
-            }
-
-        });
-    }
-
-
-    if (
-        msg.signal.answer
-    ) {
-
-        await pc.setRemoteDescription(
-            msg.signal.answer
-        );
-    }
-
-
-    if (
-        msg.signal.candidate
-    ) {
+  send({
+    type: "leaveRoom"
+  });
+
+  Object.values(peers)
+    .forEach(
+      pc => {
 
         try {
+          pc.close();
+        } catch {}
 
-            await pc.addIceCandidate(
-                msg.signal.candidate
-            );
-
-        } catch (error) {
-
-            console.error(
-                error
-            );
-        }
-    }
-}
-
-
-// =====================================================
-// SERVER MESSAGE HANDLER
-// =====================================================
-
-async function handleMessage(
-    msg
-) {
-
-    switch (
-        msg.type
-    ) {
-
-
-        // =============================================
-        // INITIAL ROOM LIST
-        // =============================================
-
-        case "roomList":
-
-            displayRooms(
-                msg.rooms
-            );
-
-            break;
-
-
-        // =============================================
-        // LIVE ROOM UPDATES
-        // =============================================
-
-        case "roomsUpdated":
-
-            displayRooms(
-                msg.rooms
-            );
-
-            break;
-
-
-        // =============================================
-        // ROOM CREATED
-        // =============================================
-
-        case "roomCreated":
-
-            await joinRoomInternal(
-                msg.room,
-                true
-            );
-
-            break;
-
-
-        // =============================================
-        // ROOM JOINED
-        // =============================================
-
-        case "roomJoined":
-
-            for (
-                const user
-                of msg.users
-            ) {
-
-                if (
-                    user !==
-                    moderatorId
-                ) {
-
-                    await createPeer(
-
-                        user,
-
-                        moderatorId <
-                            user
-
-                    );
-                }
-            }
-
-            break;
-
-
-        // =============================================
-        // NEW USER
-        // =============================================
-
-        case "userJoined":
-
-            if (
-                msg.id !==
-                moderatorId
-            ) {
-
-                await createPeer(
-
-                    msg.id,
-
-                    moderatorId <
-                        msg.id
-
-                );
-            }
-
-            break;
-
-
-        // =============================================
-        // WEBRTC SIGNAL
-        // =============================================
-
-        case "signal":
-
-            if (
-                msg.to ===
-                moderatorId
-            ) {
-
-                await handleSignal(
-                    msg
-                );
-            }
-
-            break;
-
-
-        // =============================================
-        // USER LEFT
-        // =============================================
-
-        case "userLeft":
-
-            removeVideo(
-                msg.id
-            );
-
-
-            if (
-                peers[
-                    msg.id
-                ]
-            ) {
-
-                peers[
-                    msg.id
-                ].close();
-
-
-                delete peers[
-                    msg.id
-                ];
-            }
-
-            break;
-
-
-        // =============================================
-        // KICKED
-        // =============================================
-
-        case "kicked":
-
-            alert(
-                "You were kicked from the room."
-            );
-
-            leaveRoom();
-
-            break;
-
-
-        // =============================================
-        // BANNED
-        // =============================================
-
-        case "banned":
-
-            alert(
-                "You have been banned."
-            );
-
-            leaveRoom();
-
-            break;
-
-
-        // =============================================
-        // ERROR
-        // =============================================
-
-        case "error":
-
-            alert(
-                msg.message
-            );
-
-            break;
-    }
-}
-
-
-// =====================================================
-// DISPLAY ROOMS
-// =====================================================
-
-function displayRooms(
-    rooms
-) {
-
-    const container =
-        document.getElementById(
-            "rooms"
-        );
-
-
-    container.innerHTML =
-        "";
-
-
-    if (
-        !rooms ||
-        rooms.length === 0
-    ) {
-
-        container.innerHTML =
-            "<p>No active rooms.</p>";
-
-        return;
-    }
-
-
-    for (
-        const room
-        of rooms
-    ) {
-
-        const div =
-            document.createElement(
-                "div"
-            );
-
-
-        div.className =
-            "room";
-
-
-        let usersHTML =
-            "";
-
-
-        for (
-            const user
-            of room.users
-        ) {
-
-            const shortId =
-                user.id.length > 18
-                    ? user.id.substring(
-                        0,
-                        18
-                    ) + "..."
-                    : user.id;
-
-
-            usersHTML += `
-
-                <div class="user">
-
-                    <div>
-                        👤
-                        ${escapeHTML(shortId)}
-                    </div>
-
-                    <div class="userId">
-                        ${escapeHTML(user.id)}
-                    </div>
-
-                    <button
-                        class="danger"
-                        onclick="
-                            kickUser(
-                                '${escapeJS(user.id)}'
-                            )
-                        "
-                    >
-                        Kick
-                    </button>
-
-                    <button
-                        class="warning"
-                        onclick="
-                            banUser(
-                                '${escapeJS(user.id)}'
-                            )
-                        "
-                    >
-                        Ban
-                    </button>
-
-                </div>
-            `;
-        }
-
-
-        div.innerHTML = `
-
-            <div class="roomCode">
-                ${escapeHTML(room.code)}
-            </div>
-
-            <div class="roomInfo">
-                ${room.userCount}
-                participant(s)
-            </div>
-
-            <button
-                class="primary"
-                onclick="
-                    joinRoom(
-                        '${escapeJS(room.code)}'
-                    )
-                "
-            >
-                Join Normally
-            </button>
-
-            <button
-                onclick="
-                    anonymousJoin(
-                        '${escapeJS(room.code)}'
-                    )
-                "
-            >
-                👁 Anonymous Join
-            </button>
-
-            <hr>
-
-            ${usersHTML}
-
-        `;
-
-
-        container.appendChild(
-            div
-        );
-    }
-}
-
-
-// =====================================================
-// VIDEO
-// =====================================================
-
-function addVideo(
-    id,
-    stream,
-    label
-) {
-
-    let existing =
-        document.getElementById(
-            "video-" + id
-        );
-
-
-    if (existing) {
-
-        existing.srcObject =
-            stream;
-
-        return;
-    }
-
-
-    const box =
-        document.createElement(
-            "div"
-        );
-
-
-    box.className =
-        "videoBox";
-
-
-    box.id =
-        "box-" + id;
-
-
-    const video =
-        document.createElement(
-            "video"
-        );
-
-
-    video.id =
-        "video-" + id;
-
-
-    video.autoplay =
-        true;
-
-
-    video.playsInline =
-        true;
-
-
-    video.srcObject =
-        stream;
-
-
-    if (
-        id === moderatorId
-    ) {
-
-        video.muted =
-            true;
-    }
-
-
-    const labelElement =
-        document.createElement(
-            "div"
-        );
-
-
-    labelElement.className =
-        "label";
-
-
-    labelElement.textContent =
-        label;
-
-
-    box.appendChild(
-        video
+      }
     );
 
+  peers = {};
 
-    box.appendChild(
-        labelElement
+  if (localStream) {
+
+    localStream
+      .getTracks()
+      .forEach(
+        track =>
+          track.stop()
+      );
+
+  }
+
+  localStream =
+    null;
+
+  currentRoom =
+    null;
+
+  anonymousMode =
+    false;
+
+  document.getElementById(
+    "thumbs"
+  ).innerHTML = "";
+
+  document.getElementById(
+    "bigVideo"
+  ).srcObject =
+    null;
+
+  document.getElementById(
+    "bigName"
+  ).textContent =
+    "Select a participant";
+
+  document.getElementById(
+    "joinInfo"
+  ).textContent =
+    "Select a room below to join it.";
+
+}
+
+function toggleMic() {
+
+  if (!localStream) return;
+
+  const track =
+    localStream
+      .getAudioTracks()[0];
+
+  if (!track) return;
+
+  track.enabled =
+    !track.enabled;
+
+  document.getElementById(
+    "micButton"
+  ).textContent =
+    track.enabled
+      ? "🎤"
+      : "🔇";
+
+}
+
+function toggleCamera() {
+
+  if (!localStream) return;
+
+  const track =
+    localStream
+      .getVideoTracks()[0];
+
+  if (!track) return;
+
+  track.enabled =
+    !track.enabled;
+
+  document.getElementById(
+    "cameraButton"
+  ).textContent =
+    track.enabled
+      ? "📷"
+      : "🚫";
+
+}
+
+async function toggleFullscreen() {
+
+  const box =
+    document.getElementById(
+      "bigBox"
     );
 
+  if (!document.fullscreenElement) {
 
-    document
-        .getElementById(
-            "videos"
-        )
-        .appendChild(
-            box
-        );
-}
+    try {
 
+      await box.requestFullscreen();
 
-// =====================================================
-// REMOVE VIDEO
-// =====================================================
+    } catch (error) {
 
-function removeVideo(
-    id
-) {
+      console.error(
+        error
+      );
 
-    const box =
-        document.getElementById(
-            "box-" + id
-        );
-
-
-    if (box) {
-
-        box.remove();
     }
+
+  } else {
+
+    await document.exitFullscreen();
+
+  }
+
 }
-
-
-// =====================================================
-// HTML ESCAPING
-// =====================================================
-
-function escapeHTML(
-    text
-) {
-
-    return String(text)
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-}
-
-
-function escapeJS(
-    text
-) {
-
-    return String(text)
-        .replace(
-            /\\/g,
-            "\\\\"
-        )
-        .replace(
-            /'/g,
-            "\\'"
-        );
-}
-
-
-// =====================================================
-// START
-// =====================================================
 
 connect();
 
@@ -1746,3 +1667,4 @@ connect();
 
 </body>
 </html>
+```

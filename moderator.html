@@ -1,9 +1,11 @@
 ```html
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
 <meta charset="UTF-8">
+
 <meta
   name="viewport"
   content="width=device-width, initial-scale=1.0"
@@ -19,10 +21,14 @@
 
 body {
   margin: 0;
+
   background: #090b0f;
   color: white;
+
   font-family: Arial, sans-serif;
+
   height: 100vh;
+
   overflow: hidden;
 }
 
@@ -34,9 +40,13 @@ input {
 button {
   border: 0;
   border-radius: 9px;
-  padding: 9px 12px;
+
+  padding: 10px 12px;
+
   color: white;
+
   background: #2563eb;
+
   cursor: pointer;
 }
 
@@ -45,52 +55,75 @@ button:hover {
 }
 
 input {
-  background: #11151b;
-  border: 1px solid #303640;
-  border-radius: 9px;
-  padding: 11px;
-  color: white;
   width: 100%;
+
+  background: #11151b;
+  color: white;
+
+  border: 1px solid #303640;
+
+  border-radius: 9px;
+
+  padding: 11px;
+
   margin-bottom: 8px;
 }
 
+
+/* MAIN LAYOUT */
+
 #layout {
   height: 100vh;
+
   display: grid;
-  grid-template-columns: 1fr 330px;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    340px;
 }
 
-/* CALL SIDE */
+
+/* CALL */
 
 #callArea {
-  min-width: 0;
   position: relative;
+
+  min-width: 0;
+
   background: #0b0e13;
 }
 
 #thumbs {
   position: absolute;
+
   left: 12px;
   top: 12px;
   bottom: 12px;
-  width: 160px;
+
+  width: 155px;
 
   display: flex;
   flex-direction: column;
+
   gap: 10px;
 
   overflow-y: auto;
-  z-index: 5;
+
+  z-index: 10;
 }
 
 .thumb {
   position: relative;
-  width: 145px;
-  height: 95px;
+
+  width: 140px;
+  height: 90px;
+
   flex-shrink: 0;
 
-  background: #1a1f27;
+  background: #1b2028;
+
   border-radius: 12px;
+
   overflow: hidden;
 
   border: 2px solid transparent;
@@ -108,36 +141,43 @@ input {
 
 .thumb.speaking {
   border-color: #22c55e;
+
   box-shadow:
-    0 0 15px rgba(34,197,94,.55);
+    0 0 15px
+    rgba(34,197,94,.7);
 }
 
 .thumb video {
   width: 100%;
   height: 100%;
+
   object-fit: cover;
 }
 
 .thumbName {
   position: absolute;
+
   left: 0;
   right: 0;
   bottom: 0;
 
   padding: 5px 7px;
 
-  background: linear-gradient(
-    transparent,
-    rgba(0,0,0,.85)
-  );
-
   font-size: 13px;
+
+  background:
+    linear-gradient(
+      transparent,
+      rgba(0,0,0,.85)
+    );
 }
 
 #mainVideo {
   position: absolute;
-  left: 180px;
+
+  left: 175px;
   right: 15px;
+
   top: 15px;
   bottom: 15px;
 }
@@ -147,9 +187,11 @@ input {
   height: 100%;
 
   background: black;
+
   border-radius: 18px;
 
   overflow: hidden;
+
   position: relative;
 
   cursor: pointer;
@@ -158,37 +200,62 @@ input {
 #bigVideo {
   width: 100%;
   height: 100%;
+
   object-fit: contain;
+
   background: black;
 }
 
 #bigName {
   position: absolute;
+
   left: 15px;
   bottom: 15px;
 
-  background: rgba(0,0,0,.65);
+  padding: 8px 12px;
+
+  background:
+    rgba(0,0,0,.65);
+
+  border-radius: 8px;
+}
+
+#roomTitle {
+  position: absolute;
+
+  top: 15px;
+  right: 20px;
+
+  z-index: 20;
 
   padding: 8px 12px;
+
+  background:
+    rgba(0,0,0,.65);
+
   border-radius: 8px;
 }
 
 #controls {
   position: absolute;
+
   left: 50%;
   bottom: 20px;
 
-  transform: translateX(-50%);
+  transform:
+    translateX(-50%);
 
   display: flex;
+
   gap: 10px;
 
-  z-index: 20;
+  z-index: 30;
 }
 
 #controls button {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
+
   border-radius: 50%;
 }
 
@@ -201,7 +268,9 @@ input {
 
 #dashboard {
   background: #14181e;
-  border-left: 1px solid #292f38;
+
+  border-left:
+    1px solid #292f38;
 
   padding: 18px;
 
@@ -212,35 +281,54 @@ input {
   margin-top: 0;
 }
 
+#status {
+  font-size: 13px;
+
+  opacity: .65;
+
+  margin-bottom: 15px;
+}
+
 .roomCard {
   background: #1d232b;
+
   border-radius: 12px;
+
   padding: 13px;
+
   margin-bottom: 12px;
 }
 
-.roomHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.roomName {
+  font-size: 17px;
 
-  margin-bottom: 10px;
+  font-weight: bold;
+
+  margin-bottom: 3px;
 }
 
 .roomCode {
-  font-weight: bold;
-  font-size: 18px;
+  font-size: 12px;
+
+  opacity: .6;
 }
 
-.count {
+.roomCount {
   font-size: 12px;
-  opacity: .7;
+
+  opacity: .6;
+
+  margin-top: 8px;
 }
 
 .participant {
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
+
+  gap: 6px;
 
   background: #11151a;
 
@@ -253,19 +341,22 @@ input {
 
 .participantName {
   overflow: hidden;
+
   text-overflow: ellipsis;
+
   white-space: nowrap;
 }
 
-.actions {
+.participantButtons {
   display: flex;
-  gap: 5px;
-  margin-top: 10px;
+
+  gap: 4px;
 }
 
-.actions button {
-  flex: 1;
-  font-size: 12px;
+.participantButtons button {
+  padding: 5px 7px;
+
+  font-size: 11px;
 }
 
 .kick {
@@ -276,21 +367,27 @@ input {
   background: #dc2626;
 }
 
-#status {
-  font-size: 13px;
-  opacity: .65;
-  margin-bottom: 15px;
+.roomActions {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 6px;
+
+  margin-top: 10px;
 }
 
-#joinInfo {
-  margin-top: 15px;
-  padding: 10px;
-  background: #101419;
-  border-radius: 10px;
+.anonymous {
+  background: #252b34;
+}
+
+.empty {
+  opacity: .6;
+
   font-size: 13px;
 }
 
-@media (max-width: 800px) {
+@media(max-width:800px) {
 
   #layout {
     grid-template-columns: 1fr;
@@ -298,34 +395,37 @@ input {
 
   #dashboard {
     position: absolute;
+
     right: 0;
     top: 0;
     bottom: 0;
 
-    width: 300px;
+    width: 320px;
 
-    z-index: 50;
-
-    transform: translateX(100%);
-    transition: transform .2s;
-  }
-
-  #dashboard.open {
-    transform: translateX(0);
+    z-index: 100;
   }
 
 }
 
 </style>
+
 </head>
 
 <body>
 
+
 <div id="layout">
+
 
   <div id="callArea">
 
+    <div id="roomTitle">
+      No room joined
+    </div>
+
+
     <div id="thumbs"></div>
+
 
     <div id="mainVideo">
 
@@ -341,12 +441,13 @@ input {
         ></video>
 
         <div id="bigName">
-          Select a participant
+          Select someone
         </div>
 
       </div>
 
     </div>
+
 
     <div id="controls">
 
@@ -378,16 +479,32 @@ input {
 
   <aside id="dashboard">
 
-    <h2>Moderator</h2>
+    <h2>Moderator Dashboard</h2>
 
     <div id="status">
       Connecting...
     </div>
 
+
     <input
       id="moderatorName"
       maxlength="30"
       placeholder="Your moderator name"
+    >
+
+
+    <h3>Create Room</h3>
+
+    <input
+      id="newRoomName"
+      maxlength="40"
+      placeholder="Room name"
+    >
+
+    <input
+      id="newRoomCode"
+      maxlength="12"
+      placeholder="Custom code (optional)"
     >
 
     <button
@@ -397,9 +514,6 @@ input {
       + Create Room
     </button>
 
-    <div id="joinInfo">
-      Select a room below to join it.
-    </div>
 
     <hr
       style="
@@ -409,10 +523,11 @@ input {
       "
     >
 
+
     <h3>Open Calls</h3>
 
     <div id="rooms">
-      Loading rooms...
+      Loading...
     </div>
 
   </aside>
@@ -423,16 +538,21 @@ input {
 <script>
 
 const SERVER =
-  (location.protocol === "https:" ? "wss://" : "ws://") +
+  (location.protocol === "https:"
+    ? "wss://"
+    : "ws://") +
   location.host +
   "/ws";
 
+
 let ws;
+
 
 let moderatorId =
   localStorage.getItem(
     "videoChatModeratorId"
   );
+
 
 if (!moderatorId) {
 
@@ -446,16 +566,20 @@ if (!moderatorId) {
 
 }
 
+
 let moderatorName =
   localStorage.getItem(
     "videoChatModeratorName"
-  ) || "";
+  ) || "Moderator";
+
 
 let localStream = null;
 
 let peers = {};
 
 let users = {};
+
+let pendingCandidates = {};
 
 let selectedUser = null;
 
@@ -465,34 +589,49 @@ let anonymousMode = false;
 
 let audioAnalyzers = {};
 
-let speakingTimers = {};
+let speakingAnimation = {};
 
-document.getElementById(
-  "moderatorName"
-).value =
+
+const moderatorNameInput =
+  document.getElementById(
+    "moderatorName"
+  );
+
+
+moderatorNameInput.value =
   moderatorName;
 
-document.getElementById(
-  "moderatorName"
-).addEventListener(
+
+moderatorNameInput.addEventListener(
   "input",
-  event => {
+  () => {
 
     moderatorName =
-      event.target.value;
+      moderatorNameInput.value
+        .trim() ||
+      "Moderator";
+
 
     localStorage.setItem(
       "videoChatModeratorName",
       moderatorName
     );
 
+
+    send({
+      type: "setName",
+      name: moderatorName
+    });
+
   }
 );
+
 
 function connect() {
 
   ws =
     new WebSocket(SERVER);
+
 
   ws.onopen = () => {
 
@@ -501,142 +640,199 @@ function connect() {
     ).textContent =
       "Connected";
 
-    ws.send(JSON.stringify({
+
+    send({
       type: "register",
+
       role: "moderator",
+
       id: moderatorId,
+
       name:
-        moderatorName || "Moderator"
-    }));
+        moderatorName
+    });
 
   };
 
-  ws.onmessage = async event => {
 
-    const msg =
-      JSON.parse(event.data);
+  ws.onmessage =
+    async event => {
 
-    if (
-      msg.type === "roomList" ||
-      msg.type === "roomsUpdated"
-    ) {
-
-      renderRooms(
-        msg.rooms
-      );
-
-      return;
-    }
-
-    if (
-      msg.type === "roomCreated"
-    ) {
-
-      renderRoomsFromCurrent();
-
-      return;
-    }
-
-    if (
-      msg.type === "roomJoined"
-    ) {
-
-      currentRoom =
-        msg.room;
-
-      users = {};
-
-      msg.users.forEach(user => {
-
-        users[user.id] =
-          user;
-
-      });
-
-      users[msg.self.id] = {
-        id: msg.self.id,
-        name:
-          anonymousMode
-            ? "Moderator"
-            : msg.self.name
-      };
-
-      await setupCall();
-
-      document.getElementById(
-        "joinInfo"
-      ).textContent =
-        "Joined room " +
-        currentRoom +
-        (
-          anonymousMode
-            ? " anonymously"
-            : ""
+      const msg =
+        JSON.parse(
+          event.data
         );
 
-      return;
-    }
 
-    if (
-      msg.type === "userJoined"
-    ) {
+      if (
+        msg.type ===
+        "roomList" ||
+        msg.type ===
+        "roomsUpdated"
+      ) {
 
-      users[msg.user.id] =
-        msg.user;
+        renderRooms(
+          msg.rooms
+        );
 
-      createPeer(
-        msg.user.id,
-        moderatorId < msg.user.id
-      );
+        return;
+      }
 
-      return;
-    }
 
-    if (
-      msg.type === "signal"
-    ) {
+      if (
+        msg.type ===
+        "roomCreated"
+      ) {
 
-      await handleSignal(
-        msg.from,
-        msg.data
-      );
+        alert(
+          `Room created!\n\n` +
+          `Name: ${msg.room.name}\n` +
+          `Code: ${msg.room.code}`
+        );
 
-      return;
-    }
+        return;
+      }
 
-    if (
-      msg.type === "userLeft"
-    ) {
 
-      removePeer(
-        msg.userId
-      );
+      if (
+        msg.type ===
+        "roomJoined"
+      ) {
 
-      return;
-    }
+        currentRoom =
+          msg.room;
 
-    if (
-      msg.type === "kicked" ||
-      msg.type === "banned"
-    ) {
+        users = {};
 
-      alert(msg.message);
+        pendingCandidates = {};
 
-      location.reload();
 
-      return;
-    }
+        msg.users.forEach(
+          user => {
 
-    if (
-      msg.type === "error"
-    ) {
+            users[user.id] =
+              user;
 
-      alert(msg.message);
+          }
+        );
 
-      return;
-    }
 
-  };
+        users[msg.self.id] = {
+          id: msg.self.id,
+
+          name:
+            anonymousMode
+              ? "Moderator"
+              : msg.self.name
+        };
+
+
+        showCall();
+
+
+        for (
+          const id of Object.keys(users)
+        ) {
+
+          if (
+            id === moderatorId
+          ) {
+            continue;
+          }
+
+
+          createPeer(
+            id,
+            moderatorId < id
+          );
+
+        }
+
+
+        return;
+      }
+
+
+      if (
+        msg.type ===
+        "userJoined"
+      ) {
+
+        users[msg.user.id] =
+          msg.user;
+
+
+        createPeer(
+          msg.user.id,
+          moderatorId < msg.user.id
+        );
+
+
+        return;
+      }
+
+
+      if (
+        msg.type ===
+        "signal"
+      ) {
+
+        await handleSignal(
+          msg.from,
+          msg.data
+        );
+
+
+        return;
+      }
+
+
+      if (
+        msg.type ===
+        "userLeft"
+      ) {
+
+        removePeer(
+          msg.userId
+        );
+
+
+        return;
+      }
+
+
+      if (
+        msg.type ===
+        "kicked" ||
+        msg.type ===
+        "banned"
+      ) {
+
+        alert(
+          msg.message
+        );
+
+
+        location.reload();
+
+
+        return;
+      }
+
+
+      if (
+        msg.type ===
+        "error"
+      ) {
+
+        alert(
+          msg.message
+        );
+
+      }
+
+    };
+
 
   ws.onclose = () => {
 
@@ -644,6 +840,7 @@ function connect() {
       "status"
     ).textContent =
       "Disconnected — reconnecting...";
+
 
     setTimeout(
       connect,
@@ -653,6 +850,7 @@ function connect() {
   };
 
 }
+
 
 function send(data) {
 
@@ -670,42 +868,1193 @@ function send(data) {
 
 }
 
+
 function createRoom() {
 
+  const name =
+    document.getElementById(
+      "newRoomName"
+    ).value.trim();
+
+
+  const code =
+    document.getElementById(
+      "newRoomCode"
+    ).value.trim();
+
+
+  if (!name) {
+
+    alert(
+      "Enter a room name."
+    );
+
+    return;
+
+  }
+
+
   send({
     type:
-      "moderatorCreateRoom"
+      "moderatorCreateRoom",
+
+    name,
+
+    code
   });
 
 }
 
-function joinNormal(code) {
 
-  anonymousMode = false;
+async function joinNormal(code) {
 
-  send({
-    type:
-      "moderatorJoinRoom",
-    code,
-    anonymous: false
-  });
+  anonymousMode =
+    false;
+
+
+  try {
+
+    localStream =
+      await navigator.mediaDevices
+        .getUserMedia({
+          video: true,
+          audio: true
+        });
+
+
+    send({
+      type: "setName",
+      name: moderatorName
+    });
+
+
+    send({
+      type:
+        "moderatorJoinRoom",
+
+      code,
+
+      anonymous: false
+    });
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    alert(
+      "Camera/microphone permission is required for normal moderator mode."
+    );
+
+  }
 
 }
+
 
 function joinAnonymous(code) {
 
-  anonymousMode = true;
+  anonymousMode =
+    true;
+
+  localStream =
+    null;
+
 
   send({
     type:
       "moderatorJoinRoom",
+
     code,
+
     anonymous: true
   });
 
 }
 
-function kick(userId) {
+
+function showCall() {
+
+  document.getElementById(
+    "roomTitle"
+  ).textContent =
+    currentRoom.name;
+
+
+  if (localStream) {
+
+    addParticipant(
+      moderatorId,
+      localStream
+    );
+
+
+    selectParticipant(
+      moderatorId
+    );
+
+
+    setupSpeakingDetection(
+      moderatorId,
+      localStream
+    );
+
+  }
+
+}
+
+
+function createPeer(
+  remoteId,
+  initiator
+) {
+
+  if (
+    peers[remoteId]
+  ) {
+
+    return peers[remoteId];
+
+  }
+
+
+  const pc =
+    new RTCPeerConnection({
+      iceServers: [
+        {
+          urls:
+            "stun:stun.l.google.com:19302"
+        }
+      ]
+    });
+
+
+  peers[remoteId] =
+    pc;
+
+
+  pendingCandidates[
+    remoteId
+  ] = [];
+
+
+  if (localStream) {
+
+    localStream
+      .getTracks()
+      .forEach(
+        track => {
+
+          pc.addTrack(
+            track,
+            localStream
+          );
+
+        }
+      );
+
+  }
+
+
+  pc.onicecandidate =
+    event => {
+
+      if (
+        event.candidate
+      ) {
+
+        send({
+          type: "signal",
+
+          target: remoteId,
+
+          data: {
+            type: "candidate",
+
+            candidate:
+              event.candidate
+          }
+
+        });
+
+      }
+
+    };
+
+
+  pc.ontrack =
+    event => {
+
+      const stream =
+        event.streams[0];
+
+      if (!stream) {
+        return;
+      }
+
+
+      addParticipant(
+        remoteId,
+        stream
+      );
+
+
+      setupSpeakingDetection(
+        remoteId,
+        stream
+      );
+
+
+      if (!selectedUser) {
+
+        selectParticipant(
+          remoteId
+        );
+
+      }
+
+    };
+
+
+  pc.onconnectionstatechange =
+    () => {
+
+      console.log(
+        "Connection",
+        remoteId,
+        pc.connectionState
+      );
+
+
+      if (
+        pc.connectionState ===
+        "failed"
+      ) {
+
+        try {
+          pc.restartIce();
+        } catch {}
+
+      }
+
+    };
+
+
+  if (initiator) {
+
+    makeOffer(
+      remoteId,
+      pc
+    );
+
+  }
+
+
+  return pc;
+
+}
+
+
+async function makeOffer(
+  remoteId,
+  pc
+) {
+
+  try {
+
+    const offer =
+      await pc.createOffer();
+
+
+    await pc.setLocalDescription(
+      offer
+    );
+
+
+    send({
+      type: "signal",
+
+      target: remoteId,
+
+      data: {
+        type: "offer",
+
+        sdp:
+          pc.localDescription
+      }
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Offer error:",
+      error
+    );
+
+  }
+
+}
+
+
+async function handleSignal(
+  remoteId,
+  data
+) {
+
+  let pc =
+    peers[remoteId];
+
+
+  if (!pc) {
+
+    pc =
+      createPeer(
+        remoteId,
+        false
+      );
+
+  }
+
+
+  try {
+
+    if (
+      data.type ===
+      "offer"
+    ) {
+
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(
+          data.sdp
+        )
+      );
+
+
+      await flushCandidates(
+        remoteId,
+        pc
+      );
+
+
+      const answer =
+        await pc.createAnswer();
+
+
+      await pc.setLocalDescription(
+        answer
+      );
+
+
+      send({
+        type: "signal",
+
+        target: remoteId,
+
+        data: {
+          type: "answer",
+
+          sdp:
+            pc.localDescription
+        }
+
+      });
+
+
+      return;
+
+    }
+
+
+    if (
+      data.type ===
+      "answer"
+    ) {
+
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(
+          data.sdp
+        )
+      );
+
+
+      await flushCandidates(
+        remoteId,
+        pc
+      );
+
+
+      return;
+
+    }
+
+
+    if (
+      data.type ===
+      "candidate"
+    ) {
+
+      if (
+        pc.remoteDescription
+      ) {
+
+        await pc.addIceCandidate(
+          new RTCIceCandidate(
+            data.candidate
+          )
+        );
+
+      } else {
+
+        pendingCandidates[
+          remoteId
+        ].push(
+          data.candidate
+        );
+
+      }
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "WebRTC error:",
+      error
+    );
+
+  }
+
+}
+
+
+async function flushCandidates(
+  remoteId,
+  pc
+) {
+
+  const candidates =
+    pendingCandidates[
+      remoteId
+    ] || [];
+
+
+  pendingCandidates[
+    remoteId
+  ] = [];
+
+
+  for (
+    const candidate of candidates
+  ) {
+
+    try {
+
+      await pc.addIceCandidate(
+        new RTCIceCandidate(
+          candidate
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        "ICE error:",
+        error
+      );
+
+    }
+
+  }
+
+}
+
+
+function addParticipant(
+  id,
+  stream
+) {
+
+  let box =
+    document.getElementById(
+      "thumb-" + id
+    );
+
+
+  if (!box) {
+
+    box =
+      document.createElement(
+        "div"
+      );
+
+
+    box.className =
+      "thumb";
+
+
+    box.id =
+      "thumb-" + id;
+
+
+    box.onclick =
+      () =>
+        selectParticipant(id);
+
+
+    const video =
+      document.createElement(
+        "video"
+      );
+
+
+    video.autoplay = true;
+    video.playsInline = true;
+
+    video.muted =
+      id === moderatorId;
+
+
+    video.srcObject =
+      stream;
+
+
+    const name =
+      document.createElement(
+        "div"
+      );
+
+
+    name.className =
+      "thumbName";
+
+
+    name.textContent =
+      users[id]?.name ||
+      "Guest";
+
+
+    box.appendChild(
+      video
+    );
+
+
+    box.appendChild(
+      name
+    );
+
+
+    document
+      .getElementById(
+        "thumbs"
+      )
+      .appendChild(
+        box
+      );
+
+
+  } else {
+
+    const video =
+      box.querySelector(
+        "video"
+      );
+
+
+    if (video) {
+
+      video.srcObject =
+        stream;
+
+    }
+
+  }
+
+}
+
+
+function selectParticipant(
+  id
+) {
+
+  const box =
+    document.getElementById(
+      "thumb-" + id
+    );
+
+
+  if (!box) {
+    return;
+  }
+
+
+  const video =
+    box.querySelector(
+      "video"
+    );
+
+
+  if (!video) {
+    return;
+  }
+
+
+  selectedUser =
+    id;
+
+
+  document
+    .querySelectorAll(
+      ".thumb"
+    )
+    .forEach(
+      element =>
+        element.classList.remove(
+          "selected"
+        )
+    );
+
+
+  box.classList.add(
+    "selected"
+  );
+
+
+  const big =
+    document.getElementById(
+      "bigVideo"
+    );
+
+
+  big.srcObject =
+    video.srcObject;
+
+
+  big.muted =
+    id === moderatorId;
+
+
+  document.getElementById(
+    "bigName"
+  ).textContent =
+    users[id]?.name ||
+    "Guest";
+
+}
+
+
+function setupSpeakingDetection(
+  id,
+  stream
+) {
+
+  if (
+    audioAnalyzers[id]
+  ) {
+    return;
+  }
+
+
+  if (
+    !stream ||
+    !stream.getAudioTracks()
+      .length
+  ) {
+    return;
+  }
+
+
+  try {
+
+    const AudioContext =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+
+    const context =
+      new AudioContext();
+
+
+    const source =
+      context.createMediaStreamSource(
+        stream
+      );
+
+
+    const analyser =
+      context.createAnalyser();
+
+
+    analyser.fftSize =
+      256;
+
+
+    analyser.smoothingTimeConstant =
+      0.75;
+
+
+    source.connect(
+      analyser
+    );
+
+
+    const data =
+      new Uint8Array(
+        analyser.frequencyBinCount
+      );
+
+
+    audioAnalyzers[id] = {
+      analyser,
+      data
+    };
+
+
+    function check() {
+
+      if (
+        !audioAnalyzers[id]
+      ) {
+        return;
+      }
+
+
+      analyser.getByteFrequencyData(
+        data
+      );
+
+
+      let total = 0;
+
+
+      for (
+        let i = 0;
+        i < data.length;
+        i++
+      ) {
+
+        total += data[i];
+
+      }
+
+
+      const average =
+        total / data.length;
+
+
+      const box =
+        document.getElementById(
+          "thumb-" + id
+        );
+
+
+      if (
+        box &&
+        average > 10
+      ) {
+
+        box.classList.add(
+          "speaking"
+        );
+
+
+        clearTimeout(
+          speakingAnimation[id]
+        );
+
+
+        speakingAnimation[id] =
+          setTimeout(
+            () => {
+
+              box.classList.remove(
+                "speaking"
+              );
+
+            },
+            500
+          );
+
+      }
+
+
+      requestAnimationFrame(
+        check
+      );
+
+    }
+
+
+    check();
+
+  } catch (error) {
+
+    console.error(
+      "Voice detection error:",
+      error
+    );
+
+  }
+
+}
+
+
+function removePeer(
+  id
+) {
+
+  if (
+    peers[id]
+  ) {
+
+    try {
+      peers[id].close();
+    } catch {}
+
+    delete peers[id];
+
+  }
+
+
+  delete pendingCandidates[
+    id
+  ];
+
+
+  const box =
+    document.getElementById(
+      "thumb-" + id
+    );
+
+
+  if (box) {
+    box.remove();
+  }
+
+
+  delete users[id];
+
+
+  if (
+    selectedUser === id
+  ) {
+
+    selectedUser =
+      null;
+
+
+    const remaining =
+      Object.keys(users)
+        .find(
+          userId =>
+            userId !==
+            moderatorId
+        );
+
+
+    if (remaining) {
+
+      selectParticipant(
+        remaining
+      );
+
+    }
+
+  }
+
+}
+
+
+function renderRooms(
+  rooms
+) {
+
+  const container =
+    document.getElementById(
+      "rooms"
+    );
+
+
+  container.innerHTML = "";
+
+
+  if (!rooms.length) {
+
+    container.innerHTML =
+      `<p class="empty">
+        No open calls.
+      </p>`;
+
+    return;
+
+  }
+
+
+  rooms.forEach(
+    room => {
+
+      const card =
+        document.createElement(
+          "div"
+        );
+
+
+      card.className =
+        "roomCard";
+
+
+      const title =
+        document.createElement(
+          "div"
+        );
+
+
+      title.className =
+        "roomName";
+
+
+      title.textContent =
+        room.name;
+
+
+      card.appendChild(
+        title
+      );
+
+
+      const code =
+        document.createElement(
+          "div"
+        );
+
+
+      code.className =
+        "roomCode";
+
+
+      code.textContent =
+        "Code: " +
+        room.code;
+
+
+      card.appendChild(
+        code
+      );
+
+
+      const count =
+        document.createElement(
+          "div"
+        );
+
+
+      count.className =
+        "roomCount";
+
+
+      count.textContent =
+        `${room.userCount} participant${
+          room.userCount === 1
+            ? ""
+            : "s"
+        }`;
+
+
+      card.appendChild(
+        count
+      );
+
+
+      room.participants.forEach(
+        participant => {
+
+          const row =
+            document.createElement(
+              "div"
+            );
+
+
+          row.className =
+            "participant";
+
+
+          const name =
+            document.createElement(
+              "span"
+            );
+
+
+          name.className =
+            "participantName";
+
+
+          name.textContent =
+            participant.name;
+
+
+          row.appendChild(
+            name
+          );
+
+
+          if (
+            participant.role !==
+            "moderator"
+          ) {
+
+            const buttons =
+              document.createElement(
+                "div"
+              );
+
+
+            buttons.className =
+              "participantButtons";
+
+
+            const kick =
+              document.createElement(
+                "button"
+              );
+
+
+            kick.className =
+              "kick";
+
+
+            kick.textContent =
+              "Kick";
+
+
+            kick.onclick =
+              () =>
+                kickUser(
+                  participant.id
+                );
+
+
+            const ban =
+              document.createElement(
+                "button"
+              );
+
+
+            ban.className =
+              "ban";
+
+
+            ban.textContent =
+              "Ban";
+
+
+            ban.onclick =
+              () =>
+                banUser(
+                  participant.id
+                );
+
+
+            buttons.appendChild(
+              kick
+            );
+
+
+            buttons.appendChild(
+              ban
+            );
+
+
+            row.appendChild(
+              buttons
+            );
+
+          }
+
+
+          card.appendChild(
+            row
+          );
+
+        }
+      );
+
+
+      const actions =
+        document.createElement(
+          "div"
+        );
+
+
+      actions.className =
+        "roomActions";
+
+
+      const normal =
+        document.createElement(
+          "button"
+        );
+
+
+      normal.textContent =
+        "Join Normally";
+
+
+      normal.onclick =
+        () =>
+          joinNormal(
+            room.code
+          );
+
+
+      const anonymous =
+        document.createElement(
+          "button"
+        );
+
+
+      anonymous.className =
+        "anonymous";
+
+
+      anonymous.textContent =
+        "Anonymous";
+
+
+      anonymous.onclick =
+        () =>
+          joinAnonymous(
+            room.code
+          );
+
+
+      actions.appendChild(
+        normal
+      );
+
+
+      actions.appendChild(
+        anonymous
+      );
+
+
+      card.appendChild(
+        actions
+      );
+
+
+      container.appendChild(
+        card
+      );
+
+    }
+  );
+
+}
+
+
+function kickUser(
+  userId
+) {
 
   if (
     confirm(
@@ -722,7 +2071,10 @@ function kick(userId) {
 
 }
 
-function ban(userId) {
+
+function banUser(
+  userId
+) {
 
   if (
     confirm(
@@ -739,813 +2091,117 @@ function ban(userId) {
 
 }
 
-function renderRooms(rooms) {
 
-  const container =
-    document.getElementById(
-      "rooms"
-    );
+function toggleMic() {
 
-  if (!rooms.length) {
-
-    container.innerHTML =
-      "<p>No open calls.</p>";
-
+  if (!localStream) {
     return;
-
   }
 
-  container.innerHTML = "";
 
-  rooms.forEach(room => {
+  const track =
+    localStream
+      .getAudioTracks()[0];
 
-    const card =
-      document.createElement("div");
 
-    card.className =
-      "roomCard";
-
-    const header =
-      document.createElement("div");
-
-    header.className =
-      "roomHeader";
-
-    header.innerHTML = `
-      <span class="roomCode">
-        ${escapeHtml(room.code)}
-      </span>
-
-      <span class="count">
-        ${room.userCount} participant${room.userCount === 1 ? "" : "s"}
-      </span>
-    `;
-
-    card.appendChild(header);
-
-    room.participants.forEach(
-      participant => {
-
-        const row =
-          document.createElement(
-            "div"
-          );
-
-        row.className =
-          "participant";
-
-        const name =
-          document.createElement(
-            "span"
-          );
-
-        name.className =
-          "participantName";
-
-        name.textContent =
-          participant.name;
-
-        row.appendChild(name);
-
-        if (
-          participant.role !==
-          "moderator"
-        ) {
-
-          const buttons =
-            document.createElement(
-              "span"
-            );
-
-          buttons.innerHTML = `
-            <button
-              class="kick"
-              onclick="kick('${participant.id}')"
-            >
-              Kick
-            </button>
-
-            <button
-              class="ban"
-              onclick="ban('${participant.id}')"
-            >
-              Ban
-            </button>
-          `;
-
-          row.appendChild(
-            buttons
-          );
-
-        }
-
-        card.appendChild(row);
-
-      }
-    );
-
-    const actions =
-      document.createElement(
-        "div"
-      );
-
-    actions.className =
-      "actions";
-
-    const normal =
-      document.createElement(
-        "button"
-      );
-
-    normal.textContent =
-      "Join Normally";
-
-    normal.onclick =
-      () => joinNormal(room.code);
-
-    const anon =
-      document.createElement(
-        "button"
-      );
-
-    anon.className =
-      "secondary";
-
-    anon.textContent =
-      "Anonymous";
-
-    anon.onclick =
-      () => joinAnonymous(room.code);
-
-    actions.appendChild(
-      normal
-    );
-
-    actions.appendChild(
-      anon
-    );
-
-    card.appendChild(
-      actions
-    );
-
-    container.appendChild(
-      card
-    );
-
-  });
-
-}
-
-let lastRooms = [];
-
-function renderRoomsFromCurrent() {
-
-  /*
-   * The next roomsUpdated message
-   * will refresh this automatically.
-   */
-
-}
-
-function escapeHtml(value) {
-
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-
-}
-
-async function setupCall() {
-
-  /*
-   * Anonymous moderator:
-   * don't ask for camera/mic.
-   */
-
-  if (!anonymousMode) {
-
-    try {
-
-      localStream =
-        await navigator.mediaDevices
-          .getUserMedia({
-            video: true,
-            audio: true
-          });
-
-      addParticipant(
-        moderatorId,
-        localStream
-      );
-
-      selectParticipant(
-        moderatorId
-      );
-
-    } catch (error) {
-
-      alert(
-        "Camera/microphone permission was denied."
-      );
-
-      return;
-
-    }
-
+  if (!track) {
+    return;
   }
 
-  for (
-    const id of Object.keys(users)
+
+  track.enabled =
+    !track.enabled;
+
+
+  document.getElementById(
+    "micButton"
+  ).textContent =
+    track.enabled
+      ? "🎤"
+      : "🔇";
+
+}
+
+
+function toggleCamera() {
+
+  if (!localStream) {
+    return;
+  }
+
+
+  const track =
+    localStream
+      .getVideoTracks()[0];
+
+
+  if (!track) {
+    return;
+  }
+
+
+  track.enabled =
+    !track.enabled;
+
+
+  document.getElementById(
+    "cameraButton"
+  ).textContent =
+    track.enabled
+      ? "📷"
+      : "🚫";
+
+}
+
+
+async function toggleFullscreen() {
+
+  const box =
+    document.getElementById(
+      "bigBox"
+    );
+
+
+  if (
+    !document.fullscreenElement
   ) {
 
-    if (
-      id === moderatorId
-    ) continue;
-
-    createPeer(
-      id,
-      moderatorId < id
-    );
-
-  }
-
-}
-
-function createPeer(
-  remoteId,
-  initiator
-) {
-
-  if (peers[remoteId]) {
-    return peers[remoteId];
-  }
-
-  const pc =
-    new RTCPeerConnection({
-      iceServers: [
-        {
-          urls:
-            "stun:stun.l.google.com:19302"
-        }
-      ]
-    });
-
-  peers[remoteId] =
-    pc;
-
-  if (localStream) {
-
-    localStream
-      .getTracks()
-      .forEach(track => {
-
-        pc.addTrack(
-          track,
-          localStream
-        );
-
-      });
-
-  }
-
-  pc.onicecandidate =
-    event => {
-
-      if (
-        event.candidate
-      ) {
-
-        send({
-          type: "signal",
-          target: remoteId,
-          data: {
-            type: "candidate",
-            candidate:
-              event.candidate
-          }
-        });
-
-      }
-
-    };
-
-  pc.ontrack =
-    event => {
-
-      const stream =
-        event.streams[0];
-
-      if (!stream) return;
-
-      addParticipant(
-        remoteId,
-        stream
-      );
-
-      setupSpeakingDetection(
-        remoteId,
-        stream
-      );
-
-      if (!selectedUser) {
-
-        selectParticipant(
-          remoteId
-        );
-
-      }
-
-    };
-
-  pc.onconnectionstatechange =
-    () => {
-
-      if (
-        pc.connectionState ===
-        "failed"
-      ) {
-
-        try {
-          pc.restartIce();
-        } catch {}
-
-      }
-
-    };
-
-  if (initiator) {
-
-    makeOffer(
-      remoteId,
-      pc
-    );
-
-  }
-
-  return pc;
-}
-
-async function makeOffer(
-  remoteId,
-  pc
-) {
-
-  try {
-
-    const offer =
-      await pc.createOffer();
-
-    await pc.setLocalDescription(
-      offer
-    );
-
-    send({
-      type: "signal",
-      target: remoteId,
-      data: {
-        type: "offer",
-        sdp:
-          pc.localDescription
-      }
-    });
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-  }
-
-}
-
-async function handleSignal(
-  remoteId,
-  data
-) {
-
-  let pc =
-    peers[remoteId];
-
-  if (!pc) {
-
-    pc =
-      createPeer(
-        remoteId,
-        false
-      );
-
-  }
-
-  try {
-
-    if (
-      data.type ===
-      "offer"
-    ) {
-
-      await pc.setRemoteDescription(
-        new RTCSessionDescription(
-          data.sdp
-        )
-      );
-
-      const answer =
-        await pc.createAnswer();
-
-      await pc.setLocalDescription(
-        answer
-      );
-
-      send({
-        type: "signal",
-        target: remoteId,
-        data: {
-          type: "answer",
-          sdp:
-            pc.localDescription
-        }
-      });
-
-    }
-
-    else if (
-      data.type ===
-      "answer"
-    ) {
-
-      await pc.setRemoteDescription(
-        new RTCSessionDescription(
-          data.sdp
-        )
-      );
-
-    }
-
-    else if (
-      data.type ===
-      "candidate"
-    ) {
-
-      if (
-        pc.remoteDescription
-      ) {
-
-        await pc.addIceCandidate(
-          new RTCIceCandidate(
-            data.candidate
-          )
-        );
-
-      }
-
-    }
-
-  } catch (error) {
-
-    console.error(
-      "Signal error:",
-      error
-    );
-
-  }
-
-}
-
-function addParticipant(
-  id,
-  stream
-) {
-
-  let box =
-    document.getElementById(
-      "thumb-" + id
-    );
-
-  if (!box) {
-
-    box =
-      document.createElement(
-        "div"
-      );
-
-    box.className =
-      "thumb";
-
-    box.id =
-      "thumb-" + id;
-
-    box.onclick =
-      () => selectParticipant(id);
-
-    const video =
-      document.createElement(
-        "video"
-      );
-
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted =
-      id === moderatorId;
-
-    video.srcObject =
-      stream;
-
-    const name =
-      document.createElement(
-        "div"
-      );
-
-    name.className =
-      "thumbName";
-
-    name.textContent =
-      users[id]?.name ||
-      "Guest";
-
-    box.appendChild(
-      video
-    );
-
-    box.appendChild(
-      name
-    );
-
-    document
-      .getElementById(
-        "thumbs"
-      )
-      .appendChild(
-        box
-      );
+    await box.requestFullscreen();
 
   } else {
 
-    const video =
-      box.querySelector(
-        "video"
-      );
-
-    if (video) {
-
-      video.srcObject =
-        stream;
-
-    }
+    await document.exitFullscreen();
 
   }
 
 }
 
-function selectParticipant(id) {
-
-  const box =
-    document.getElementById(
-      "thumb-" + id
-    );
-
-  if (!box) return;
-
-  const video =
-    box.querySelector(
-      "video"
-    );
-
-  if (!video) return;
-
-  selectedUser =
-    id;
-
-  document
-    .querySelectorAll(
-      ".thumb"
-    )
-    .forEach(
-      el =>
-        el.classList.remove(
-          "selected"
-        )
-    );
-
-  box.classList.add(
-    "selected"
-  );
-
-  const big =
-    document.getElementById(
-      "bigVideo"
-    );
-
-  big.srcObject =
-    video.srcObject;
-
-  big.muted =
-    id === moderatorId;
-
-  document.getElementById(
-    "bigName"
-  ).textContent =
-    users[id]?.name ||
-    "Guest";
-
-}
-
-function setupSpeakingDetection(
-  id,
-  stream
-) {
-
-  if (
-    audioAnalyzers[id] ||
-    !stream.getAudioTracks()
-      .length
-  ) {
-    return;
-  }
-
-  try {
-
-    const AudioContext =
-      window.AudioContext ||
-      window.webkitAudioContext;
-
-    const context =
-      new AudioContext();
-
-    const source =
-      context.createMediaStreamSource(
-        stream
-      );
-
-    const analyser =
-      context.createAnalyser();
-
-    analyser.fftSize =
-      256;
-
-    source.connect(
-      analyser
-    );
-
-    const data =
-      new Uint8Array(
-        analyser.frequencyBinCount
-      );
-
-    audioAnalyzers[id] = {
-      analyser,
-      data
-    };
-
-    function check() {
-
-      if (
-        !audioAnalyzers[id]
-      ) {
-        return;
-      }
-
-      analyser.getByteFrequencyData(
-        data
-      );
-
-      let total = 0;
-
-      for (
-        let i = 0;
-        i < data.length;
-        i++
-      ) {
-
-        total += data[i];
-
-      }
-
-      const average =
-        total / data.length;
-
-      const box =
-        document.getElementById(
-          "thumb-" + id
-        );
-
-      if (
-        box &&
-        average > 20
-      ) {
-
-        box.classList.add(
-          "speaking"
-        );
-
-        clearTimeout(
-          speakingTimers[id]
-        );
-
-        speakingTimers[id] =
-          setTimeout(
-            () => {
-
-              box.classList.remove(
-                "speaking"
-              );
-
-            },
-            500
-          );
-
-      }
-
-      requestAnimationFrame(
-        check
-      );
-
-    }
-
-    check();
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-  }
-
-}
-
-function removePeer(id) {
-
-  if (peers[id]) {
-
-    try {
-      peers[id].close();
-    } catch {}
-
-    delete peers[id];
-
-  }
-
-  const box =
-    document.getElementById(
-      "thumb-" + id
-    );
-
-  if (box) {
-    box.remove();
-  }
-
-  delete users[id];
-
-  if (
-    selectedUser === id
-  ) {
-
-    selectedUser =
-      null;
-
-    const remaining =
-      Object.keys(users)
-        .find(
-          userId =>
-            userId !==
-            moderatorId
-        );
-
-    if (remaining) {
-
-      selectParticipant(
-        remaining
-      );
-
-    }
-
-  }
-
-}
 
 function leaveRoom() {
 
   send({
-    type: "leaveRoom"
+    type:
+      "leaveRoom"
   });
 
-  Object.values(peers)
-    .forEach(
-      pc => {
 
-        try {
-          pc.close();
-        } catch {}
+  Object.values(
+    peers
+  ).forEach(
+    pc => {
 
-      }
-    );
+      try {
+        pc.close();
+      } catch {}
+
+    }
+  );
+
 
   peers = {};
+
+  pendingCandidates = {};
+
 
   if (localStream) {
 
@@ -1558,108 +2214,43 @@ function leaveRoom() {
 
   }
 
+
   localStream =
     null;
+
 
   currentRoom =
     null;
 
+
   anonymousMode =
     false;
+
 
   document.getElementById(
     "thumbs"
   ).innerHTML = "";
+
 
   document.getElementById(
     "bigVideo"
   ).srcObject =
     null;
 
+
   document.getElementById(
     "bigName"
   ).textContent =
-    "Select a participant";
+    "Select someone";
+
 
   document.getElementById(
-    "joinInfo"
+    "roomTitle"
   ).textContent =
-    "Select a room below to join it.";
+    "No room joined";
 
 }
 
-function toggleMic() {
-
-  if (!localStream) return;
-
-  const track =
-    localStream
-      .getAudioTracks()[0];
-
-  if (!track) return;
-
-  track.enabled =
-    !track.enabled;
-
-  document.getElementById(
-    "micButton"
-  ).textContent =
-    track.enabled
-      ? "🎤"
-      : "🔇";
-
-}
-
-function toggleCamera() {
-
-  if (!localStream) return;
-
-  const track =
-    localStream
-      .getVideoTracks()[0];
-
-  if (!track) return;
-
-  track.enabled =
-    !track.enabled;
-
-  document.getElementById(
-    "cameraButton"
-  ).textContent =
-    track.enabled
-      ? "📷"
-      : "🚫";
-
-}
-
-async function toggleFullscreen() {
-
-  const box =
-    document.getElementById(
-      "bigBox"
-    );
-
-  if (!document.fullscreenElement) {
-
-    try {
-
-      await box.requestFullscreen();
-
-    } catch (error) {
-
-      console.error(
-        error
-      );
-
-    }
-
-  } else {
-
-    await document.exitFullscreen();
-
-  }
-
-}
 
 connect();
 

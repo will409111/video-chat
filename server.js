@@ -38,13 +38,16 @@ function cleanRoomCode(code) {
 
 function makeRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
   let code;
 
   do {
     code = "";
 
     for (let i = 0; i < 5; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
+      code += chars[
+        Math.floor(Math.random() * chars.length)
+      ];
     }
   } while (rooms.has(code));
 
@@ -52,7 +55,10 @@ function makeRoomCode() {
 }
 
 function send(ws, data) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
+  if (
+    ws &&
+    ws.readyState === WebSocket.OPEN
+  ) {
     ws.send(JSON.stringify(data));
   }
 }
@@ -77,7 +83,8 @@ function getRoomInfo(room) {
 }
 
 function getRoomList() {
-  return Array.from(rooms.values()).map(getRoomInfo);
+  return Array.from(rooms.values())
+    .map(getRoomInfo);
 }
 
 function broadcastRoomList() {
@@ -94,7 +101,9 @@ function broadcastRoomList() {
 }
 
 function createRoom(name, requestedCode) {
-  let code = cleanRoomCode(requestedCode);
+  let code = cleanRoomCode(
+    requestedCode
+  );
 
   if (!code) {
     code = makeRoomCode();
@@ -121,7 +130,9 @@ function removeFromRoom(client) {
     return;
   }
 
-  const room = rooms.get(client.room);
+  const room = rooms.get(
+    client.room
+  );
 
   if (!room) {
     client.room = null;
@@ -129,7 +140,9 @@ function removeFromRoom(client) {
     return;
   }
 
-  room.users.delete(client.id);
+  room.users.delete(
+    client.id
+  );
 
   for (const id of room.users) {
     const other = clients.get(id);
@@ -152,8 +165,14 @@ function removeFromRoom(client) {
   broadcastRoomList();
 }
 
-function addToRoom(client, roomCode, anonymous) {
-  const room = rooms.get(roomCode);
+function joinRoom(
+  client,
+  roomCode,
+  anonymous = false
+) {
+  const room = rooms.get(
+    roomCode
+  );
 
   if (!room) {
     send(client.ws, {
@@ -161,28 +180,33 @@ function addToRoom(client, roomCode, anonymous) {
       message: "That room does not exist."
     });
 
-    return;
+    return false;
   }
 
   if (client.room) {
     removeFromRoom(client);
   }
 
-  const existingUsers = Array.from(room.users)
-    .map(id => clients.get(id))
-    .filter(Boolean)
-    .filter(user => user.id !== client.id)
-    .map(user => ({
-      id: user.id,
-      name: user.name,
-      role: user.role,
-      anonymous: user.anonymous
-    }));
+  const existingUsers =
+    Array.from(room.users)
+      .map(id => clients.get(id))
+      .filter(Boolean)
+      .filter(
+        user => user.id !== client.id
+      )
+      .map(user => ({
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        anonymous: user.anonymous
+      }));
 
   client.room = roomCode;
   client.anonymous = !!anonymous;
 
-  room.users.add(client.id);
+  room.users.add(
+    client.id
+  );
 
   send(client.ws, {
     type: "roomJoined",
@@ -210,6 +234,7 @@ function addToRoom(client, roomCode, anonymous) {
     if (other) {
       send(other.ws, {
         type: "userJoined",
+
         user: {
           id: client.id,
           name: client.name,
@@ -221,376 +246,563 @@ function addToRoom(client, roomCode, anonymous) {
   }
 
   broadcastRoomList();
+
+  return true;
 }
 
-const server = http.createServer((req, res) => {
-  let fileName;
+const server = http.createServer(
+  (req, res) => {
+    let fileName;
 
-  if (req.url === "/" || req.url === "/index.html") {
-    fileName = "index.html";
-  } else if (
-    req.url === "/moderator" ||
-    req.url === "/moderator.html"
-  ) {
-    fileName = "moderator.html";
-  } else if (req.url === "/health") {
-    res.writeHead(200, {
-      "Content-Type": "text/plain"
-    });
+    if (
+      req.url === "/" ||
+      req.url === "/index.html"
+    ) {
+      fileName = "index.html";
+    }
 
-    res.end("OK");
-    return;
-  } else {
-    res.writeHead(404);
-    res.end("Not found");
-    return;
-  }
+    else if (
+      req.url === "/moderator" ||
+      req.url === "/moderator.html"
+    ) {
+      fileName = "moderator.html";
+    }
 
-  const filePath = path.join(__dirname, fileName);
+    else if (
+      req.url === "/health"
+    ) {
+      res.writeHead(200, {
+        "Content-Type": "text/plain"
+      });
 
-  fs.readFile(filePath, (error, data) => {
-    if (error) {
-      console.error(error);
-      res.writeHead(500);
-      res.end("Server error");
+      res.end("OK");
       return;
     }
 
-    res.writeHead(200, {
-      "Content-Type": "text/html; charset=utf-8"
-    });
-
-    res.end(data);
-  });
-});
-
-const wss = new WebSocket.Server({
-  server,
-  path: "/ws"
-});
-
-wss.on("connection", ws => {
-  const client = {
-    ws,
-    id: null,
-    name: "Guest",
-    role: "user",
-    room: null,
-    anonymous: false
-  };
-
-  ws.on("message", raw => {
-    let message;
-
-    try {
-      message = JSON.parse(raw.toString());
-    } catch {
+    else {
+      res.writeHead(404);
+      res.end("Not found");
       return;
     }
 
-    switch (message.type) {
-      case "register": {
-        const newId = String(
-          message.id || makeId()
-        );
+    const filePath =
+      path.join(
+        __dirname,
+        fileName
+      );
 
-        const oldClient = clients.get(newId);
+    fs.readFile(
+      filePath,
+      (error, data) => {
+        if (error) {
+          console.error(error);
 
-        /*
-         * If this same browser reconnects while
-         * an old connection still exists, remove
-         * the old connection completely first.
-         */
-        if (
-          oldClient &&
-          oldClient.ws !== ws
-        ) {
-          removeFromRoom(oldClient);
+          res.writeHead(500);
+          res.end("Server error");
 
-          try {
-            oldClient.ws.close();
-          } catch {}
-
-          clients.delete(newId);
-        }
-
-        client.id = newId;
-
-        client.name = cleanName(
-          message.name
-        );
-
-        client.role =
-          message.role === "moderator"
-            ? "moderator"
-            : "user";
-
-        if (bannedUsers.has(client.id)) {
-          send(ws, {
-            type: "banned",
-            message: "You are banned."
-          });
-
-          ws.close();
           return;
         }
 
-        clients.set(client.id, client);
+        res.writeHead(200, {
+          "Content-Type":
+            "text/html; charset=utf-8"
+        });
 
-        if (client.role === "moderator") {
-          send(ws, {
-            type: "roomList",
-            rooms: getRoomList()
-          });
-        }
-
-        broadcastRoomList();
-
-        break;
+        res.end(data);
       }
+    );
+  }
+);
 
-      case "setName": {
-        if (!client.id) {
+const wss =
+  new WebSocket.Server({
+    server,
+    path: "/ws"
+  });
+
+wss.on(
+  "connection",
+  ws => {
+
+    const client = {
+      ws,
+      id: null,
+      name: "Guest",
+      role: "user",
+      room: null,
+      anonymous: false
+    };
+
+    ws.on(
+      "message",
+      raw => {
+
+        let message;
+
+        try {
+          message =
+            JSON.parse(
+              raw.toString()
+            );
+        }
+
+        catch {
           return;
         }
 
-        client.name = cleanName(
-          message.name
-        );
+        switch (
+          message.type
+        ) {
 
-        if (client.room) {
-          const room = rooms.get(
-            client.room
-          );
+          case "register": {
 
-          if (room) {
-            for (const id of room.users) {
-              if (id === client.id) {
-                continue;
+            const newId =
+              String(
+                message.id ||
+                makeId()
+              );
+
+            const oldClient =
+              clients.get(
+                newId
+              );
+
+            /*
+             * Remove an old connection
+             * using the same ID.
+             */
+
+            if (
+              oldClient &&
+              oldClient.ws !== ws
+            ) {
+
+              removeFromRoom(
+                oldClient
+              );
+
+              try {
+                oldClient.ws.close();
               }
 
-              const other = clients.get(id);
+              catch {}
 
-              if (other) {
-                send(other.ws, {
-                  type: "userNameChanged",
-                  userId: client.id,
-                  name: client.name
-                });
+              clients.delete(
+                newId
+              );
+            }
+
+            client.id =
+              newId;
+
+            client.name =
+              cleanName(
+                message.name
+              );
+
+            client.role =
+              message.role ===
+              "moderator"
+                ? "moderator"
+                : "user";
+
+            if (
+              bannedUsers.has(
+                client.id
+              )
+            ) {
+
+              send(ws, {
+                type: "banned",
+                message:
+                  "You are banned."
+              });
+
+              ws.close();
+
+              return;
+            }
+
+            clients.set(
+              client.id,
+              client
+            );
+
+            if (
+              client.role ===
+              "moderator"
+            ) {
+
+              send(ws, {
+                type: "roomList",
+                rooms:
+                  getRoomList()
+              });
+            }
+
+            broadcastRoomList();
+
+            break;
+          }
+
+
+          case "setName": {
+
+            if (!client.id) {
+              return;
+            }
+
+            client.name =
+              cleanName(
+                message.name
+              );
+
+            if (client.room) {
+
+              const room =
+                rooms.get(
+                  client.room
+                );
+
+              if (room) {
+
+                for (
+                  const id
+                  of room.users
+                ) {
+
+                  if (
+                    id ===
+                    client.id
+                  ) {
+                    continue;
+                  }
+
+                  const other =
+                    clients.get(
+                      id
+                    );
+
+                  if (other) {
+
+                    send(
+                      other.ws,
+                      {
+                        type:
+                          "userNameChanged",
+
+                        userId:
+                          client.id,
+
+                        name:
+                          client.name
+                      }
+                    );
+                  }
+                }
               }
             }
+
+            broadcastRoomList();
+
+            break;
           }
+
+
+          case "createRoom": {
+
+            if (!client.id) {
+              return;
+            }
+
+            const room =
+              createRoom(
+                message.name,
+                message.code
+              );
+
+            if (!room) {
+
+              send(ws, {
+                type: "error",
+                message:
+                  "That room code is already in use."
+              });
+
+              return;
+            }
+
+            /*
+             * IMPORTANT:
+             * The creator is automatically
+             * placed into the room.
+             */
+
+            joinRoom(
+              client,
+              room.code,
+              false
+            );
+
+            break;
+          }
+
+
+          case "moderatorCreateRoom": {
+
+            if (
+              client.role !==
+              "moderator"
+            ) {
+              return;
+            }
+
+            const room =
+              createRoom(
+                message.name,
+                message.code
+              );
+
+            if (!room) {
+
+              send(ws, {
+                type: "error",
+                message:
+                  "That room code is already in use."
+              });
+
+              return;
+            }
+
+            joinRoom(
+              client,
+              room.code,
+              !!message.anonymous
+            );
+
+            break;
+          }
+
+
+          case "joinRoom": {
+
+            if (!client.id) {
+              return;
+            }
+
+            joinRoom(
+              client,
+              cleanRoomCode(
+                message.code
+              ),
+              false
+            );
+
+            break;
+          }
+
+
+          case "moderatorJoinRoom": {
+
+            if (
+              client.role !==
+              "moderator"
+            ) {
+              return;
+            }
+
+            joinRoom(
+              client,
+              cleanRoomCode(
+                message.code
+              ),
+              !!message.anonymous
+            );
+
+            break;
+          }
+
+
+          case "leaveRoom": {
+
+            removeFromRoom(
+              client
+            );
+
+            send(ws, {
+              type: "roomLeft"
+            });
+
+            break;
+          }
+
+
+          case "signal": {
+
+            if (!client.id) {
+              return;
+            }
+
+            const target =
+              clients.get(
+                message.target
+              );
+
+            if (!target) {
+              return;
+            }
+
+            if (
+              !client.room ||
+              client.room !==
+                target.room
+            ) {
+              return;
+            }
+
+            send(
+              target.ws,
+              {
+                type: "signal",
+                from: client.id,
+                data:
+                  message.data
+              }
+            );
+
+            break;
+          }
+
+
+          case "kick": {
+
+            if (
+              client.role !==
+              "moderator"
+            ) {
+              return;
+            }
+
+            const target =
+              clients.get(
+                message.userId
+              );
+
+            if (!target) {
+              return;
+            }
+
+            send(
+              target.ws,
+              {
+                type: "kicked",
+                message:
+                  "You were kicked by a moderator."
+              }
+            );
+
+            removeFromRoom(
+              target
+            );
+
+            break;
+          }
+
+
+          case "ban": {
+
+            if (
+              client.role !==
+              "moderator"
+            ) {
+              return;
+            }
+
+            const target =
+              clients.get(
+                message.userId
+              );
+
+            if (!target) {
+              return;
+            }
+
+            bannedUsers.add(
+              target.id
+            );
+
+            send(
+              target.ws,
+              {
+                type: "banned",
+                message:
+                  "You were banned by a moderator."
+              }
+            );
+
+            removeFromRoom(
+              target
+            );
+
+            break;
+          }
+
+          default:
+            break;
         }
-
-        broadcastRoomList();
-
-        break;
       }
+    );
 
-      case "createRoom": {
-        const room = createRoom(
-          message.name,
-          message.code
-        );
 
-        if (!room) {
-          send(ws, {
-            type: "error",
-            message:
-              "That room code is already in use."
-          });
+    ws.on(
+      "close",
+      () => {
 
-          return;
-        }
-
-        send(ws, {
-          type: "roomCreated",
-          room: getRoomInfo(room)
-        });
-
-        broadcastRoomList();
-
-        break;
-      }
-
-      case "moderatorCreateRoom": {
-        if (client.role !== "moderator") {
-          return;
-        }
-
-        const room = createRoom(
-          message.name,
-          message.code
-        );
-
-        if (!room) {
-          send(ws, {
-            type: "error",
-            message:
-              "That room code is already in use."
-          });
-
-          return;
-        }
-
-        send(ws, {
-          type: "roomCreated",
-          room: getRoomInfo(room)
-        });
-
-        broadcastRoomList();
-
-        break;
-      }
-
-      case "joinRoom": {
-        if (!client.id) {
-          return;
-        }
-
-        addToRoom(
-          client,
-          cleanRoomCode(message.code),
-          false
-        );
-
-        break;
-      }
-
-      case "moderatorJoinRoom": {
-        if (client.role !== "moderator") {
-          return;
-        }
-
-        addToRoom(
-          client,
-          cleanRoomCode(message.code),
-          !!message.anonymous
-        );
-
-        break;
-      }
-
-      case "leaveRoom": {
-        removeFromRoom(client);
-
-        send(ws, {
-          type: "roomLeft"
-        });
-
-        break;
-      }
-
-      case "signal": {
-        if (!client.id) {
-          return;
-        }
-
-        const target =
-          clients.get(message.target);
-
-        if (!target) {
-          return;
-        }
+        /*
+         * Only clean up this socket if
+         * it is still the active socket.
+         */
 
         if (
-          !client.room ||
-          client.room !== target.room
+          client.id &&
+          clients.get(
+            client.id
+          )?.ws === ws
         ) {
-          return;
+
+          removeFromRoom(
+            client
+          );
+
+          clients.delete(
+            client.id
+          );
+
+          broadcastRoomList();
         }
-
-        send(target.ws, {
-          type: "signal",
-          from: client.id,
-          data: message.data
-        });
-
-        break;
       }
-
-      case "kick": {
-        if (client.role !== "moderator") {
-          return;
-        }
-
-        const target =
-          clients.get(message.userId);
-
-        if (!target) {
-          return;
-        }
-
-        send(target.ws, {
-          type: "kicked",
-          message:
-            "You were kicked by a moderator."
-        });
-
-        removeFromRoom(target);
-
-        break;
-      }
-
-      case "ban": {
-        if (client.role !== "moderator") {
-          return;
-        }
-
-        const target =
-          clients.get(message.userId);
-
-        if (!target) {
-          return;
-        }
-
-        bannedUsers.add(target.id);
-
-        send(target.ws, {
-          type: "banned",
-          message:
-            "You were banned by a moderator."
-        });
-
-        removeFromRoom(target);
-
-        break;
-      }
-
-      default:
-        break;
-    }
-  });
-
-  ws.on("close", () => {
-    /*
-     * Only remove the client if this socket is
-     * still the active socket for that ID.
-     */
-    if (
-      client.id &&
-      clients.get(client.id)?.ws === ws
-    ) {
-      removeFromRoom(client);
-      clients.delete(client.id);
-      broadcastRoomList();
-    }
-  });
-
-  ws.on("error", error => {
-    console.error(
-      "WebSocket error:",
-      error
     );
-  });
-});
+
+
+    ws.on(
+      "error",
+      error => {
+        console.error(
+          "WebSocket error:",
+          error
+        );
+      }
+    );
+  }
+);
 
 server.listen(
   PORT,
   "0.0.0.0",
   () => {
     console.log(
-      "Server running on port " + PORT
+      "Server running on port " +
+      PORT
     );
   }
 );

@@ -2,10 +2,21 @@ const http = require("http");
 const WebSocket = require("ws");
 const crypto = require("crypto");
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// Master moderator PIN
+// ============================================================
+// CONFIG
+// ============================================================
+
 const MASTER_PIN = "230323038227";
+
+const STUN_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" }
+];
+
+// ============================================================
+// IN-MEMORY DATA
+// ============================================================
 
 const rooms = new Map();
 const clients = new Map();
@@ -13,131 +24,149 @@ const bannedUsers = new Map();
 const moderatorAccess = new Map();
 const moderationLog = [];
 
-function makeId(prefix = "") {
-  return prefix + crypto.randomBytes(8).toString("hex");
+// ============================================================
+// HELPERS
+// ============================================================
+
+function makeId(prefix = "id") {
+  return (
+    prefix +
+    "_" +
+    crypto.randomBytes(8).toString("hex") +
+    "_" +
+    Date.now().toString(36)
+  );
 }
 
 function hashPin(pin) {
-  return crypto.createHash("sha256").update(String(pin)).digest("hex");
-}
-
-function cleanName(value) {
-  let name = String(value || "").trim();
-  name = name.replace(/\s+/g, " ");
-  if (!name) name = "Anonymous";
-  return name.slice(0, 40);
-}
-
-function cleanRoomName(value) {
-  let name = String(value || "").trim();
-  name = name.replace(/\s+/g, " ");
-  if (!name) name = "Room";
-  return name.slice(0, 60);
-}
-
-function cleanRoomCode(value) {
-  let code = String(value || "").trim().toUpperCase();
-  code = code.replace(/[^A-Z0-9_-]/g, "");
-  return code.slice(0, 20);
-}
-
-function cleanPin(value) {
-  return String(value || "").trim().slice(0, 100);
+  return crypto
+    .createHash("sha256")
+    .update(String(pin))
+    .digest("hex");
 }
 
 function send(client, data) {
-  if (
-    client &&
-    client.ws &&
-    client.ws.readyState === WebSocket.OPEN
-  ) {
+  if (!client || !client.ws) return;
+
+  if (client.ws.readyState === WebSocket.OPEN) {
     client.ws.send(JSON.stringify(data));
   }
 }
 
-function addLog(action, details) {
+function cleanName(name) {
+  return String(name || "")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, 40);
+}
+
+function cleanRoomName(name) {
+  return String(name || "")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, 60);
+}
+
+function cleanRoomCode(code) {
+  return String(code || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "")
+    .slice(0, 32);
+}
+
+function cleanPin(pin) {
+  return String(pin || "")
+    .replace(/\s/g, "")
+    .slice(0, 100);
+}
+
+function addLog(action, moderator, target, roomCode, details = "") {
   moderationLog.unshift({
-    id: makeId("log_"),
+    id: makeId("log"),
     action,
+    moderator: moderator || "Unknown",
+    target: target || "",
+    roomCode: roomCode || "",
     details,
-    time: Date.now()
+    createdAt: Date.now()
   });
 
-  if (moderationLog.length > 300) {
-    moderationLog.length = 300;
+  if (moderationLog.length > 500) {
+    moderationLog.length = 500;
   }
 }
 
-function formatDuration(ms) {
-  if (ms == null) return "Permanent";
+function formatDuration(seconds) {
+  if (seconds === null) return "Permanent";
 
-  let seconds = Math.floor(ms / 1000);
+  if (seconds < 60) {
+    return `${seconds} second${seconds === 1 ? "" : "s"}`;
+  }
 
-  const years = Math.floor(seconds / (365 * 24 * 60 * 60));
-  seconds %= 365 * 24 * 60 * 60;
+  if (seconds < 3600) {
+    const n = Math.floor(seconds / 60);
+    return `${n} minute${n === 1 ? "" : "s"}`;
+  }
 
-  const months = Math.floor(seconds / (30 * 24 * 60 * 60));
-  seconds %= 30 * 24 * 60 * 60;
+  if (seconds < 86400) {
+    const n = Math.floor(seconds / 3600);
+    return `${n} hour${n === 1 ? "" : "s"}`;
+  }
 
-  const weeks = Math.floor(seconds / (7 * 24 * 60 * 60));
-  seconds %= 7 * 24 * 60 * 60;
+  if (seconds < 604800) {
+    const n = Math.floor(seconds / 86400);
+    return `${n} day${n === 1 ? "" : "s"}`;
+  }
 
-  const days = Math.floor(seconds / (24 * 60 * 60));
-  seconds %= 24 * 60 * 60;
+  if (seconds < 2592000) {
+    const n = Math.floor(seconds / 604800);
+    return `${n} week${n === 1 ? "" : "s"}`;
+  }
 
-  const hours = Math.floor(seconds / (60 * 60));
-  seconds %= 60 * 60;
+  if (seconds < 31536000) {
+    const n = Math.floor(seconds / 2592000);
+    return `${n} month${n === 1 ? "" : "s"}`;
+  }
 
-  const minutes = Math.floor(seconds / 60);
-  seconds %= 60;
-
-  const parts = [];
-
-  if (years) parts.push(years + " year" + (years === 1 ? "" : "s"));
-  if (months) parts.push(months + " month" + (months === 1 ? "" : "s"));
-  if (weeks) parts.push(weeks + " week" + (weeks === 1 ? "" : "s"));
-  if (days) parts.push(days + " day" + (days === 1 ? "" : "s"));
-  if (hours) parts.push(hours + " hour" + (hours === 1 ? "" : "s"));
-  if (minutes) parts.push(minutes + " minute" + (minutes === 1 ? "" : "s"));
-  if (seconds) parts.push(seconds + " second" + (seconds === 1 ? "" : "s"));
-
-  return parts.length ? parts.join(", ") : "0 seconds";
+  const n = Math.floor(seconds / 31536000);
+  return `${n} year${n === 1 ? "" : "s"}`;
 }
 
 function calculateDuration(data) {
   if (data.permanent) {
-    return {
-      expiresAt: null,
-      durationText: "Permanent"
-    };
+    return null;
   }
 
   const seconds =
-    Math.max(0, Number(data.seconds) || 0) +
-    Math.max(0, Number(data.minutes) || 0) * 60 +
-    Math.max(0, Number(data.hours) || 0) * 60 * 60 +
-    Math.max(0, Number(data.days) || 0) * 24 * 60 * 60 +
-    Math.max(0, Number(data.weeks) || 0) * 7 * 24 * 60 * 60 +
-    Math.max(0, Number(data.months) || 0) * 30 * 24 * 60 * 60 +
-    Math.max(0, Number(data.years) || 0) * 365 * 24 * 60 * 60;
+    Number(data.seconds || 0) +
+    Number(data.minutes || 0) * 60 +
+    Number(data.hours || 0) * 60 * 60 +
+    Number(data.days || 0) * 24 * 60 * 60 +
+    Number(data.weeks || 0) * 7 * 24 * 60 * 60 +
+    Number(data.months || 0) * 30 * 24 * 60 * 60 +
+    Number(data.years || 0) * 365 * 24 * 60 * 60;
 
-  if (seconds <= 0) {
-    return {
-      expiresAt: Date.now(),
-      durationText: "0 seconds"
-    };
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return 0;
   }
 
-  return {
-    expiresAt: Date.now() + seconds * 1000,
-    durationText: formatDuration(seconds * 1000)
-  };
+  return Math.floor(seconds);
+}
+
+function cleanExpiredBans() {
+  const now = Date.now();
+
+  for (const [key, ban] of bannedUsers.entries()) {
+    if (ban.expiresAt !== null && ban.expiresAt <= now) {
+      bannedUsers.delete(key);
+    }
+  }
 }
 
 function cleanExpiredModeratorAccess() {
   const now = Date.now();
 
-  for (const [id, access] of moderatorAccess) {
+  for (const [id, access] of moderatorAccess.entries()) {
     if (access.expiresAt !== null && access.expiresAt <= now) {
       moderatorAccess.delete(id);
 
@@ -157,21 +186,16 @@ function cleanExpiredModeratorAccess() {
   }
 }
 
-function cleanExpiredBans() {
-  const now = Date.now();
-
-  for (const [id, ban] of bannedUsers) {
-    if (ban.expiresAt !== null && ban.expiresAt <= now) {
-      bannedUsers.delete(id);
-    }
-  }
-}
-
-function getBan(userId) {
+function getBan(client) {
   cleanExpiredBans();
 
+  const possibleIds = [
+    client.userId,
+    client.name
+  ].filter(Boolean);
+
   for (const ban of bannedUsers.values()) {
-    if (ban.userId === userId) {
+    if (possibleIds.includes(ban.userId) || possibleIds.includes(ban.name)) {
       return ban;
     }
   }
@@ -182,10 +206,10 @@ function getBan(userId) {
 function getModeratorAccessByPin(pin) {
   cleanExpiredModeratorAccess();
 
-  const hash = hashPin(pin);
+  const hashed = hashPin(pin);
 
   for (const access of moderatorAccess.values()) {
-    if (access.pinHash === hash) {
+    if (access.pinHash === hashed) {
       return access;
     }
   }
@@ -193,59 +217,129 @@ function getModeratorAccessByPin(pin) {
   return null;
 }
 
-function getRoomInfo(room) {
-  const participants = [];
+function isMasterModerator(client) {
+  return (
+    client &&
+    client.role === "moderator" &&
+    client.moderatorLevel === "master"
+  );
+}
 
-  for (const id of room.participants) {
-    const client = clients.get(id);
+function canModerate(client) {
+  return client && client.role === "moderator";
+}
+
+function canControlTarget(moderator, target) {
+  if (!moderator || !target) return false;
+
+  // Delegated moderators cannot kick/ban other moderators.
+  if (
+    moderator.role === "moderator" &&
+    moderator.moderatorLevel !== "master" &&
+    target.role === "moderator"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+// ============================================================
+// ROOM HELPERS
+// ============================================================
+
+function makeRoomCode() {
+  let code;
+
+  do {
+    code = crypto
+      .randomBytes(4)
+      .toString("hex")
+      .toUpperCase();
+  } while (rooms.has(code));
+
+  return code;
+}
+
+function createRoom(name, code, owner) {
+  let finalCode = cleanRoomCode(code);
+
+  if (!finalCode) {
+    finalCode = makeRoomCode();
+  }
+
+  if (rooms.has(finalCode)) {
+    return null;
+  }
+
+  const room = {
+    code: finalCode,
+    name: cleanRoomName(name) || "Room",
+    createdAt: Date.now(),
+    ownerId: owner ? owner.id : null,
+    clients: new Set()
+  };
+
+  rooms.set(finalCode, room);
+
+  return room;
+}
+
+function getRoomInfo(room) {
+  if (!room) return null;
+
+  const people = [];
+
+  for (const clientId of room.clients) {
+    const client = clients.get(clientId);
 
     if (!client) continue;
 
-    if (client.role === "user") {
-      participants.push({
-        id: client.id,
-        userId: client.userId,
-        name: client.name
-      });
-    }
+    people.push({
+      id: client.id,
+      userId: client.userId,
+      name: client.name || "Unnamed",
+      role: client.role,
+      moderatorLevel: client.moderatorLevel || null
+    });
   }
 
   return {
     code: room.code,
     name: room.name,
-    participants,
-    participantCount: participants.length,
-    messages: room.messages.slice(-100)
+    people
   };
 }
 
 function getRoomList() {
-  const list = [];
+  const result = [];
 
   for (const room of rooms.values()) {
-    let userCount = 0;
-    let moderatorCount = 0;
+    let users = 0;
+    let moderators = 0;
 
-    for (const id of room.participants) {
+    for (const id of room.clients) {
       const client = clients.get(id);
+
       if (!client) continue;
 
-      if (client.role === "user") {
-        userCount++;
+      if (client.role === "moderator") {
+        moderators++;
       } else {
-        moderatorCount++;
+        users++;
       }
     }
 
-    list.push({
+    result.push({
       code: room.code,
       name: room.name,
-      participantCount: userCount,
-      moderatorCount
+      users,
+      moderators,
+      createdAt: room.createdAt
     });
   }
 
-  return list;
+  return result;
 }
 
 function getBanList() {
@@ -256,6 +350,7 @@ function getBanList() {
     userId: ban.userId,
     name: ban.name,
     moderatorName: ban.moderatorName,
+    roomCode: ban.roomCode,
     createdAt: ban.createdAt,
     expiresAt: ban.expiresAt,
     durationText: ban.durationText
@@ -268,7 +363,6 @@ function getModeratorAccessList() {
   return Array.from(moderatorAccess.values()).map((access) => ({
     id: access.id,
     name: access.name,
-    targetUserId: access.targetUserId,
     createdBy: access.createdBy,
     createdAt: access.createdAt,
     expiresAt: access.expiresAt,
@@ -277,16 +371,13 @@ function getModeratorAccessList() {
 }
 
 function getModeratorLog() {
-  return moderationLog.slice(0, 300);
+  return moderationLog.slice(0, 100);
 }
 
 function broadcastRoomList() {
   const data = {
-    type: "moderatorData",
-    rooms: getRoomList(),
-    bans: getBanList(),
-    moderatorAccess: getModeratorAccessList(),
-    log: getModeratorLog()
+    type: "roomList",
+    rooms: getRoomList()
   };
 
   for (const client of clients.values()) {
@@ -296,77 +387,89 @@ function broadcastRoomList() {
   }
 }
 
-function broadcastRoom(room, data, options = {}) {
-  const includeUsers = options.includeUsers !== false;
-  const includeModerators = options.includeModerators !== false;
+function broadcastModeratorData() {
+  cleanExpiredBans();
+  cleanExpiredModeratorAccess();
 
-  for (const id of room.participants) {
-    const client = clients.get(id);
-
-    if (!client) continue;
-
-    if (client.role === "user" && includeUsers) {
-      send(client, data);
-    }
-
-    if (client.role === "moderator" && includeModerators) {
-      send(client, data);
-    }
-  }
-}
-
-function createRoom(client, roomName, requestedCode) {
-  const name = cleanRoomName(roomName);
-  let code = cleanRoomCode(requestedCode);
-
-  if (!code) {
-    code = makeRoomCode();
-  }
-
-  if (!/^[A-Z0-9_-]{3,20}$/.test(code)) {
-    send(client, {
-      type: "error",
-      message: "Room code must be 3-20 letters, numbers, _ or -."
-    });
-    return null;
-  }
-
-  if (rooms.has(code)) {
-    send(client, {
-      type: "error",
-      message: "That room code is already being used."
-    });
-    return null;
-  }
-
-  const room = {
-    code,
-    name,
-    participants: new Set(),
-    messages: []
+  const data = {
+    type: "moderatorData",
+    rooms: getRoomList(),
+    bans: getBanList(),
+    moderatorAccess: getModeratorAccessList(),
+    moderationLog: getModeratorLog()
   };
 
-  rooms.set(code, room);
+  for (const client of clients.values()) {
+    if (client.role === "moderator") {
+      send(client, data);
+    }
+  }
+}
 
-  addLog(
-    "Room created",
-    client.name + " created room " + name + " (" + code + ")"
+function broadcastRoom(room, message, exceptId = null) {
+  if (!room) return;
+
+  for (const id of room.clients) {
+    if (id === exceptId) continue;
+
+    const client = clients.get(id);
+
+    if (client) {
+      send(client, message);
+    }
+  }
+}
+
+// ============================================================
+// ROOM JOIN / LEAVE
+// ============================================================
+
+function joinRoom(client, room) {
+  if (!room) return false;
+
+  if (client.roomCode) {
+    removeFromRoom(client);
+  }
+
+  room.clients.add(client.id);
+  client.roomCode = room.code;
+
+  send(client, {
+    type: "roomJoined",
+    room: {
+      code: room.code,
+      name: room.name
+    },
+    participants: Array.from(room.clients)
+      .map((id) => clients.get(id))
+      .filter(Boolean)
+      .filter((person) => person.id !== client.id)
+      .map((person) => ({
+        id: person.id,
+        name: person.name || "Unnamed",
+        role: person.role
+      }))
+  });
+
+  broadcastRoom(
+    room,
+    {
+      type: "userJoined",
+      user: {
+        id: client.id,
+        name: client.name || "Unnamed",
+        role: client.role
+      }
+    },
+    client.id
   );
 
-  return room;
+  broadcastRoomList();
+
+  return true;
 }
 
-function makeRoomCode() {
-  let code;
-
-  do {
-    code = crypto.randomBytes(3).toString("hex").toUpperCase();
-  } while (rooms.has(code));
-
-  return code;
-}
-
-function removeFromRoom(client, reason = "left") {
+function removeFromRoom(client) {
   if (!client.roomCode) return;
 
   const room = rooms.get(client.roomCode);
@@ -376,173 +479,29 @@ function removeFromRoom(client, reason = "left") {
     return;
   }
 
-  const oldRoomCode = room.code;
+  room.clients.delete(client.id);
 
-  room.participants.delete(client.id);
+  broadcastRoom(
+    room,
+    {
+      type: "userLeft",
+      id: client.id
+    },
+    client.id
+  );
+
   client.roomCode = null;
 
-  if (client.role === "user") {
-    broadcastRoom(
-      room,
-      {
-        type: "userLeft",
-        id: client.id,
-        reason
-      },
-      {
-        includeUsers: true,
-        includeModerators: true
-      }
-    );
-  } else {
-    // Moderators remain hidden from normal users.
-    broadcastRoom(
-      room,
-      {
-        type: "moderatorLeft",
-        id: client.id
-      },
-      {
-        includeUsers: false,
-        includeModerators: true
-      }
-    );
-  }
-
-  if (room.participants.size === 0) {
-    rooms.delete(oldRoomCode);
+  if (room.clients.size === 0) {
+    rooms.delete(room.code);
   }
 
   broadcastRoomList();
 }
 
-function joinRoom(client, roomCode, isModerator = false) {
-  const code = cleanRoomCode(roomCode);
-  const room = rooms.get(code);
-
-  if (!room) {
-    send(client, {
-      type: "error",
-      message: "Room not found."
-    });
-    return false;
-  }
-
-  if (client.roomCode) {
-    removeFromRoom(client, "switching rooms");
-  }
-
-  room.participants.add(client.id);
-  client.roomCode = room.code;
-
-  const participantData = getRoomInfo(room);
-
-  if (client.role === "user") {
-    send(client, {
-      type: "roomJoined",
-      room: {
-        code: room.code,
-        name: room.name
-      },
-      participants: participantData.participants,
-      messages: participantData.messages
-    });
-
-    // Tell the user about moderators already in the room.
-    for (const id of room.participants) {
-      const other = clients.get(id);
-
-      if (
-        other &&
-        other.role === "moderator" &&
-        other.id !== client.id
-      ) {
-        send(client, {
-          type: "moderatorReady",
-          id: other.id
-        });
-      }
-    }
-
-    // Tell existing normal users about the new normal user.
-    broadcastRoom(
-      room,
-      {
-        type: "userJoined",
-        participant: {
-          id: client.id,
-          userId: client.userId,
-          name: client.name
-        }
-      },
-      {
-        includeUsers: true,
-        includeModerators: true
-      }
-    );
-  } else {
-    send(client, {
-      type: "roomJoined",
-      room: {
-        code: room.code,
-        name: room.name
-      },
-      participants: participantData.participants,
-      messages: participantData.messages
-    });
-
-    // Notify existing moderators only.
-    broadcastRoom(
-      room,
-      {
-        type: "moderatorJoined",
-        id: client.id
-      },
-      {
-        includeUsers: false,
-        includeModerators: true
-      }
-    );
-
-    // Make every normal participant initiate a WebRTC connection
-    // toward this receive-only moderator.
-    for (const id of room.participants) {
-      const other = clients.get(id);
-
-      if (other && other.role === "user") {
-        send(other, {
-          type: "moderatorReady",
-          id: client.id
-        });
-      }
-    }
-  }
-
-  broadcastRoomList();
-
-  return true;
-}
-
-function isMasterModerator(client) {
-  return (
-    client.role === "moderator" &&
-    client.moderatorLevel === "master"
-  );
-}
-
-function canModerate(client) {
-  return client.role === "moderator";
-}
-
-function canControlTarget(moderator, target) {
-  if (!target) return false;
-
-  if (target.role === "moderator") {
-    return false;
-  }
-
-  return true;
-}
+// ============================================================
+// HTTP PAGES
+// ============================================================
 
 const INDEX_HTML = `<!DOCTYPE html>
 <html>
@@ -564,40 +523,40 @@ body {
 }
 
 .container {
-  width: min(900px, 94%);
-  margin: 30px auto;
+  max-width: 700px;
+  margin: 60px auto;
+  padding: 25px;
 }
 
 .card {
   background: #1d1d1d;
   border-radius: 18px;
-  padding: 22px;
-  margin-bottom: 20px;
+  padding: 25px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.4);
 }
 
-h1, h2 {
+h1 {
   margin-top: 0;
-}
-
-input,
-button {
-  font-size: 16px;
-  border-radius: 10px;
-  padding: 12px;
 }
 
 input {
   width: 100%;
-  border: 1px solid #555;
-  background: #111;
+  padding: 14px;
+  margin: 8px 0;
+  border: 0;
+  border-radius: 10px;
+  background: #2b2b2b;
   color: white;
-  margin-bottom: 10px;
+  font-size: 16px;
 }
 
 button {
   border: 0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 5px;
   cursor: pointer;
-  margin: 4px;
+  font-weight: bold;
 }
 
 .primary {
@@ -611,7 +570,7 @@ button {
 }
 
 .secondary {
-  background: #444;
+  background: #333;
   color: white;
 }
 
@@ -619,75 +578,73 @@ button {
   display: none !important;
 }
 
-.error {
-  color: #ff6b6b;
-  margin-top: 10px;
+#videos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(250px,1fr));
+  gap: 12px;
+  margin-top: 20px;
 }
 
-.info {
+.videoBox {
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+video {
+  width: 100%;
+  display: block;
+  background: #000;
+  min-height: 180px;
+  object-fit: cover;
+}
+
+.videoName {
+  padding: 8px;
+  background: #222;
+}
+
+#chat {
+  height: 250px;
+  overflow-y: auto;
+  background: #111;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 20px;
+}
+
+.message {
+  margin-bottom: 8px;
+  word-wrap: break-word;
+}
+
+.chatRow {
+  display: flex;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.chatRow input {
+  margin: 0;
+}
+
+.status {
+  margin-top: 12px;
   color: #aaa;
 }
 
-.video-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 12px;
-}
-
-.video-tile {
-  background: #000;
-  border-radius: 14px;
-  overflow: hidden;
-  min-height: 180px;
-  position: relative;
-}
-
-.video-tile video {
-  width: 100%;
-  height: 100%;
-  min-height: 180px;
-  object-fit: cover;
-  display: block;
-}
-
-.video-name {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(0,0,0,.65);
-  padding: 6px 9px;
-  border-radius: 8px;
-}
-
-.chat {
-  height: 260px;
-  overflow-y: auto;
-  background: #101010;
+.roomInfo {
+  background: #222;
   padding: 12px;
-  border-radius: 12px;
-  margin-bottom: 10px;
+  border-radius: 10px;
+  margin-top: 15px;
 }
 
-.chat-message {
-  margin-bottom: 8px;
-}
-
-.chat-name {
-  font-weight: bold;
-}
-
-.chat-row {
-  display: flex;
-  gap: 8px;
-}
-
-.chat-row input {
-  margin: 0;
-  flex: 1;
-}
-
-.chat-row button {
-  margin: 0;
+@media(max-width:600px) {
+  .container {
+    margin: 20px auto;
+    padding: 12px;
+  }
 }
 </style>
 </head>
@@ -696,20 +653,18 @@ button {
 
 <div class="container">
 
-  <div id="home">
+  <div id="loginCard" class="card">
+    <h1>Video Chat</h1>
 
-    <div class="card">
-      <h1>Video Chat</h1>
-      <p class="info">
-        Create a temporary room or join one using a room name and code.
-      </p>
+    <p>Enter your name, room name, and room code.</p>
 
-      <input id="name" placeholder="Your Name">
+    <input id="name" placeholder="Your name">
 
-      <input id="roomName" placeholder="Room Name">
+    <input id="roomName" placeholder="Room name">
 
-      <input id="roomCode" placeholder="Room Code">
+    <input id="roomCode" placeholder="Room code">
 
+    <div>
       <button class="primary" onclick="createRoom()">
         Create Room
       </button>
@@ -717,39 +672,39 @@ button {
       <button class="secondary" onclick="joinRoom()">
         Join Room
       </button>
-
-      <div id="homeError" class="error"></div>
     </div>
 
+    <div id="loginStatus" class="status"></div>
   </div>
 
-  <div id="call" class="hidden">
+  <div id="callCard" class="card hidden">
 
-    <div class="card">
-      <h2 id="roomTitle">Room</h2>
+    <h1 id="roomTitle">Room</h1>
 
-      <p id="roomCodeDisplay" class="info"></p>
+    <div class="roomInfo">
+      Room code:
+      <strong id="currentCode"></strong>
+    </div>
 
-      <button class="danger" onclick="leaveRoom()">
-        Leave Room
+    <div id="videos"></div>
+
+    <div id="chat"></div>
+
+    <div class="chatRow">
+      <input
+        id="chatInput"
+        placeholder="Type a message..."
+        onkeydown="if(event.key==='Enter') sendChat()"
+      >
+
+      <button class="primary" onclick="sendChat()">
+        Send
       </button>
     </div>
 
-    <div class="card">
-      <h2>People</h2>
-      <div id="videoGrid" class="video-grid"></div>
-    </div>
-
-    <div class="card">
-      <h2>Chat</h2>
-
-      <div id="chat" class="chat"></div>
-
-      <div class="chat-row">
-        <input id="chatInput" placeholder="Type a message">
-        <button class="primary" onclick="sendChat()">Send</button>
-      </div>
-    </div>
+    <button class="danger" onclick="leaveRoom()">
+      Leave Room
+    </button>
 
   </div>
 
@@ -763,30 +718,29 @@ let currentRoom = null;
 let localStream = null;
 
 const peers = new Map();
-const participants = new Map();
 
 function connect() {
-  return new Promise(function(resolve, reject) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      resolve();
-      return;
-    }
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    return Promise.resolve();
+  }
 
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  return new Promise((resolve, reject) => {
+    const protocol =
+      location.protocol === "https:" ? "wss:" : "ws:";
 
     ws = new WebSocket(
       protocol + "//" + location.host + "/ws"
     );
 
-    ws.onopen = function() {
+    ws.onopen = () => {
       resolve();
     };
 
-    ws.onerror = function() {
-      reject(new Error("WebSocket connection failed."));
+    ws.onerror = () => {
+      reject(new Error("WebSocket connection failed"));
     };
 
-    ws.onmessage = async function(event) {
+    ws.onmessage = event => {
       let data;
 
       try {
@@ -795,13 +749,11 @@ function connect() {
         return;
       }
 
-      await handleMessage(data);
+      handleMessage(data);
     };
 
-    ws.onclose = function() {
-      if (currentRoom) {
-        showError("Connection closed.");
-      }
+    ws.onclose = () => {
+      ws = null;
     };
   });
 }
@@ -812,258 +764,148 @@ function send(data) {
   }
 }
 
-async function prepareMedia() {
-  if (localStream) return true;
+async function register() {
+  await connect();
 
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
-    });
-
-    const videoGrid = document.getElementById("videoGrid");
-
-    let tile = document.getElementById("localTile");
-
-    if (!tile) {
-      tile = document.createElement("div");
-      tile.className = "video-tile";
-      tile.id = "localTile";
-
-      const video = document.createElement("video");
-      video.id = "localVideo";
-      video.autoplay = true;
-      video.playsInline = true;
-      video.muted = true;
-
-      const label = document.createElement("div");
-      label.className = "video-name";
-      label.textContent = myName + " (You)";
-
-      tile.appendChild(video);
-      tile.appendChild(label);
-
-      videoGrid.appendChild(tile);
-    }
-
-    document.getElementById("localVideo").srcObject = localStream;
-
-    return true;
-  } catch (err) {
-    showError(
-      "Camera/microphone permission is required to join a call."
-    );
-
-    return false;
-  }
+  send({
+    type: "register",
+    name: myName
+  });
 }
 
 async function createRoom() {
-  clearError();
-
   myName = document.getElementById("name").value.trim();
   const roomName =
     document.getElementById("roomName").value.trim();
+
   const roomCode =
     document.getElementById("roomCode").value.trim();
 
   if (!myName) {
-    showError("Enter your name.");
+    setStatus("Please enter your name.");
     return;
   }
 
   if (!roomName) {
-    showError("Enter a room name.");
+    setStatus("Please enter a room name.");
     return;
   }
 
-  if (!roomCode) {
-    showError("Enter a room code.");
-    return;
+  try {
+    await register();
+
+    send({
+      type: "createRoom",
+      roomName,
+      roomCode
+    });
+
+    setStatus("Creating room...");
+  } catch {
+    setStatus("Could not connect to the server.");
   }
-
-  const ready = await prepareMedia();
-
-  if (!ready) return;
-
-  await connect();
-
-  send({
-    type: "register",
-    name: myName
-  });
-
-  send({
-    type: "createRoom",
-    roomName: roomName,
-    roomCode: roomCode
-  });
 }
 
 async function joinRoom() {
-  clearError();
-
   myName = document.getElementById("name").value.trim();
+
   const roomCode =
     document.getElementById("roomCode").value.trim();
 
   if (!myName) {
-    showError("Enter your name.");
+    setStatus("Please enter your name.");
     return;
   }
 
   if (!roomCode) {
-    showError("Enter a room code.");
+    setStatus("Please enter a room code.");
     return;
   }
 
-  const ready = await prepareMedia();
+  try {
+    await register();
 
-  if (!ready) return;
+    send({
+      type: "joinRoom",
+      roomCode
+    });
 
-  await connect();
-
-  send({
-    type: "register",
-    name: myName
-  });
-
-  send({
-    type: "joinRoom",
-    roomCode: roomCode
-  });
+    setStatus("Joining room...");
+  } catch {
+    setStatus("Could not connect to the server.");
+  }
 }
 
-async function handleMessage(data) {
-  if (data.type === "registered") {
-    myId = data.id;
-    return;
-  }
+function setStatus(text) {
+  document.getElementById("loginStatus").textContent = text;
+}
 
-  if (data.type === "roomCreated") {
-    currentRoom = {
-      code: data.roomCode,
-      name: data.roomName
-    };
+async function setupLocalMedia() {
+  try {
+    localStream =
+      await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
 
-    showCall();
-    return;
-  }
-
-  if (data.type === "roomJoined") {
-    currentRoom = data.room;
-
-    participants.clear();
-
-    for (const participant of data.participants || []) {
-      participants.set(participant.id, participant);
-    }
-
-    showCall();
-    renderParticipants();
-
-    clearChat();
-
-    for (const message of data.messages || []) {
-      addChatMessage(message);
-    }
-
-    // Only one side creates a normal user-to-user offer.
-    for (const participant of data.participants || []) {
-      if (
-        participant.id !== myId &&
-        myId &&
-        myId < participant.id
-      ) {
-        await makeOffer(participant.id);
-      }
-    }
-
-    return;
-  }
-
-  if (data.type === "userJoined") {
-    if (!data.participant) return;
-
-    participants.set(
-      data.participant.id,
-      data.participant
+    addVideo(
+      "local",
+      myName + " (You)",
+      localStream,
+      true
     );
+  } catch {
+    addChatMessage(
+      "System",
+      "Camera/microphone permission was not granted."
+    );
+  }
+}
 
-    renderParticipants();
+function addVideo(id, name, stream, local) {
+  let box = document.getElementById("video_" + id);
 
-    if (
-      data.participant.id !== myId &&
-      myId &&
-      myId < data.participant.id
-    ) {
-      await makeOffer(data.participant.id);
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "videoBox";
+    box.id = "video_" + id;
+
+    const video = document.createElement("video");
+    video.autoplay = true;
+    video.playsInline = true;
+
+    if (local) {
+      video.muted = true;
     }
 
-    return;
+    const label = document.createElement("div");
+    label.className = "videoName";
+    label.textContent = name;
+
+    box.appendChild(video);
+    box.appendChild(label);
+
+    document.getElementById("videos").appendChild(box);
   }
 
-  if (data.type === "userLeft") {
-    participants.delete(data.id);
-    removePeer(data.id);
-    renderParticipants();
-    return;
-  }
+  const video = box.querySelector("video");
 
-  if (data.type === "moderatorReady") {
-    // Moderators are invisible in the participant list,
-    // but normal users create a WebRTC offer to them.
-    await makeOffer(data.id);
-    return;
-  }
-
-  if (data.type === "signal") {
-    await handleSignal(data);
-    return;
-  }
-
-  if (data.type === "chatMessage") {
-    addChatMessage(data.message);
-    return;
-  }
-
-  if (data.type === "kicked") {
-    alert("You were kicked from the room.");
-    cleanupCall();
-    return;
-  }
-
-  if (data.type === "banned") {
-    alert(
-      "You were banned from the room." +
-      (data.durationText
-        ? " Duration: " + data.durationText
-        : "")
-    );
-
-    cleanupCall();
-    return;
-  }
-
-  if (data.type === "error") {
-    showError(data.message || "Something went wrong.");
+  if (video.srcObject !== stream) {
+    video.srcObject = stream;
   }
 }
 
-function showCall() {
-  document.getElementById("home").classList.add("hidden");
-  document.getElementById("call").classList.remove("hidden");
+function removeVideo(id) {
+  const box = document.getElementById("video_" + id);
 
-  document.getElementById("roomTitle").textContent =
-    currentRoom.name;
-
-  document.getElementById("roomCodeDisplay").textContent =
-    "Room Code: " + currentRoom.code;
+  if (box) {
+    box.remove();
+  }
 }
 
-function getPeer(remoteId) {
-  if (peers.has(remoteId)) {
-    return peers.get(remoteId);
+function makePeer(id, name) {
+  if (peers.has(id)) {
+    return peers.get(id).pc;
   }
 
   const pc = new RTCPeerConnection({
@@ -1074,13 +916,12 @@ function getPeer(remoteId) {
     ]
   });
 
-  const peer = {
-    pc: pc,
-    remoteStream: new MediaStream(),
-    iceQueue: []
+  const entry = {
+    pc,
+    name
   };
 
-  peers.set(remoteId, peer);
+  peers.set(id, entry);
 
   if (localStream) {
     for (const track of localStream.getTracks()) {
@@ -1088,299 +929,295 @@ function getPeer(remoteId) {
     }
   }
 
-  pc.onicecandidate = function(event) {
+  pc.onicecandidate = event => {
     if (event.candidate) {
       send({
         type: "signal",
-        to: remoteId,
-        signalType: "ice",
-        candidate: event.candidate
+        to: id,
+        signal: {
+          type: "candidate",
+          candidate: event.candidate
+        }
       });
     }
   };
 
-  pc.ontrack = function(event) {
-    const stream = event.streams && event.streams[0];
+  pc.ontrack = event => {
+    const stream = event.streams[0];
 
     if (stream) {
-      peer.remoteStream = stream;
-    } else {
-      peer.remoteStream.addTrack(event.track);
+      addVideo(id, name, stream, false);
     }
-
-    const participant = participants.get(remoteId);
-
-    // Hidden moderators don't have a participant entry.
-    // Their video/audio still gets rendered.
-    const name = participant
-      ? participant.name
-      : "Moderator";
-
-    renderRemoteVideo(
-      remoteId,
-      peer.remoteStream,
-      name
-    );
   };
 
-  pc.onconnectionstatechange = function() {
+  pc.onconnectionstatechange = () => {
     if (
       pc.connectionState === "failed" ||
-      pc.connectionState === "closed"
+      pc.connectionState === "closed" ||
+      pc.connectionState === "disconnected"
     ) {
-      removePeer(remoteId);
+      removePeer(id);
     }
   };
 
-  return peer;
+  return pc;
 }
 
-async function makeOffer(remoteId) {
-  const peer = getPeer(remoteId);
+async function callUser(id, name) {
+  const pc = makePeer(id, name);
 
-  if (peer.pc.signalingState !== "stable") {
-    return;
-  }
+  const offer = await pc.createOffer();
 
-  try {
-    const offer = await peer.pc.createOffer();
+  await pc.setLocalDescription(offer);
 
-    await peer.pc.setLocalDescription(offer);
+  send({
+    type: "signal",
+    to: id,
+    signal: {
+      type: "offer",
+      offer
+    }
+  });
+}
+
+async function handleSignal(from, signal) {
+  const existing =
+    peers.get(from);
+
+  const name =
+    existing?.name || "Participant";
+
+  const pc =
+    makePeer(from, name);
+
+  if (signal.type === "offer") {
+    await pc.setRemoteDescription(
+      new RTCSessionDescription(signal.offer)
+    );
+
+    const answer =
+      await pc.createAnswer();
+
+    await pc.setLocalDescription(answer);
 
     send({
       type: "signal",
-      to: remoteId,
-      signalType: "offer",
-      description: peer.pc.localDescription
+      to: from,
+      signal: {
+        type: "answer",
+        answer
+      }
     });
-  } catch (err) {
-    console.error("Offer error:", err);
-  }
-}
-
-async function handleSignal(data) {
-  if (!data.from) return;
-
-  const peer = getPeer(data.from);
-  const pc = peer.pc;
-
-  try {
-    if (data.signalType === "offer") {
-      await pc.setRemoteDescription(
-        new RTCSessionDescription(data.description)
-      );
-
-      while (peer.iceQueue.length) {
-        const candidate = peer.iceQueue.shift();
-
-        try {
-          await pc.addIceCandidate(candidate);
-        } catch {}
-      }
-
-      const answer = await pc.createAnswer();
-
-      await pc.setLocalDescription(answer);
-
-      send({
-        type: "signal",
-        to: data.from,
-        signalType: "answer",
-        description: pc.localDescription
-      });
-
-      return;
-    }
-
-    if (data.signalType === "answer") {
-      await pc.setRemoteDescription(
-        new RTCSessionDescription(data.description)
-      );
-
-      while (peer.iceQueue.length) {
-        const candidate = peer.iceQueue.shift();
-
-        try {
-          await pc.addIceCandidate(candidate);
-        } catch {}
-      }
-
-      return;
-    }
-
-    if (data.signalType === "ice") {
-      const candidate =
-        new RTCIceCandidate(data.candidate);
-
-      if (pc.remoteDescription) {
-        await pc.addIceCandidate(candidate);
-      } else {
-        peer.iceQueue.push(candidate);
-      }
-    }
-  } catch (err) {
-    console.error("Signal error:", err);
-  }
-}
-
-function renderParticipants() {
-  const grid = document.getElementById("videoGrid");
-
-  if (!grid) return;
-
-  // Keep exactly one local tile.
-  const localTile =
-    document.getElementById("localTile");
-
-  grid.innerHTML = "";
-
-  if (localTile) {
-    grid.appendChild(localTile);
   }
 
-  for (const participant of participants.values()) {
-    if (participant.id === myId) continue;
-
-    renderRemotePlaceholder(
-      participant.id,
-      participant.name
+  if (signal.type === "answer") {
+    await pc.setRemoteDescription(
+      new RTCSessionDescription(signal.answer)
     );
   }
 
-  // Reattach already received remote streams.
-  for (const [id, peer] of peers) {
-    if (peer.remoteStream) {
-      const participant = participants.get(id);
-
-      const name = participant
-        ? participant.name
-        : "Moderator";
-
-      renderRemoteVideo(
-        id,
-        peer.remoteStream,
-        name
+  if (signal.type === "candidate") {
+    try {
+      await pc.addIceCandidate(
+        new RTCIceCandidate(signal.candidate)
       );
-    }
+    } catch {}
   }
-}
-
-function renderRemotePlaceholder(id, name) {
-  const grid = document.getElementById("videoGrid");
-
-  if (document.getElementById("tile-" + id)) {
-    return;
-  }
-
-  const tile = document.createElement("div");
-  tile.className = "video-tile";
-  tile.id = "tile-" + id;
-
-  const video = document.createElement("video");
-  video.autoplay = true;
-  video.playsInline = true;
-
-  const label = document.createElement("div");
-  label.className = "video-name";
-  label.textContent = name;
-
-  tile.appendChild(video);
-  tile.appendChild(label);
-
-  grid.appendChild(tile);
-}
-
-function renderRemoteVideo(id, stream, name) {
-  const grid = document.getElementById("videoGrid");
-
-  let tile = document.getElementById("tile-" + id);
-
-  if (!tile) {
-    tile = document.createElement("div");
-    tile.className = "video-tile";
-    tile.id = "tile-" + id;
-
-    const video = document.createElement("video");
-    video.autoplay = true;
-    video.playsInline = true;
-
-    const label = document.createElement("div");
-    label.className = "video-name";
-
-    tile.appendChild(video);
-    tile.appendChild(label);
-
-    grid.appendChild(tile);
-  }
-
-  const video = tile.querySelector("video");
-  const label = tile.querySelector(".video-name");
-
-  video.srcObject = stream;
-  video.muted = false;
-
-  label.textContent = name;
-
-  video.play().catch(function() {});
 }
 
 function removePeer(id) {
-  const peer = peers.get(id);
+  const entry = peers.get(id);
 
-  if (peer) {
+  if (entry) {
     try {
-      peer.pc.close();
+      entry.pc.close();
     } catch {}
   }
 
   peers.delete(id);
+  removeVideo(id);
+}
 
-  const tile = document.getElementById("tile-" + id);
+function handleMessage(data) {
 
-  if (tile) {
-    tile.remove();
+  if (data.type === "registered") {
+    myId = data.id;
+
+    if (data.banned) {
+      setStatus(
+        "You are banned. " +
+        (data.durationText || "")
+      );
+    }
+
+    return;
   }
+
+  if (data.type === "error") {
+    setStatus(data.message || "An error occurred.");
+    return;
+  }
+
+  if (data.type === "roomCreated") {
+    currentRoom = data.room;
+
+    document.getElementById("loginCard")
+      .classList.add("hidden");
+
+    document.getElementById("callCard")
+      .classList.remove("hidden");
+
+    document.getElementById("roomTitle")
+      .textContent = currentRoom.name;
+
+    document.getElementById("currentCode")
+      .textContent = currentRoom.code;
+
+    setupLocalMedia();
+
+    return;
+  }
+
+  if (data.type === "roomJoined") {
+    currentRoom = data.room;
+
+    document.getElementById("loginCard")
+      .classList.add("hidden");
+
+    document.getElementById("callCard")
+      .classList.remove("hidden");
+
+    document.getElementById("roomTitle")
+      .textContent = currentRoom.name;
+
+    document.getElementById("currentCode")
+      .textContent = currentRoom.code;
+
+    setupLocalMedia();
+
+    setTimeout(() => {
+      for (const person of data.participants || []) {
+        if (person.role !== "moderator") {
+          callUser(person.id, person.name);
+        }
+      }
+    }, 800);
+
+    return;
+  }
+
+  if (data.type === "userJoined") {
+    if (data.user.role !== "moderator") {
+      setTimeout(() => {
+        callUser(
+          data.user.id,
+          data.user.name
+        );
+      }, 500);
+    }
+
+    return;
+  }
+
+  if (data.type === "moderatorReady") {
+    // A moderator has joined and wants our camera/audio.
+    // We create a normal outgoing offer.
+    setTimeout(() => {
+      callUser(
+        data.moderatorId,
+        data.moderatorName || "Moderator"
+      );
+    }, 300);
+
+    return;
+  }
+
+  if (data.type === "signal") {
+    handleSignal(
+      data.from,
+      data.signal
+    );
+
+    return;
+  }
+
+  if (data.type === "userLeft") {
+    removePeer(data.id);
+    return;
+  }
+
+  if (data.type === "chatMessage") {
+    addChatMessage(
+      data.name,
+      data.message
+    );
+
+    return;
+  }
+
+  if (data.type === "kicked") {
+    alert("You were kicked from the room.");
+
+    leaveRoomLocal();
+
+    return;
+  }
+
+  if (data.type === "banned") {
+    alert(
+      "You were banned from the room.\\n\\n" +
+      (data.durationText || "")
+    );
+
+    leaveRoomLocal();
+
+    return;
+  }
+}
+
+function addChatMessage(name, message) {
+  const chat =
+    document.getElementById("chat");
+
+  const div =
+    document.createElement("div");
+
+  div.className = "message";
+
+  const strong =
+    document.createElement("strong");
+
+  strong.textContent =
+    name + ": ";
+
+  const span =
+    document.createElement("span");
+
+  span.textContent = message;
+
+  div.appendChild(strong);
+  div.appendChild(span);
+
+  chat.appendChild(div);
+
+  chat.scrollTop = chat.scrollHeight;
 }
 
 function sendChat() {
   const input =
     document.getElementById("chatInput");
 
-  const text = input.value.trim();
+  const message =
+    input.value.trim();
 
-  if (!text || !currentRoom) return;
+  if (!message) return;
 
   send({
     type: "chatMessage",
-    text: text
+    message
   });
 
   input.value = "";
-}
-
-function clearChat() {
-  document.getElementById("chat").innerHTML = "";
-}
-
-function addChatMessage(message) {
-  const chat = document.getElementById("chat");
-
-  const row = document.createElement("div");
-  row.className = "chat-message";
-
-  const name = document.createElement("span");
-  name.className = "chat-name";
-  name.textContent = message.name + ": ";
-
-  const text = document.createElement("span");
-  text.textContent = message.text;
-
-  row.appendChild(name);
-  row.appendChild(text);
-
-  chat.appendChild(row);
-
-  chat.scrollTop = chat.scrollHeight;
 }
 
 function leaveRoom() {
@@ -1388,19 +1225,10 @@ function leaveRoom() {
     type: "leaveRoom"
   });
 
-  cleanupCall();
+  leaveRoomLocal();
 }
 
-function cleanupCall() {
-  for (const peer of peers.values()) {
-    try {
-      peer.pc.close();
-    } catch {}
-  }
-
-  peers.clear();
-  participants.clear();
-
+function leaveRoomLocal() {
   if (localStream) {
     for (const track of localStream.getTracks()) {
       track.stop();
@@ -1409,35 +1237,29 @@ function cleanupCall() {
     localStream = null;
   }
 
-  currentRoom = null;
+  for (const id of peers.keys()) {
+    removePeer(id);
+  }
 
-  document.getElementById("videoGrid").innerHTML = "";
+  document.getElementById("videos").innerHTML = "";
   document.getElementById("chat").innerHTML = "";
 
-  document.getElementById("call").classList.add("hidden");
-  document.getElementById("home").classList.remove("hidden");
-}
+  currentRoom = null;
 
-function showError(message) {
-  document.getElementById("homeError").textContent = message;
-}
+  document.getElementById("callCard")
+    .classList.add("hidden");
 
-function clearError() {
-  document.getElementById("homeError").textContent = "";
+  document.getElementById("loginCard")
+    .classList.remove("hidden");
 }
-
-document.getElementById("chatInput").addEventListener(
-  "keydown",
-  function(event) {
-    if (event.key === "Enter") {
-      sendChat();
-    }
-  }
-);
 </script>
 
 </body>
 </html>`;
+
+// ============================================================
+// MODERATOR DASHBOARD
+// ============================================================
 
 const BLUEBERRY_HTML = `<!DOCTYPE html>
 <html>
@@ -1453,40 +1275,45 @@ const BLUEBERRY_HTML = `<!DOCTYPE html>
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0e0e0e;
+  background: #101010;
   color: white;
+  font-family: Arial, sans-serif;
 }
 
 .container {
-  width: min(1200px, 95%);
+  max-width: 1200px;
   margin: 25px auto;
+  padding: 15px;
 }
 
 .card {
-  background: #1c1c1c;
-  padding: 20px;
+  background: #1d1d1d;
   border-radius: 16px;
-  margin-bottom: 18px;
+  padding: 20px;
+  margin-bottom: 20px;
 }
 
-input,
-button {
-  font-size: 15px;
-  border-radius: 9px;
-  padding: 10px;
+h1,h2,h3 {
+  margin-top: 0;
 }
 
 input {
-  background: #111;
+  width: 100%;
+  padding: 12px;
+  margin: 5px 0;
+  border: 0;
+  border-radius: 9px;
+  background: #292929;
   color: white;
-  border: 1px solid #555;
 }
 
 button {
   border: 0;
+  padding: 10px 14px;
+  border-radius: 9px;
+  margin: 4px;
   cursor: pointer;
-  margin: 3px;
+  font-weight: bold;
 }
 
 .primary {
@@ -1495,7 +1322,7 @@ button {
 }
 
 .secondary {
-  background: #444;
+  background: #333;
   color: white;
 }
 
@@ -1505,7 +1332,7 @@ button {
 }
 
 .success {
-  background: #30a46c;
+  background: #2e9b63;
   color: white;
 }
 
@@ -1513,141 +1340,101 @@ button {
   display: none !important;
 }
 
-.error {
-  color: #ff7070;
-  margin-top: 10px;
-}
-
 .room {
-  border: 1px solid #444;
-  border-radius: 14px;
+  background: #292929;
   padding: 15px;
-  margin-bottom: 12px;
-}
-
-.room-title {
-  font-size: 19px;
-  font-weight: bold;
+  border-radius: 12px;
+  margin: 10px 0;
 }
 
 .people {
-  background: #111;
-  border-radius: 12px;
+  background: #171717;
   padding: 12px;
-  margin-top: 12px;
+  border-radius: 10px;
+  margin-top: 10px;
 }
 
 .person {
-  border: 1px solid #444;
+  background: #242424;
+  padding: 12px;
   border-radius: 10px;
-  padding: 10px;
-  margin: 8px 0;
+  margin: 7px 0;
 }
 
-.person-name {
-  font-weight: bold;
-  margin-bottom: 6px;
+.personButtons {
+  margin-top: 8px;
 }
 
-.ban-controls {
-  margin-top: 10px;
-  padding: 10px;
-  background: #222;
+.banPanel {
+  background: #202020;
+  padding: 12px;
   border-radius: 10px;
+  margin-top: 8px;
 }
 
-.duration-grid {
+.durationGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(2,1fr);
   gap: 6px;
-  margin: 8px 0;
 }
 
-.duration-grid input {
-  width: 100%;
-}
-
-.video-grid {
+.videoGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit,minmax(250px,1fr));
   gap: 10px;
 }
 
-.video-tile {
-  background: #000;
-  border-radius: 12px;
+.videoBox {
+  background: black;
+  border-radius: 10px;
   overflow: hidden;
-  position: relative;
 }
 
-.video-tile video {
+video {
   width: 100%;
   min-height: 180px;
   object-fit: cover;
-  display: block;
+  background: black;
 }
 
-.video-name {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(0,0,0,.7);
-  padding: 5px 8px;
-  border-radius: 7px;
+.videoName {
+  background: #222;
+  padding: 8px;
 }
 
 .chat {
-  background: #101010;
-  border-radius: 10px;
-  height: 240px;
+  height: 220px;
   overflow-y: auto;
+  background: #111;
+  border-radius: 10px;
   padding: 10px;
-  margin-bottom: 10px;
 }
 
-.chat-message {
-  margin-bottom: 7px;
-}
-
-.chat-name {
-  font-weight: bold;
-}
-
-.chat-row {
+.chatRow {
   display: flex;
-  gap: 8px;
+  gap: 5px;
 }
 
-.chat-row input {
-  flex: 1;
+.chatRow input {
+  margin: 0;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-td,
-th {
-  border-bottom: 1px solid #444;
-  padding: 8px;
-  text-align: left;
+.log {
+  background: #222;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 6px 0;
 }
 
 .small {
-  color: #999;
+  color: #aaa;
   font-size: 13px;
 }
 
-.inline-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.inline-form input {
-  flex: 1;
-  min-width: 150px;
+@media(max-width:600px) {
+  .durationGrid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
@@ -1661,39 +1448,26 @@ th {
 
     <input
       id="moderatorName"
-      placeholder="Moderator Name"
+      placeholder="Your moderator name"
     >
 
-    <br><br>
-
     <input
-      id="pin"
+      id="moderatorPin"
       type="password"
       placeholder="Moderator PIN"
     >
 
-    <br><br>
-
-    <button class="primary" onclick="login()">
-      Enter
+    <button class="primary" onclick="loginModerator()">
+      Enter Dashboard
     </button>
 
-    <div id="loginError" class="error"></div>
+    <div id="loginStatus" class="small"></div>
   </div>
 
   <div id="dashboard" class="hidden">
 
     <div class="card">
       <h1>Moderator Dashboard</h1>
-
-      <div>
-        Logged in as:
-        <strong id="loggedInName"></strong>
-      </div>
-
-      <p class="small">
-        Master moderators can give other connected users moderator access.
-      </p>
 
       <button class="secondary" onclick="refreshData()">
         Refresh
@@ -1707,67 +1481,44 @@ th {
     <div class="card">
       <h2>Create Room</h2>
 
-      <div class="inline-form">
-        <input id="newRoomName" placeholder="Room Name">
-        <input id="newRoomCode" placeholder="Room Code">
-        <button class="primary" onclick="createModeratorRoom()">
-          Create
-        </button>
-      </div>
+      <input id="newRoomName" placeholder="Room name">
+      <input id="newRoomCode" placeholder="Custom room code">
+
+      <button class="primary" onclick="createModeratorRoom()">
+        Create Room
+      </button>
     </div>
 
     <div class="card">
       <h2>Open Calls</h2>
 
-      <div id="rooms"></div>
-    </div>
-
-    <div class="card">
-      <h2>Current Room</h2>
-
-      <div id="currentRoomInfo">
-        No room selected.
+      <div id="rooms">
+        Loading rooms...
       </div>
-
-      <div id="moderatorVideoGrid" class="video-grid"></div>
-
-      <h3>Room Chat</h3>
-
-      <div id="moderatorChat" class="chat"></div>
-
-      <div class="chat-row">
-        <input
-          id="moderatorChatInput"
-          placeholder="Message the room as a moderator"
-        >
-
-        <button class="primary" onclick="sendModeratorChat()">
-          Send
-        </button>
-      </div>
-
-      <button
-        id="leaveModeratorRoomButton"
-        class="danger hidden"
-        onclick="leaveModeratorRoom()"
-      >
-        Leave Room
-      </button>
-    </div>
-
-    <div class="card">
-      <h2>Bans</h2>
-      <div id="bans"></div>
     </div>
 
     <div class="card">
       <h2>Moderator Access</h2>
-      <div id="moderatorAccess"></div>
+
+      <div id="accessList">
+        No moderator access records.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Bans</h2>
+
+      <div id="banList">
+        No bans.
+      </div>
     </div>
 
     <div class="card">
       <h2>Moderation History</h2>
-      <div id="log"></div>
+
+      <div id="logList">
+        No moderation history.
+      </div>
     </div>
 
   </div>
@@ -1776,9 +1527,9 @@ th {
 
 <script>
 let ws = null;
-let myId = null;
+let moderatorId = null;
 let moderatorName = "";
-let moderatorLevel = "";
+let moderatorLevel = null;
 let currentRoom = null;
 
 const peers = new Map();
@@ -1786,11 +1537,7 @@ const peers = new Map();
 let openPeopleRooms = new Set();
 
 function connect() {
-  return new Promise(function(resolve, reject) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      resolve();
-      return;
-    }
+  return new Promise((resolve, reject) => {
 
     const protocol =
       location.protocol === "https:" ? "wss:" : "ws:";
@@ -1799,15 +1546,12 @@ function connect() {
       protocol + "//" + location.host + "/ws"
     );
 
-    ws.onopen = function() {
-      resolve();
-    };
+    ws.onopen = () => resolve();
 
-    ws.onerror = function() {
-      reject(new Error("WebSocket connection failed."));
-    };
+    ws.onerror = () =>
+      reject(new Error("Connection failed"));
 
-    ws.onmessage = async function(event) {
+    ws.onmessage = event => {
       let data;
 
       try {
@@ -1816,35 +1560,40 @@ function connect() {
         return;
       }
 
-      await handleMessage(data);
+      handleMessage(data);
+    };
+
+    ws.onclose = () => {
+      ws = null;
     };
   });
 }
 
 function send(data) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
+  if (
+    ws &&
+    ws.readyState === WebSocket.OPEN
+  ) {
     ws.send(JSON.stringify(data));
   }
 }
 
-async function login() {
-  document.getElementById("loginError").textContent = "";
-
+async function loginModerator() {
   moderatorName =
-    document.getElementById("moderatorName").value.trim();
+    document.getElementById("moderatorName")
+      .value.trim();
 
   const pin =
-    document.getElementById("pin").value.trim();
+    document.getElementById("moderatorPin")
+      .value;
 
   if (!moderatorName) {
-    document.getElementById("loginError").textContent =
-      "Enter your moderator name.";
+    setLoginStatus("Enter your name.");
     return;
   }
 
   if (!pin) {
-    document.getElementById("loginError").textContent =
-      "Enter the moderator PIN.";
+    setLoginStatus("Enter the moderator PIN.");
     return;
   }
 
@@ -1854,164 +1603,198 @@ async function login() {
     send({
       type: "moderatorAuth",
       name: moderatorName,
-      pin: pin
+      pin
     });
-  } catch (err) {
-    document.getElementById("loginError").textContent =
-      err.message;
+  } catch {
+    setLoginStatus(
+      "Could not connect to the server."
+    );
   }
 }
 
-async function handleMessage(data) {
+function setLoginStatus(text) {
+  document.getElementById("loginStatus")
+    .textContent = text;
+}
+
+function handleMessage(data) {
+
   if (data.type === "moderatorAuthSuccess") {
-    myId = data.id;
-    moderatorName = data.name;
-    moderatorLevel = data.level;
 
-    document.getElementById("login").classList.add("hidden");
-    document.getElementById("dashboard").classList.remove("hidden");
+    moderatorId = data.id;
+    moderatorLevel =
+      data.moderatorLevel;
 
-    document.getElementById("loggedInName").textContent =
-      moderatorName +
-      " (" +
-      moderatorLevel +
-      ")";
+    document.getElementById("login")
+      .classList.add("hidden");
 
-    renderAll(
-      data.rooms || [],
-      data.bans || [],
-      data.moderatorAccess || [],
-      data.log || []
-    );
+    document.getElementById("dashboard")
+      .classList.remove("hidden");
+
+    renderRooms(data.rooms || []);
+    renderAccess(data.moderatorAccess || []);
+    renderBans(data.bans || []);
+    renderLog(data.moderationLog || []);
 
     return;
   }
 
   if (data.type === "moderatorData") {
-    renderAll(
-      data.rooms || [],
-      data.bans || [],
-      data.moderatorAccess || [],
-      data.log || []
+
+    renderRooms(data.rooms || []);
+    renderAccess(data.moderatorAccess || []);
+    renderBans(data.bans || []);
+    renderLog(data.moderationLog || []);
+
+    return;
+  }
+
+  if (data.type === "roomPeople") {
+
+    renderPeople(
+      data.roomCode,
+      data.people || []
     );
 
     return;
   }
 
   if (data.type === "roomJoined") {
+
     currentRoom = data.room;
 
-    document.getElementById(
-      "currentRoomInfo"
-    ).textContent =
-      currentRoom.name +
-      " — " +
-      currentRoom.code;
-
-    document
-      .getElementById("leaveModeratorRoomButton")
-      .classList.remove("hidden");
-
-    clearModeratorChat();
-
-    for (const message of data.messages || []) {
-      addModeratorChatMessage(message);
-    }
-
-    for (const participant of data.participants || []) {
-      // Moderator only receives media from users.
-      // It does not publish its own media.
-      ensurePeer(participant.id);
-
-      send({
-        type: "requestOffer",
-        to: participant.id
-      });
-    }
+    setupModeratorRoom(
+      data.room,
+      data.participants || []
+    );
 
     return;
   }
 
   if (data.type === "userJoined") {
-    if (currentRoom) {
-      ensurePeer(data.participant.id);
 
-      send({
-        type: "requestOffer",
-        to: data.participant.id
-      });
+    if (
+      currentRoom &&
+      data.user
+    ) {
+      if (
+        data.user.role !== "moderator"
+      ) {
+        requestOffer(
+          data.user.id
+        );
+      }
     }
 
     return;
   }
 
   if (data.type === "userLeft") {
+
     removePeer(data.id);
+
     return;
   }
 
   if (data.type === "signal") {
-    await handleSignal(data);
+
+    handleSignal(
+      data.from,
+      data.signal
+    );
+
     return;
   }
 
   if (data.type === "chatMessage") {
-    addModeratorChatMessage(data.message);
-    return;
-  }
 
-  if (data.type === "kicked") {
-    alert("User kicked.");
-    return;
-  }
+    if (currentRoom) {
+      addChatMessage(
+        data.name,
+        data.message
+      );
+    }
 
-  if (data.type === "banned") {
-    alert("User banned.");
     return;
   }
 
   if (data.type === "moderatorAccessCreated") {
+
     alert(
       "Moderator access created.\\n\\n" +
-      "PIN: " +
-      data.pin +
-      "\\nDuration: " +
+      "PIN: " + data.pin + "\\n" +
+      "Duration: " +
       data.durationText
     );
 
-    refreshData();
+    return;
+  }
+
+  if (data.type === "moderatorAccessGranted") {
+
+    alert(
+      "You were given moderator access.\\n\\n" +
+      "Use the PIN you were given to enter /blueberry."
+    );
+
+    return;
+  }
+
+  if (data.type === "kicked") {
+
+    alert("The user was kicked.");
+
+    return;
+  }
+
+  if (data.type === "banned") {
+
+    alert("The user was banned.");
+
     return;
   }
 
   if (data.type === "error") {
-    alert(data.message || "Something went wrong.");
+
+    alert(data.message || "Error");
+
+    return;
   }
 }
 
-function renderAll(rooms, bans, access, log) {
-  renderRooms(rooms);
-  renderBans(bans);
-  renderModeratorAccess(access);
-  renderLog(log);
-}
+// ============================================================
+// ROOMS
+// ============================================================
 
-function renderRooms(rooms) {
-  const box = document.getElementById("rooms");
+function renderRooms(roomList) {
 
-  // Keep any currently open View People panels.
-  box.querySelectorAll(
+  const box =
+    document.getElementById("rooms");
+
+  // Remember which View People panels are open.
+  document.querySelectorAll(
     ".people[data-room-code]"
-  ).forEach(function(panel) {
-    openPeopleRooms.add(
-      panel.dataset.roomCode
-    );
+  ).forEach(panel => {
+
+    const code =
+      panel.dataset.roomCode;
+
+    if (code) {
+      openPeopleRooms.add(code);
+    }
   });
 
-  const existingCodes = new Set(
-    rooms.map(function(room) {
-      return room.code;
-    })
-  );
+  box.innerHTML = "";
+
+  if (!roomList.length) {
+    box.textContent = "No open rooms.";
+    return;
+  }
+
+  const existingCodes =
+    new Set(
+      roomList.map(room => room.code)
+    );
 
   for (const code of Array.from(openPeopleRooms)) {
     if (!existingCodes.has(code)) {
@@ -2019,71 +1802,85 @@ function renderRooms(rooms) {
     }
   }
 
-  box.innerHTML = "";
+  for (const room of roomList) {
 
-  if (!rooms.length) {
-    box.textContent = "No open rooms.";
-    return;
-  }
+    const div =
+      document.createElement("div");
 
-  for (const room of rooms) {
-    const div = document.createElement("div");
     div.className = "room";
 
-    const title = document.createElement("div");
-    title.className = "room-title";
-    title.textContent =
-      room.name + " (" + room.code + ")";
+    const title =
+      document.createElement("h3");
 
-    const info = document.createElement("div");
-    info.className = "small";
-    info.textContent =
-      room.participantCount +
-      " participant(s)";
+    title.textContent =
+      room.name;
 
     div.appendChild(title);
+
+    const info =
+      document.createElement("div");
+
+    info.className = "small";
+
+    info.textContent =
+      "Code: " +
+      room.code +
+      " | Users: " +
+      room.users +
+      " | Moderators: " +
+      room.moderators;
+
     div.appendChild(info);
 
-    const viewButton = document.createElement("button");
-    viewButton.className = "secondary";
-    viewButton.textContent = "View People";
+    const joinButton =
+      document.createElement("button");
 
-    viewButton.onclick = function() {
-      togglePeople(room, div);
-    };
+    joinButton.className =
+      "primary";
 
-    div.appendChild(viewButton);
+    joinButton.textContent =
+      "Join Normally";
 
-    const joinButton = document.createElement("button");
-    joinButton.className = "primary";
-    joinButton.textContent = "Join";
-
-    joinButton.onclick = function() {
-      joinModeratorRoom(
-        room.code,
-        false
-      );
-    };
+    joinButton.onclick = () =>
+      joinRoom(room.code, false);
 
     div.appendChild(joinButton);
 
-    const anonymousButton =
+    const anonButton =
       document.createElement("button");
 
-    anonymousButton.className = "secondary";
-    anonymousButton.textContent =
-      "Join Anonymous";
+    anonButton.className =
+      "secondary";
 
-    anonymousButton.onclick = function() {
-      joinModeratorRoom(
-        room.code,
-        true
-      );
+    anonButton.textContent =
+      "Join Anonymously";
+
+    anonButton.onclick = () =>
+      joinRoom(room.code, true);
+
+    div.appendChild(anonButton);
+
+    const peopleButton =
+      document.createElement("button");
+
+    peopleButton.className =
+      "secondary";
+
+    peopleButton.textContent =
+      "View People";
+
+    peopleButton.onclick = () => {
+
+      openPeopleRooms.add(room.code);
+
+      showPeople(room, div, true);
     };
 
-    div.appendChild(anonymousButton);
+    div.appendChild(peopleButton);
 
-    if (openPeopleRooms.has(room.code)) {
+    if (
+      openPeopleRooms.has(room.code)
+    ) {
       showPeople(
         room,
         div,
@@ -2095,66 +1892,33 @@ function renderRooms(rooms) {
   }
 }
 
-function togglePeople(room, parent) {
-  const existing =
-    parent.querySelector(
-      ".people[data-room-code='" +
-      CSS.escape(room.code) +
-      "']"
-    );
-
-  if (existing) {
-    existing.remove();
-    openPeopleRooms.delete(room.code);
-    return;
-  }
-
-  openPeopleRooms.add(room.code);
-
-  showPeople(
-    room,
-    parent,
-    false
-  );
-}
-
 function showPeople(room, parent, markOpen) {
-  if (markOpen !== false) {
+
+  if (markOpen) {
     openPeopleRooms.add(room.code);
   }
 
-  const existing =
+  let people =
     parent.querySelector(
       ".people[data-room-code='" +
-      CSS.escape(room.code) +
+      room.code +
       "']"
     );
 
-  if (existing) {
-    existing.remove();
+  if (!people) {
+
+    people =
+      document.createElement("div");
+
+    people.className = "people";
+    people.dataset.roomCode =
+      room.code;
+
+    parent.appendChild(people);
   }
 
-  const people =
-    document.createElement("div");
-
-  people.className = "people";
-  people.dataset.roomCode = room.code;
-
-  if (!room.participantCount) {
-    people.textContent = "No participants.";
-  }
-
-  // The room list only has counts.
-  // Ask the server for the current people.
-  const loading =
-    document.createElement("div");
-
-  loading.textContent =
+  people.innerHTML =
     "Loading people...";
-
-  people.appendChild(loading);
-
-  parent.appendChild(people);
 
   send({
     type: "getRoomPeople",
@@ -2163,729 +1927,988 @@ function showPeople(room, parent, markOpen) {
 }
 
 function renderPeople(roomCode, peopleList) {
-  const panel =
+
+  const people =
     document.querySelector(
       ".people[data-room-code='" +
-      CSS.escape(roomCode) +
+      roomCode +
       "']"
     );
 
-  if (!panel) return;
+  if (!people) {
+    return;
+  }
 
-  panel.innerHTML = "";
+  people.innerHTML = "";
 
   if (!peopleList.length) {
-    panel.textContent = "No participants.";
+    people.textContent =
+      "Nobody is currently in this room.";
+
     return;
   }
 
   for (const person of peopleList) {
+
     const row =
       document.createElement("div");
 
     row.className = "person";
 
     const name =
-      document.createElement("div");
+      document.createElement("strong");
 
-    name.className = "person-name";
-    name.textContent = person.name;
+    name.textContent =
+      person.name || "Unnamed";
 
     row.appendChild(name);
 
-    const kick =
-      document.createElement("button");
-
-    kick.className = "danger";
-    kick.textContent = "Kick";
-
-    kick.onclick = function() {
-      // Intentionally NO confirmation.
-      send({
-        type: "kick",
-        targetId: person.id
-      });
-    };
-
-    row.appendChild(kick);
-
-    const ban =
-      document.createElement("button");
-
-    ban.className = "danger";
-    ban.textContent = "Ban";
-
-    const controls =
+    const role =
       document.createElement("div");
 
-    controls.className =
-      "ban-controls hidden";
+    role.className = "small";
 
-    controls.innerHTML =
-      '<div>Ban Duration</div>' +
-      '<div class="duration-grid">' +
-      '<input type="number" min="0" class="ban-seconds" placeholder="Seconds">' +
-      '<input type="number" min="0" class="ban-minutes" placeholder="Minutes">' +
-      '<input type="number" min="0" class="ban-hours" placeholder="Hours">' +
-      '<input type="number" min="0" class="ban-days" placeholder="Days">' +
-      '<input type="number" min="0" class="ban-weeks" placeholder="Weeks">' +
-      '<input type="number" min="0" class="ban-months" placeholder="Months">' +
-      '<input type="number" min="0" class="ban-years" placeholder="Years">' +
-      '</div>' +
-      '<label>' +
-      '<input type="checkbox" class="ban-permanent">' +
-      ' Permanent' +
-      '</label><br>' +
-      '<button class="danger ban-submit">Ban User</button>';
+    role.textContent =
+      person.role === "moderator"
+        ? "Moderator"
+        : "Participant";
 
-    ban.onclick = function() {
-      controls.classList.toggle("hidden");
-    };
+    row.appendChild(role);
 
-    row.appendChild(ban);
-    row.appendChild(controls);
+    const buttons =
+      document.createElement("div");
 
-    controls
-      .querySelector(".ban-submit")
-      .onclick = function() {
+    buttons.className =
+      "personButtons";
+
+    if (
+      person.role !== "moderator" ||
+      moderatorLevel === "master"
+    ) {
+
+      const kick =
+        document.createElement("button");
+
+      kick.className =
+        "secondary";
+
+      kick.textContent =
+        "Kick";
+
+      kick.onclick = () => {
+
+        // No confirmation.
         send({
-          type: "ban",
+          type: "kick",
           targetId: person.id,
-          seconds:
-            controls.querySelector(
-              ".ban-seconds"
-            ).value,
-          minutes:
-            controls.querySelector(
-              ".ban-minutes"
-            ).value,
-          hours:
-            controls.querySelector(
-              ".ban-hours"
-            ).value,
-          days:
-            controls.querySelector(
-              ".ban-days"
-            ).value,
-          weeks:
-            controls.querySelector(
-              ".ban-weeks"
-            ).value,
-          months:
-            controls.querySelector(
-              ".ban-months"
-            ).value,
-          years:
-            controls.querySelector(
-              ".ban-years"
-            ).value,
-          permanent:
-            controls.querySelector(
-              ".ban-permanent"
-            ).checked
+          roomCode
         });
-
-        controls.classList.add("hidden");
       };
 
-    // Master-only Give Moderator.
-    if (moderatorLevel === "master") {
+      buttons.appendChild(kick);
+    }
+
+    if (
+      person.role !== "moderator" ||
+      moderatorLevel === "master"
+    ) {
+
+      const ban =
+        document.createElement("button");
+
+      ban.className =
+        "danger";
+
+      ban.textContent =
+        "Ban";
+
+      ban.onclick = () => {
+
+        showBanControls(
+          row,
+          person,
+          roomCode
+        );
+      };
+
+      buttons.appendChild(ban);
+    }
+
+    if (
+      moderatorLevel === "master" &&
+      person.role !== "moderator"
+    ) {
+
       const give =
         document.createElement("button");
 
-      give.className = "success";
-      give.textContent = "Give Moderator";
+      give.className =
+        "success";
 
-      give.onclick = function() {
-        giveModerator(person.id, person.name);
+      give.textContent =
+        "Give Moderator";
+
+      give.onclick = () => {
+
+        showModeratorControls(
+          row,
+          person
+        );
       };
 
-      row.appendChild(give);
+      buttons.appendChild(give);
     }
 
-    panel.appendChild(row);
+    row.appendChild(buttons);
+
+    people.appendChild(row);
   }
 }
 
-function giveModerator(targetId, targetName) {
-  const pin = prompt(
-    "Create a moderator PIN for " +
-    targetName +
-    ":"
-  );
+function showBanControls(
+  row,
+  person,
+  roomCode
+) {
 
-  if (pin === null) return;
+  let panel =
+    row.querySelector(".banPanel");
 
-  if (pin.trim().length < 4) {
-    alert("PIN must be at least 4 characters.");
+  if (panel) {
     return;
   }
 
-  const duration =
-    prompt(
-      "Enter duration in this format:\\n" +
-      "seconds,minutes,hours,days,weeks,months,years\\n\\n" +
-      "Example: 0,0,2,0,0,0,0 = 2 hours\\n" +
-      "Use PERMANENT for permanent access."
-    );
+  panel =
+    document.createElement("div");
 
-  if (duration === null) return;
+  panel.className =
+    "banPanel";
 
-  if (
-    duration.trim().toUpperCase() ===
-    "PERMANENT"
-  ) {
+  panel.innerHTML =
+    "<strong>Ban duration</strong>" +
+    "<div class='durationGrid'>" +
+
+    "<input id='sec_" + person.id +
+    "' type='number' min='0' placeholder='Seconds'>" +
+
+    "<input id='min_" + person.id +
+    "' type='number' min='0' placeholder='Minutes'>" +
+
+    "<input id='hour_" + person.id +
+    "' type='number' min='0' placeholder='Hours'>" +
+
+    "<input id='day_" + person.id +
+    "' type='number' min='0' placeholder='Days'>" +
+
+    "<input id='week_" + person.id +
+    "' type='number' min='0' placeholder='Weeks'>" +
+
+    "<input id='month_" + person.id +
+    "' type='number' min='0' placeholder='Months'>" +
+
+    "<input id='year_" + person.id +
+    "' type='number' min='0' placeholder='Years'>" +
+
+    "</div>";
+
+  const permanent =
+    document.createElement("button");
+
+  permanent.className =
+    "secondary";
+
+  permanent.textContent =
+    "Permanent";
+
+  permanent.onclick = () => {
+
     send({
-      type: "giveModerator",
-      targetId: targetId,
-      pin: pin,
+      type: "ban",
+      targetId: person.id,
+      roomCode,
       permanent: true
     });
 
-    return;
-  }
+    panel.remove();
+  };
 
-  const parts =
-    duration.split(",").map(function(x) {
-      return Number(x.trim()) || 0;
-    });
+  panel.appendChild(permanent);
 
-  while (parts.length < 7) {
-    parts.push(0);
-  }
+  const apply =
+    document.createElement("button");
 
-  send({
-    type: "giveModerator",
-    targetId: targetId,
-    pin: pin,
-    seconds: parts[0],
-    minutes: parts[1],
-    hours: parts[2],
-    days: parts[3],
-    weeks: parts[4],
-    months: parts[5],
-    years: parts[6],
-    permanent: false
-  });
-}
+  apply.className =
+    "danger";
 
-function renderBans(bans) {
-  const box =
-    document.getElementById("bans");
+  apply.textContent =
+    "Apply Ban";
 
-  box.innerHTML = "";
+  apply.onclick = () => {
 
-  if (!bans.length) {
-    box.textContent = "No active bans.";
-    return;
-  }
+    const get =
+      id => Number(
+        document.getElementById(id)?.value || 0
+      );
 
-  const table =
-    document.createElement("table");
-
-  table.innerHTML =
-    "<tr>" +
-    "<th>Name</th>" +
-    "<th>Duration</th>" +
-    "<th>Moderator</th>" +
-    "<th>Action</th>" +
-    "</tr>";
-
-  for (const ban of bans) {
-    const row =
-      document.createElement("tr");
-
-    row.innerHTML =
-      "<td>" +
-      escapeHtml(ban.name) +
-      "</td>" +
-      "<td>" +
-      escapeHtml(ban.durationText) +
-      "</td>" +
-      "<td>" +
-      escapeHtml(ban.moderatorName) +
-      "</td>" +
-      "<td></td>";
-
-    const button =
-      document.createElement("button");
-
-    button.className = "success";
-    button.textContent = "Unban";
-
-    button.onclick = function() {
-      send({
-        type: "unban",
-        banId: ban.id
-      });
+    const values = {
+      seconds: get("sec_" + person.id),
+      minutes: get("min_" + person.id),
+      hours: get("hour_" + person.id),
+      days: get("day_" + person.id),
+      weeks: get("week_" + person.id),
+      months: get("month_" + person.id),
+      years: get("year_" + person.id)
     };
 
-    row.lastElementChild.appendChild(button);
+    send({
+      type: "ban",
+      targetId: person.id,
+      roomCode,
+      ...values
+    });
 
-    table.appendChild(row);
-  }
+    panel.remove();
+  };
 
-  box.appendChild(table);
+  panel.appendChild(apply);
+
+  row.appendChild(panel);
 }
 
-function renderModeratorAccess(access) {
-  const box =
-    document.getElementById(
-      "moderatorAccess"
-    );
+function showModeratorControls(
+  row,
+  person
+) {
 
-  box.innerHTML = "";
+  let panel =
+    row.querySelector(".banPanel");
 
-  if (!access.length) {
-    box.textContent =
-      "No delegated moderator access.";
+  if (panel) {
     return;
   }
 
-  const table =
-    document.createElement("table");
-
-  table.innerHTML =
-    "<tr>" +
-    "<th>Name</th>" +
-    "<th>Created By</th>" +
-    "<th>Duration</th>" +
-    "<th>Action</th>" +
-    "</tr>";
-
-  for (const item of access) {
-    const row =
-      document.createElement("tr");
-
-    row.innerHTML =
-      "<td>" +
-      escapeHtml(item.name) +
-      "</td>" +
-      "<td>" +
-      escapeHtml(item.createdBy) +
-      "</td>" +
-      "<td>" +
-      escapeHtml(item.durationText) +
-      "</td>" +
-      "<td></td>";
-
-    if (moderatorLevel === "master") {
-      const button =
-        document.createElement("button");
-
-      button.className = "danger";
-      button.textContent = "Revoke";
-
-      button.onclick = function() {
-        send({
-          type: "revokeModerator",
-          accessId: item.id
-        });
-      };
-
-      row.lastElementChild.appendChild(button);
-    }
-
-    table.appendChild(row);
-  }
-
-  box.appendChild(table);
-}
-
-function renderLog(log) {
-  const box =
-    document.getElementById("log");
-
-  box.innerHTML = "";
-
-  if (!log.length) {
-    box.textContent = "No moderation history.";
-    return;
-  }
-
-  for (const item of log) {
-    const div =
-      document.createElement("div");
-
-    div.className = "person";
-
-    div.innerHTML =
-      "<strong>" +
-      escapeHtml(item.action) +
-      "</strong><br>" +
-      escapeHtml(item.details) +
-      "<br><span class='small'>" +
-      new Date(item.time).toLocaleString() +
-      "</span>";
-
-    box.appendChild(div);
-  }
-}
-
-function escapeHtml(value) {
-  const div =
+  panel =
     document.createElement("div");
 
-  div.textContent =
-    String(value == null ? "" : value);
+  panel.className =
+    "banPanel";
 
-  return div.innerHTML;
+  const pin =
+    document.createElement("input");
+
+  pin.placeholder =
+    "Custom moderator PIN";
+
+  panel.appendChild(pin);
+
+  const duration =
+    document.createElement("div");
+
+  duration.className =
+    "durationGrid";
+
+  duration.innerHTML =
+    "<input class='modSec' type='number' min='0' placeholder='Seconds'>" +
+    "<input class='modMin' type='number' min='0' placeholder='Minutes'>" +
+    "<input class='modHour' type='number' min='0' placeholder='Hours'>" +
+    "<input class='modDay' type='number' min='0' placeholder='Days'>" +
+    "<input class='modWeek' type='number' min='0' placeholder='Weeks'>" +
+    "<input class='modMonth' type='number' min='0' placeholder='Months'>" +
+    "<input class='modYear' type='number' min='0' placeholder='Years'>";
+
+  panel.appendChild(duration);
+
+  const permanent =
+    document.createElement("button");
+
+  permanent.className =
+    "secondary";
+
+  permanent.textContent =
+    "Permanent";
+
+  permanent.onclick = () => {
+
+    if (!pin.value.trim()) {
+      alert("Enter a PIN.");
+      return;
+    }
+
+    send({
+      type: "giveModerator",
+      targetId: person.id,
+      pin: pin.value.trim(),
+      permanent: true
+    });
+
+    panel.remove();
+  };
+
+  panel.appendChild(permanent);
+
+  const give =
+    document.createElement("button");
+
+  give.className =
+    "success";
+
+  give.textContent =
+    "Give Moderator";
+
+  give.onclick = () => {
+
+    if (!pin.value.trim()) {
+      alert("Enter a PIN.");
+      return;
+    }
+
+    send({
+      type: "giveModerator",
+      targetId: person.id,
+      pin: pin.value.trim(),
+      seconds:
+        Number(panel.querySelector(".modSec").value || 0),
+      minutes:
+        Number(panel.querySelector(".modMin").value || 0),
+      hours:
+        Number(panel.querySelector(".modHour").value || 0),
+      days:
+        Number(panel.querySelector(".modDay").value || 0),
+      weeks:
+        Number(panel.querySelector(".modWeek").value || 0),
+      months:
+        Number(panel.querySelector(".modMonth").value || 0),
+      years:
+        Number(panel.querySelector(".modYear").value || 0)
+    });
+
+    panel.remove();
+  };
+
+  panel.appendChild(give);
+
+  row.appendChild(panel);
 }
 
-function joinModeratorRoom(
-  roomCode,
-  anonymous
-) {
-  send({
-    type: "moderatorJoinRoom",
-    roomCode: roomCode,
-    anonymous: anonymous
-  });
-}
+// ============================================================
+// MODERATOR ROOM
+// ============================================================
 
-function leaveModeratorRoom() {
-  send({
-    type: "leaveRoom"
-  });
+function joinRoom(roomCode, anonymous) {
 
   currentRoom = null;
 
-  for (const peer of peers.values()) {
-    try {
-      peer.pc.close();
-    } catch {}
-  }
-
-  peers.clear();
-
-  document.getElementById(
-    "moderatorVideoGrid"
-  ).innerHTML = "";
-
-  document.getElementById(
-    "moderatorChat"
-  ).innerHTML = "";
-
-  document.getElementById(
-    "currentRoomInfo"
-  ).textContent =
-    "No room selected.";
-
-  document
-    .getElementById(
-      "leaveModeratorRoomButton"
-    )
-    .classList.add("hidden");
+  send({
+    type: "moderatorJoinRoom",
+    roomCode,
+    anonymous: !!anonymous
+  });
 }
 
-function ensurePeer(remoteId) {
-  if (peers.has(remoteId)) {
-    return peers.get(remoteId);
+function setupModeratorRoom(
+  room,
+  participants
+) {
+
+  currentRoom = room;
+
+  let old =
+    document.getElementById(
+      "moderatorRoom"
+    );
+
+  if (old) {
+    old.remove();
+  }
+
+  const card =
+    document.createElement("div");
+
+  card.id =
+    "moderatorRoom";
+
+  card.className =
+    "card";
+
+  const title =
+    document.createElement("h2");
+
+  title.textContent =
+    "Room: " + room.name;
+
+  card.appendChild(title);
+
+  const code =
+    document.createElement("div");
+
+  code.className =
+    "small";
+
+  code.textContent =
+    "Code: " + room.code;
+
+  card.appendChild(code);
+
+  const leave =
+    document.createElement("button");
+
+  leave.className =
+    "danger";
+
+  leave.textContent =
+    "Leave Room";
+
+  leave.onclick = () => {
+
+    send({
+      type: "leaveRoom"
+    });
+
+    currentRoom = null;
+
+    for (const id of peers.keys()) {
+      removePeer(id);
+    }
+
+    card.remove();
+  };
+
+  card.appendChild(leave);
+
+  const videos =
+    document.createElement("div");
+
+  videos.id =
+    "moderatorVideos";
+
+  videos.className =
+    "videoGrid";
+
+  card.appendChild(videos);
+
+  const chatTitle =
+    document.createElement("h3");
+
+  chatTitle.textContent =
+    "Room Chat";
+
+  card.appendChild(chatTitle);
+
+  const chat =
+    document.createElement("div");
+
+  chat.id =
+    "moderatorChat";
+
+  chat.className =
+    "chat";
+
+  card.appendChild(chat);
+
+  const chatRow =
+    document.createElement("div");
+
+  chatRow.className =
+    "chatRow";
+
+  const input =
+    document.createElement("input");
+
+  input.id =
+    "moderatorChatInput";
+
+  input.placeholder =
+    "Type a message...";
+
+  input.onkeydown =
+    event => {
+      if (event.key === "Enter") {
+        sendModeratorChat();
+      }
+    };
+
+  const sendButton =
+    document.createElement("button");
+
+  sendButton.className =
+    "primary";
+
+  sendButton.textContent =
+    "Send";
+
+  sendButton.onclick =
+    sendModeratorChat;
+
+  chatRow.appendChild(input);
+  chatRow.appendChild(sendButton);
+
+  card.appendChild(chatRow);
+
+  document
+    .getElementById("dashboard")
+    .appendChild(card);
+
+  // Ask every participant to send us media.
+  for (const participant of participants) {
+
+    if (
+      participant.role !== "moderator"
+    ) {
+      requestOffer(
+        participant.id
+      );
+    }
+  }
+}
+
+function requestOffer(id) {
+
+  send({
+    type: "requestOffer",
+    targetId: id
+  });
+}
+
+function sendModeratorChat() {
+
+  const input =
+    document.getElementById(
+      "moderatorChatInput"
+    );
+
+  if (!input) return;
+
+  const message =
+    input.value.trim();
+
+  if (!message) return;
+
+  send({
+    type: "chatMessage",
+    message
+  });
+
+  input.value = "";
+}
+
+// ============================================================
+// MODERATOR WEBRTC
+// ============================================================
+
+function makePeer(id, name) {
+
+  if (peers.has(id)) {
+    return peers.get(id);
   }
 
   const pc =
     new RTCPeerConnection({
       iceServers: [
         {
-          urls: "stun:stun.l.google.com:19302"
+          urls:
+            "stun:stun.l.google.com:19302"
         }
       ]
     });
 
-  // Moderator is RECEIVE-ONLY.
+  peers.set(id, {
+    pc,
+    name
+  });
+
+  // IMPORTANT:
+  // Moderator does NOT add local camera/mic tracks.
+  // This makes the moderator receive-only.
+
   pc.addTransceiver(
     "audio",
-    {
-      direction: "recvonly"
-    }
+    { direction: "recvonly" }
   );
 
   pc.addTransceiver(
     "video",
-    {
-      direction: "recvonly"
-    }
+    { direction: "recvonly" }
   );
 
-  const peer = {
-    pc: pc,
-    remoteStream: new MediaStream(),
-    iceQueue: []
-  };
+  pc.onicecandidate =
+    event => {
 
-  peers.set(remoteId, peer);
+      if (event.candidate) {
 
-  pc.onicecandidate = function(event) {
-    if (event.candidate) {
-      send({
-        type: "signal",
-        to: remoteId,
-        signalType: "ice",
-        candidate: event.candidate
-      });
-    }
-  };
-
-  pc.ontrack = function(event) {
-    if (event.streams && event.streams[0]) {
-      peer.remoteStream =
-        event.streams[0];
-    } else {
-      peer.remoteStream.addTrack(
-        event.track
-      );
-    }
-
-    renderModeratorVideo(
-      remoteId,
-      peer.remoteStream
-    );
-  };
-
-  pc.onconnectionstatechange =
-    function() {
-      if (
-        pc.connectionState ===
-          "failed" ||
-        pc.connectionState ===
-          "closed"
-      ) {
-        removePeer(remoteId);
+        send({
+          type: "signal",
+          to: id,
+          signal: {
+            type: "candidate",
+            candidate:
+              event.candidate
+          }
+        });
       }
     };
 
-  return peer;
+  pc.ontrack =
+    event => {
+
+      const stream =
+        event.streams[0];
+
+      if (!stream) return;
+
+      addModeratorVideo(
+        id,
+        name,
+        stream
+      );
+    };
+
+  pc.onconnectionstatechange =
+    () => {
+
+      if (
+        pc.connectionState === "failed" ||
+        pc.connectionState === "closed" ||
+        pc.connectionState === "disconnected"
+      ) {
+        removePeer(id);
+      }
+    };
+
+  return pc;
 }
 
-async function handleSignal(data) {
-  if (!data.from) return;
+async function handleSignal(
+  from,
+  signal
+) {
 
-  const peer =
-    ensurePeer(data.from);
+  const existing =
+    peers.get(from);
 
-  const pc = peer.pc;
-
-  try {
-    if (data.signalType === "offer") {
-      await pc.setRemoteDescription(
-        new RTCSessionDescription(
-          data.description
-        )
-      );
-
-      while (peer.iceQueue.length) {
-        const candidate =
-          peer.iceQueue.shift();
-
-        try {
-          await pc.addIceCandidate(
-            candidate
-          );
-        } catch {}
-      }
-
-      const answer =
-        await pc.createAnswer();
-
-      await pc.setLocalDescription(
-        answer
-      );
-
-      send({
-        type: "signal",
-        to: data.from,
-        signalType: "answer",
-        description:
-          pc.localDescription
-      });
-
-      return;
-    }
-
-    if (data.signalType === "answer") {
-      await pc.setRemoteDescription(
-        new RTCSessionDescription(
-          data.description
-        )
-      );
-
-      while (peer.iceQueue.length) {
-        const candidate =
-          peer.iceQueue.shift();
-
-        try {
-          await pc.addIceCandidate(
-            candidate
-          );
-        } catch {}
-      }
-
-      return;
-    }
-
-    if (data.signalType === "ice") {
-      const candidate =
-        new RTCIceCandidate(
-          data.candidate
-        );
-
-      if (pc.remoteDescription) {
-        await pc.addIceCandidate(
-          candidate
-        );
-      } else {
-        peer.iceQueue.push(candidate);
-      }
-    }
-  } catch (err) {
-    console.error(
-      "Moderator signal error:",
-      err
+  const pc =
+    makePeer(
+      from,
+      existing?.name || "Participant"
     );
+
+  if (signal.type === "offer") {
+
+    await pc.setRemoteDescription(
+      new RTCSessionDescription(
+        signal.offer
+      )
+    );
+
+    const answer =
+      await pc.createAnswer();
+
+    await pc.setLocalDescription(
+      answer
+    );
+
+    send({
+      type: "signal",
+      to: from,
+      signal: {
+        type: "answer",
+        answer
+      }
+    });
+
+    return;
+  }
+
+  if (signal.type === "answer") {
+
+    await pc.setRemoteDescription(
+      new RTCSessionDescription(
+        signal.answer
+      )
+    );
+
+    return;
+  }
+
+  if (signal.type === "candidate") {
+
+    try {
+      await pc.addIceCandidate(
+        new RTCIceCandidate(
+          signal.candidate
+        )
+      );
+    } catch {}
   }
 }
 
-function renderModeratorVideo(
+function addModeratorVideo(
   id,
+  name,
   stream
 ) {
-  const grid =
+
+  const container =
     document.getElementById(
-      "moderatorVideoGrid"
+      "moderatorVideos"
     );
 
-  let tile =
+  if (!container) return;
+
+  let box =
     document.getElementById(
-      "moderator-tile-" + id
+      "modVideo_" + id
     );
 
-  if (!tile) {
-    tile =
+  if (!box) {
+
+    box =
       document.createElement("div");
 
-    tile.className =
-      "video-tile";
+    box.className =
+      "videoBox";
 
-    tile.id =
-      "moderator-tile-" + id;
+    box.id =
+      "modVideo_" + id;
 
     const video =
       document.createElement("video");
 
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = false;
 
     const label =
       document.createElement("div");
 
     label.className =
-      "video-name";
+      "videoName";
 
     label.textContent =
-      "Participant";
+      name;
 
-    tile.appendChild(video);
-    tile.appendChild(label);
+    box.appendChild(video);
+    box.appendChild(label);
 
-    grid.appendChild(tile);
+    container.appendChild(box);
   }
 
   const video =
-    tile.querySelector("video");
+    box.querySelector("video");
 
   video.srcObject = stream;
-
-  video.play().catch(function() {});
 }
 
 function removePeer(id) {
-  const peer = peers.get(id);
 
-  if (peer) {
+  const entry =
+    peers.get(id);
+
+  if (entry) {
     try {
-      peer.pc.close();
+      entry.pc.close();
     } catch {}
   }
 
   peers.delete(id);
 
-  const tile =
+  const video =
     document.getElementById(
-      "moderator-tile-" + id
+      "modVideo_" + id
     );
 
-  if (tile) {
-    tile.remove();
+  if (video) {
+    video.remove();
   }
 }
 
-function sendModeratorChat() {
-  const input =
+// ============================================================
+// MODERATOR DATA
+// ============================================================
+
+function renderAccess(list) {
+
+  const box =
     document.getElementById(
-      "moderatorChatInput"
+      "accessList"
     );
 
-  const text =
-    input.value.trim();
+  box.innerHTML = "";
 
-  if (!text || !currentRoom) {
+  if (!list.length) {
+    box.textContent =
+      "No moderator access records.";
     return;
   }
 
-  send({
-    type: "chatMessage",
-    text: text
-  });
+  for (const access of list) {
 
-  input.value = "";
+    const div =
+      document.createElement("div");
+
+    div.className =
+      "log";
+
+    const expires =
+      access.expiresAt === null
+        ? "Permanent"
+        : new Date(
+            access.expiresAt
+          ).toLocaleString();
+
+    div.textContent =
+      access.name +
+      " | Duration: " +
+      access.durationText +
+      " | Expires: " +
+      expires +
+      " | Created by: " +
+      access.createdBy;
+
+    if (
+      moderatorLevel === "master"
+    ) {
+
+      const revoke =
+        document.createElement("button");
+
+      revoke.className =
+        "danger";
+
+      revoke.textContent =
+        "Revoke";
+
+      revoke.onclick = () => {
+
+        send({
+          type: "revokeModerator",
+          accessId: access.id
+        });
+      };
+
+      div.appendChild(revoke);
+    }
+
+    box.appendChild(div);
+  }
 }
 
-function clearModeratorChat() {
-  document.getElementById(
-    "moderatorChat"
-  ).innerHTML = "";
-}
+function renderBans(list) {
 
-function addModeratorChatMessage(
-  message
-) {
-  const chat =
+  const box =
     document.getElementById(
-      "moderatorChat"
+      "banList"
     );
 
-  const row =
-    document.createElement("div");
+  box.innerHTML = "";
 
-  row.className =
-    "chat-message";
+  if (!list.length) {
+    box.textContent =
+      "No bans.";
+    return;
+  }
 
-  const name =
-    document.createElement("span");
+  for (const ban of list) {
 
-  name.className =
-    "chat-name";
+    const div =
+      document.createElement("div");
 
-  name.textContent =
-    message.name + ": ";
+    div.className =
+      "log";
 
-  const text =
-    document.createElement("span");
+    const expires =
+      ban.expiresAt === null
+        ? "Permanent"
+        : new Date(
+            ban.expiresAt
+          ).toLocaleString();
 
-  text.textContent =
-    message.text;
+    div.textContent =
+      ban.name +
+      " | " +
+      ban.durationText +
+      " | Expires: " +
+      expires;
 
-  row.appendChild(name);
-  row.appendChild(text);
+    const unban =
+      document.createElement("button");
 
-  chat.appendChild(row);
+    unban.className =
+      "success";
 
-  chat.scrollTop =
-    chat.scrollHeight;
+    unban.textContent =
+      "Unban";
+
+    unban.onclick = () => {
+
+      send({
+        type: "unban",
+        banId: ban.id
+      });
+    };
+
+    div.appendChild(unban);
+
+    box.appendChild(div);
+  }
+}
+
+function renderLog(list) {
+
+  const box =
+    document.getElementById(
+      "logList"
+    );
+
+  box.innerHTML = "";
+
+  if (!list.length) {
+    box.textContent =
+      "No moderation history.";
+    return;
+  }
+
+  for (const item of list) {
+
+    const div =
+      document.createElement("div");
+
+    div.className =
+      "log";
+
+    const date =
+      new Date(
+        item.createdAt
+      ).toLocaleString();
+
+    div.textContent =
+      "[" +
+      date +
+      "] " +
+      item.moderator +
+      " → " +
+      item.action +
+      (item.target
+        ? " → " + item.target
+        : "") +
+      (item.roomCode
+        ? " | Room: " + item.roomCode
+        : "") +
+      (item.details
+        ? " | " + item.details
+        : "");
+
+    box.appendChild(div);
+  }
+}
+
+function refreshData() {
+
+  send({
+    type: "getModeratorData"
+  });
 }
 
 function createModeratorRoom() {
+
   const roomName =
     document.getElementById(
       "newRoomName"
@@ -2896,28 +2919,20 @@ function createModeratorRoom() {
       "newRoomCode"
     ).value.trim();
 
-  if (!roomName || !roomCode) {
-    alert(
-      "Enter a room name and room code."
-    );
-
+  if (!roomName) {
+    alert("Enter a room name.");
     return;
   }
 
   send({
     type: "moderatorCreateRoom",
-    roomName: roomName,
-    roomCode: roomCode
-  });
-}
-
-function refreshData() {
-  send({
-    type: "getModeratorData"
+    roomName,
+    roomCode
   });
 }
 
 function logout() {
+
   if (ws) {
     ws.close();
   }
@@ -2925,40 +2940,63 @@ function logout() {
   location.reload();
 }
 
-document
-  .getElementById(
-    "moderatorChatInput"
-  )
-  .addEventListener(
-    "keydown",
-    function(event) {
-      if (event.key === "Enter") {
-        sendModeratorChat();
-      }
-    }
-  );
+function addChatMessage(
+  name,
+  message
+) {
 
-setInterval(function() {
-  if (
-    ws &&
-    ws.readyState === WebSocket.OPEN
-  ) {
-    refreshData();
-  }
-}, 5000);
+  const chat =
+    document.getElementById(
+      "moderatorChat"
+    );
+
+  if (!chat) return;
+
+  const div =
+    document.createElement("div");
+
+  div.style.marginBottom =
+    "8px";
+
+  const strong =
+    document.createElement("strong");
+
+  strong.textContent =
+    name + ": ";
+
+  const span =
+    document.createElement("span");
+
+  span.textContent =
+    message;
+
+  div.appendChild(strong);
+  div.appendChild(span);
+
+  chat.appendChild(div);
+
+  chat.scrollTop =
+    chat.scrollHeight;
+}
 </script>
 
 </body>
 </html>`;
 
+// ============================================================
+// HTTP SERVER
+// ============================================================
+
 const server = http.createServer(
-  function(req, res) {
+  (req, res) => {
+
     if (
       req.url === "/" ||
       req.url === "/index.html"
     ) {
       res.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8"
+        "Content-Type":
+          "text/html; charset=utf-8"
       });
 
       res.end(INDEX_HTML);
@@ -2970,7 +3008,8 @@ const server = http.createServer(
       req.url === "/blueberry.html"
     ) {
       res.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8"
+        "Content-Type":
+          "text/html; charset=utf-8"
       });
 
       res.end(BLUEBERRY_HTML);
@@ -2979,13 +3018,15 @@ const server = http.createServer(
 
     if (req.url === "/health") {
       res.writeHead(200, {
-        "Content-Type": "application/json"
+        "Content-Type":
+          "application/json"
       });
 
       res.end(
         JSON.stringify({
           ok: true,
-          rooms: rooms.size
+          rooms: rooms.size,
+          clients: clients.size
         })
       );
 
@@ -2997,707 +3038,1152 @@ const server = http.createServer(
   }
 );
 
-const wss = new WebSocket.Server({
-  server,
-  path: "/ws"
-});
+// ============================================================
+// WEBSOCKET SERVER
+// ============================================================
 
-wss.on("connection", function(ws) {
+const wss =
+  new WebSocket.Server({
+    server,
+    path: "/ws"
+  });
+
+wss.on("connection", ws => {
+
   const client = {
-    id: makeId("client_"),
-    userId: makeId("user_"),
-    name: "Anonymous",
-    role: "user",
+    id: makeId("client"),
+    userId: makeId("user"),
+    name: "Unnamed",
+    role: null,
     moderatorLevel: null,
     moderatorAccessId: null,
-    anonymousModerator: false,
     roomCode: null,
     ws
   };
 
-  clients.set(client.id, client);
+  clients.set(
+    client.id,
+    client
+  );
 
-  ws.on("message", function(raw) {
+  ws.on("message", raw => {
+
     let data;
 
     try {
-      data = JSON.parse(raw.toString());
+      data =
+        JSON.parse(
+          raw.toString()
+        );
     } catch {
       send(client, {
         type: "error",
-        message: "Invalid message."
+        message:
+          "Invalid message."
       });
 
       return;
     }
 
-    handleClientMessage(client, data);
-  });
+    // ========================================================
+    // REGISTER NORMAL USER
+    // ========================================================
 
-  ws.on("close", function() {
-    removeFromRoom(client, "disconnected");
-    clients.delete(client.id);
+    if (data.type === "register") {
 
-    broadcastRoomList();
-  });
-});
+      client.name =
+        cleanName(data.name) ||
+        "Unnamed";
 
-function handleClientMessage(client, data) {
-  if (!data || typeof data.type !== "string") {
-    return;
-  }
+      client.role = "user";
 
-  if (data.type === "register") {
-    if (client.role === "moderator") {
-      return;
-    }
+      const ban =
+        getBan(client);
 
-    client.name = cleanName(data.name);
+      if (ban) {
 
-    const ban = getBan(client.userId);
+        send(client, {
+          type: "registered",
+          id: client.id,
+          banned: true,
+          durationText:
+            ban.durationText,
+          expiresAt:
+            ban.expiresAt
+        });
 
-    if (ban) {
+        return;
+      }
+
       send(client, {
-        type: "banned",
-        durationText: ban.durationText
-      });
-
-      client.ws.close();
-      return;
-    }
-
-    send(client, {
-      type: "registered",
-      id: client.id,
-      userId: client.userId,
-      name: client.name
-    });
-
-    return;
-  }
-
-  if (data.type === "moderatorAuth") {
-    const name = cleanName(data.name);
-    const pin = cleanPin(data.pin);
-
-    if (!name) {
-      send(client, {
-        type: "error",
-        message: "Moderator name is required."
+        type: "registered",
+        id: client.id,
+        banned: false
       });
 
       return;
     }
 
-    if (pin === MASTER_PIN) {
-      client.role = "moderator";
-      client.moderatorLevel = "master";
-      client.moderatorAccessId = null;
+    // ========================================================
+    // MODERATOR LOGIN
+    // ========================================================
+
+    if (data.type === "moderatorAuth") {
+
+      const name =
+        cleanName(data.name) ||
+        "Moderator";
+
+      const pin =
+        cleanPin(data.pin);
+
+      if (!pin) {
+        send(client, {
+          type: "error",
+          message:
+            "Enter a moderator PIN."
+        });
+
+        return;
+      }
+
+      if (pin === MASTER_PIN) {
+
+        client.name = name;
+        client.role = "moderator";
+        client.moderatorLevel = "master";
+        client.moderatorAccessId = null;
+
+        send(client, {
+          type: "moderatorAuthSuccess",
+          id: client.id,
+          moderatorLevel: "master",
+          rooms: getRoomList(),
+          bans: getBanList(),
+          moderatorAccess:
+            getModeratorAccessList(),
+          moderationLog:
+            getModeratorLog()
+        });
+
+        addLog(
+          "Moderator Login",
+          client.name,
+          "",
+          "",
+          "Master moderator"
+        );
+
+        broadcastModeratorData();
+
+        return;
+      }
+
+      const access =
+        getModeratorAccessByPin(pin);
+
+      if (!access) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Invalid or expired moderator PIN."
+        });
+
+        return;
+      }
+
       client.name = name;
+      client.role = "moderator";
+      client.moderatorLevel = "delegated";
+      client.moderatorAccessId = access.id;
 
       send(client, {
         type: "moderatorAuthSuccess",
         id: client.id,
-        name: client.name,
-        level: "master",
+        moderatorLevel: "delegated",
         rooms: getRoomList(),
         bans: getBanList(),
-        moderatorAccess: getModeratorAccessList(),
-        log: getModeratorLog()
+        moderatorAccess:
+          getModeratorAccessList(),
+        moderationLog:
+          getModeratorLog()
       });
 
       addLog(
-        "Master moderator login",
-        client.name + " logged in."
+        "Moderator Login",
+        client.name,
+        "",
+        "",
+        "Delegated moderator"
       );
 
-      return;
-    }
-
-    const access =
-      getModeratorAccessByPin(pin);
-
-    if (!access) {
-      send(client, {
-        type: "error",
-        message: "Invalid or expired moderator PIN."
-      });
+      broadcastModeratorData();
 
       return;
     }
 
-    client.role = "moderator";
-    client.moderatorLevel = "delegated";
-    client.moderatorAccessId = access.id;
-    client.name = name;
+    // ========================================================
+    // SET NAME
+    // ========================================================
 
-    send(client, {
-      type: "moderatorAuthSuccess",
-      id: client.id,
-      name: client.name,
-      level: "delegated",
-      rooms: getRoomList(),
-      bans: getBanList(),
-      moderatorAccess: getModeratorAccessList(),
-      log: getModeratorLog()
-    });
+    if (data.type === "setName") {
 
-    addLog(
-      "Moderator login",
-      client.name + " logged in using delegated moderator access."
-    );
+      client.name =
+        cleanName(data.name) ||
+        "Unnamed";
 
-    return;
-  }
-
-  if (data.type === "setName") {
-    client.name = cleanName(data.name);
-    return;
-  }
-
-  if (data.type === "createRoom") {
-    if (client.role !== "user") return;
-
-    if (!client.name || client.name === "Anonymous") {
-      client.name = cleanName(data.name);
+      return;
     }
 
-    const room =
-      createRoom(
+    // ========================================================
+    // CREATE ROOM
+    // ========================================================
+
+    if (data.type === "createRoom") {
+
+      if (client.role !== "user") {
+        send(client, {
+          type: "error",
+          message:
+            "Only normal users can use this room creation."
+        });
+
+        return;
+      }
+
+      const room =
+        createRoom(
+          data.roomName,
+          data.roomCode,
+          client
+        );
+
+      if (!room) {
+
+        send(client, {
+          type: "error",
+          message:
+            "That room code is already being used."
+        });
+
+        return;
+      }
+
+      joinRoom(
         client,
-        data.roomName,
-        data.roomCode
+        room
       );
 
-    if (!room) return;
-
-    joinRoom(client, room.code, false);
-
-    send(client, {
-      type: "roomCreated",
-      roomCode: room.code,
-      roomName: room.name
-    });
-
-    return;
-  }
-
-  if (data.type === "moderatorCreateRoom") {
-    if (!canModerate(client)) {
       send(client, {
-        type: "error",
-        message: "Moderator access required."
+        type: "roomCreated",
+        room: {
+          code: room.code,
+          name: room.name
+        }
       });
+
+      broadcastRoomList();
 
       return;
     }
 
-    const room =
-      createRoom(
-        client,
-        data.roomName,
-        data.roomCode
-      );
-
-    if (!room) return;
-
-    addLog(
-      "Moderator created room",
-      client.name +
-        " created " +
-        room.name +
-        " (" +
-        room.code +
-        ")"
-    );
-
-    send(client, {
-      type: "roomCreated",
-      roomCode: room.code,
-      roomName: room.name
-    });
-
-    broadcastRoomList();
-
-    return;
-  }
-
-  if (data.type === "joinRoom") {
-    if (client.role !== "user") return;
-
-    joinRoom(
-      client,
-      data.roomCode,
-      false
-    );
-
-    return;
-  }
-
-  if (data.type === "moderatorJoinRoom") {
-    if (!canModerate(client)) {
-      send(client, {
-        type: "error",
-        message: "Moderator access required."
-      });
-
-      return;
-    }
-
-    client.anonymousModerator =
-      data.anonymous === true;
-
-    joinRoom(
-      client,
-      data.roomCode,
-      true
-    );
-
-    return;
-  }
-
-  if (data.type === "leaveRoom") {
-    removeFromRoom(client, "left");
-    return;
-  }
-
-  if (data.type === "requestOffer") {
-    // Moderator asks a normal participant to initiate
-    // a connection. The participant's client handles this
-    // by creating an offer.
-    const target = clients.get(data.to);
+    // ========================================================
+    // MODERATOR CREATE ROOM
+    // ========================================================
 
     if (
-      target &&
-      target.role === "user" &&
-      client.role === "moderator"
+      data.type ===
+      "moderatorCreateRoom"
     ) {
-      send(target, {
-        type: "moderatorReady",
-        id: client.id
-      });
-    }
 
-    return;
-  }
+      if (!canModerate(client)) {
 
-  if (data.type === "signal") {
-    const target = clients.get(data.to);
+        send(client, {
+          type: "error",
+          message:
+            "Moderator access required."
+        });
 
-    if (!target) return;
-
-    if (!client.roomCode) return;
-
-    if (target.roomCode !== client.roomCode) {
-      return;
-    }
-
-    send(target, {
-      type: "signal",
-      from: client.id,
-      signalType: data.signalType,
-      description: data.description,
-      candidate: data.candidate
-    });
-
-    return;
-  }
-
-  if (data.type === "chatMessage") {
-    if (!client.roomCode) return;
-
-    const room =
-      rooms.get(client.roomCode);
-
-    if (!room) return;
-
-    let text =
-      String(data.text || "").trim();
-
-    if (!text) return;
-
-    text = text.slice(0, 1000);
-
-    // IMPORTANT:
-    // Moderators explicitly identify themselves in chat.
-    const displayName =
-      client.role === "moderator"
-        ? client.name + " (Moderator)"
-        : client.name;
-
-    const message = {
-      id: makeId("msg_"),
-      name: displayName,
-      text,
-      time: Date.now(),
-      isModerator:
-        client.role === "moderator"
-    };
-
-    room.messages.push(message);
-
-    if (room.messages.length > 100) {
-      room.messages.shift();
-    }
-
-    broadcastRoom(
-      room,
-      {
-        type: "chatMessage",
-        message
-      },
-      {
-        includeUsers: true,
-        includeModerators: true
+        return;
       }
-    );
 
-    return;
-  }
+      const room =
+        createRoom(
+          data.roomName,
+          data.roomCode,
+          client
+        );
 
-  if (data.type === "getRoomPeople") {
-    if (!canModerate(client)) {
-      return;
-    }
+      if (!room) {
 
-    const room =
-      rooms.get(
-        cleanRoomCode(data.roomCode)
+        send(client, {
+          type: "error",
+          message:
+            "That room code is already being used."
+        });
+
+        return;
+      }
+
+      addLog(
+        "Create Room",
+        client.name,
+        "",
+        room.code,
+        room.name
       );
 
-    if (!room) {
+      broadcastModeratorData();
+
       send(client, {
-        type: "roomPeople",
-        roomCode: data.roomCode,
-        people: []
+        type: "roomCreatedByModerator",
+        room: {
+          code: room.code,
+          name: room.name
+        }
       });
 
       return;
     }
 
-    const people = [];
+    // ========================================================
+    // JOIN NORMAL ROOM
+    // ========================================================
 
-    for (const id of room.participants) {
-      const target = clients.get(id);
+    if (data.type === "joinRoom") {
+
+      if (client.role !== "user") {
+        send(client, {
+          type: "error",
+          message:
+            "Invalid user session."
+        });
+
+        return;
+      }
+
+      const ban =
+        getBan(client);
+
+      if (ban) {
+
+        send(client, {
+          type: "error",
+          message:
+            "You are banned from joining."
+        });
+
+        return;
+      }
+
+      const code =
+        cleanRoomCode(
+          data.roomCode
+        );
+
+      const room =
+        rooms.get(code);
+
+      if (!room) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Room not found."
+        });
+
+        return;
+      }
+
+      joinRoom(
+        client,
+        room
+      );
+
+      return;
+    }
+
+    // ========================================================
+    // MODERATOR JOIN ROOM
+    // ========================================================
+
+    if (
+      data.type ===
+      "moderatorJoinRoom"
+    ) {
+
+      if (!canModerate(client)) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Moderator access required."
+        });
+
+        return;
+      }
+
+      const code =
+        cleanRoomCode(
+          data.roomCode
+        );
+
+      const room =
+        rooms.get(code);
+
+      if (!room) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Room not found."
+        });
+
+        return;
+      }
+
+      joinRoom(
+        client,
+        room
+      );
+
+      // If anonymous, the moderator has no
+      // camera/microphone because the client
+      // dashboard never creates media tracks.
+      //
+      // Participants need to send their media
+      // to this moderator.
+
+      for (const id of room.clients) {
+
+        if (id === client.id) {
+          continue;
+        }
+
+        const participant =
+          clients.get(id);
+
+        if (!participant) {
+          continue;
+        }
+
+        if (
+          participant.role === "user"
+        ) {
+
+          send(participant, {
+            type: "moderatorReady",
+            moderatorId: client.id,
+            moderatorName:
+              client.name
+          });
+        }
+      }
+
+      return;
+    }
+
+    // ========================================================
+    // LEAVE ROOM
+    // ========================================================
+
+    if (data.type === "leaveRoom") {
+
+      removeFromRoom(client);
+
+      return;
+    }
+
+    // ========================================================
+    // REQUEST OFFER
+    // ========================================================
+
+    if (data.type === "requestOffer") {
+
+      if (!canModerate(client)) {
+        return;
+      }
+
+      const target =
+        clients.get(
+          data.targetId
+        );
+
+      if (!target) {
+        return;
+      }
 
       if (
-        target &&
-        target.role === "user"
+        target.roomCode !==
+        client.roomCode
       ) {
-        people.push({
-          id: target.id,
-          userId: target.userId,
-          name: target.name
-        });
+        return;
       }
-    }
 
-    send(client, {
-      type: "roomPeople",
-      roomCode: room.code,
-      people
-    });
+      if (
+        target.role !== "user"
+      ) {
+        return;
+      }
 
-    return;
-  }
+      send(target, {
+        type: "moderatorReady",
+        moderatorId: client.id,
+        moderatorName:
+          client.name
+      });
 
-  if (data.type === "kick") {
-    if (!canModerate(client)) {
       return;
     }
 
-    const target =
-      clients.get(data.targetId);
+    // ========================================================
+    // WEBRTC SIGNALING
+    // ========================================================
 
-    if (!target) return;
+    if (data.type === "signal") {
 
-    if (!canControlTarget(client, target)) {
+      const target =
+        clients.get(data.to);
+
+      if (!target) {
+        return;
+      }
+
+      if (
+        client.roomCode &&
+        target.roomCode !==
+          client.roomCode
+      ) {
+        return;
+      }
+
+      send(target, {
+        type: "signal",
+        from: client.id,
+        signal: data.signal
+      });
+
       return;
     }
+
+    // ========================================================
+    // CHAT
+    // ========================================================
 
     if (
-      client.roomCode &&
-      target.roomCode !== client.roomCode
+      data.type ===
+      "chatMessage"
     ) {
+
+      if (!client.roomCode) {
+        return;
+      }
+
+      let message =
+        String(
+          data.message || ""
+        )
+        .replace(/[<>]/g, "")
+        .trim()
+        .slice(0, 1000);
+
+      if (!message) {
+        return;
+      }
+
+      let displayName =
+        client.name || "Unnamed";
+
+      if (
+        client.role ===
+        "moderator"
+      ) {
+        displayName +=
+          " (Moderator)";
+      }
+
+      const room =
+        rooms.get(
+          client.roomCode
+        );
+
+      if (!room) {
+        return;
+      }
+
+      broadcastRoom(
+        room,
+        {
+          type: "chatMessage",
+          name: displayName,
+          message,
+          senderId: client.id
+        }
+      );
+
       return;
     }
 
-    addLog(
-      "Kick",
-      client.name +
-        " kicked " +
-        target.name
-    );
-
-    send(target, {
-      type: "kicked"
-    });
-
-    removeFromRoom(
-      target,
-      "kicked"
-    );
-
-    return;
-  }
-
-  if (data.type === "ban") {
-    if (!canModerate(client)) {
-      return;
-    }
-
-    const target =
-      clients.get(data.targetId);
-
-    if (!target) return;
-
-    if (!canControlTarget(client, target)) {
-      return;
-    }
+    // ========================================================
+    // VIEW PEOPLE
+    // ========================================================
 
     if (
-      client.roomCode &&
-      target.roomCode !== client.roomCode
+      data.type ===
+      "getRoomPeople"
     ) {
+
+      if (!canModerate(client)) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Moderator access required."
+        });
+
+        return;
+      }
+
+      const room =
+        rooms.get(
+          cleanRoomCode(
+            data.roomCode
+          )
+        );
+
+      if (!room) {
+
+        send(client, {
+          type: "roomPeople",
+          roomCode:
+            data.roomCode,
+          people: []
+        });
+
+        return;
+      }
+
+      const people =
+        Array.from(
+          room.clients
+        )
+        .map(id =>
+          clients.get(id)
+        )
+        .filter(Boolean)
+        .map(person => ({
+          id: person.id,
+          userId: person.userId,
+          name:
+            person.name ||
+            "Unnamed",
+          role: person.role,
+          moderatorLevel:
+            person.moderatorLevel ||
+            null
+        }));
+
+      send(client, {
+        type: "roomPeople",
+        roomCode:
+          room.code,
+        people
+      });
+
       return;
     }
 
-    const duration =
-      calculateDuration(data);
+    // ========================================================
+    // KICK
+    // ========================================================
 
-    const ban = {
-      id: makeId("ban_"),
-      userId: target.userId,
-      name: target.name,
-      moderatorId: client.id,
-      moderatorName: client.name,
-      createdAt: Date.now(),
-      expiresAt: duration.expiresAt,
-      durationText: duration.durationText
-    };
+    if (data.type === "kick") {
 
-    bannedUsers.set(
-      ban.id,
-      ban
-    );
+      if (!canModerate(client)) {
+        return;
+      }
 
-    addLog(
-      "Ban",
-      client.name +
-        " banned " +
-        target.name +
-        " for " +
+      const target =
+        clients.get(
+          data.targetId
+        );
+
+      if (!target) {
+        return;
+      }
+
+      if (
+        target.roomCode !==
+        client.roomCode
+      ) {
+        return;
+      }
+
+      if (
+        !canControlTarget(
+          client,
+          target
+        )
+      ) {
+        send(client, {
+          type: "error",
+          message:
+            "You cannot moderate another moderator."
+        });
+
+        return;
+      }
+
+      const roomCode =
+        target.roomCode;
+
+      addLog(
+        "Kick",
+        client.name,
+        target.name,
+        roomCode
+      );
+
+      send(target, {
+        type: "kicked"
+      });
+
+      removeFromRoom(target);
+
+      try {
+        target.ws.close();
+      } catch {}
+
+      broadcastModeratorData();
+
+      return;
+    }
+
+    // ========================================================
+    // BAN
+    // ========================================================
+
+    if (data.type === "ban") {
+
+      if (!canModerate(client)) {
+        return;
+      }
+
+      const target =
+        clients.get(
+          data.targetId
+        );
+
+      if (!target) {
+        return;
+      }
+
+      if (
+        !canControlTarget(
+          client,
+          target
+        )
+      ) {
+        send(client, {
+          type: "error",
+          message:
+            "You cannot ban another moderator."
+        });
+
+        return;
+      }
+
+      const duration =
+        calculateDuration(data);
+
+      if (
+        duration === 0
+      ) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Enter a ban duration or choose Permanent."
+        });
+
+        return;
+      }
+
+      const now =
+        Date.now();
+
+      const expiresAt =
+        duration === null
+          ? null
+          : now +
+            duration * 1000;
+
+      const ban = {
+        id: makeId("ban"),
+        userId:
+          target.userId,
+        name:
+          target.name,
+        moderatorId:
+          client.id,
+        moderatorName:
+          client.name,
+        roomCode:
+          target.roomCode,
+        createdAt:
+          now,
+        expiresAt,
+        durationText:
+          formatDuration(duration)
+      };
+
+      bannedUsers.set(
+        ban.id,
+        ban
+      );
+
+      addLog(
+        "Ban",
+        client.name,
+        target.name,
+        target.roomCode,
         ban.durationText
-    );
+      );
 
-    send(target, {
-      type: "banned",
-      durationText:
-        ban.durationText
-    });
-
-    removeFromRoom(
-      target,
-      "banned"
-    );
-
-    try {
-      target.ws.close();
-    } catch {}
-
-    broadcastRoomList();
-
-    return;
-  }
-
-  if (data.type === "unban") {
-    if (!canModerate(client)) {
-      return;
-    }
-
-    const ban =
-      bannedUsers.get(data.banId);
-
-    if (!ban) return;
-
-    bannedUsers.delete(data.banId);
-
-    addLog(
-      "Unban",
-      client.name +
-        " unbanned " +
-        ban.name
-    );
-
-    broadcastRoomList();
-
-    return;
-  }
-
-  if (data.type === "giveModerator") {
-    if (!isMasterModerator(client)) {
-      send(client, {
-        type: "error",
-        message:
-          "Only the master moderator can give moderator access."
+      send(target, {
+        type: "banned",
+        durationText:
+          ban.durationText
       });
 
-      return;
-    }
+      removeFromRoom(target);
 
-    const target =
-      clients.get(data.targetId);
+      try {
+        target.ws.close();
+      } catch {}
 
-    if (!target) {
-      send(client, {
-        type: "error",
-        message:
-          "That user is no longer connected."
-      });
+      broadcastModeratorData();
 
       return;
     }
 
-    if (target.role !== "user") {
-      send(client, {
-        type: "error",
-        message:
-          "That user is already a moderator."
-      });
+    // ========================================================
+    // UNBAN
+    // ========================================================
+
+    if (data.type === "unban") {
+
+      if (!canModerate(client)) {
+        return;
+      }
+
+      const ban =
+        bannedUsers.get(
+          data.banId
+        );
+
+      if (!ban) {
+        return;
+      }
+
+      bannedUsers.delete(
+        data.banId
+      );
+
+      addLog(
+        "Unban",
+        client.name,
+        ban.name,
+        ban.roomCode
+      );
+
+      broadcastModeratorData();
 
       return;
     }
 
-    const pin =
-      cleanPin(data.pin);
+    // ========================================================
+    // GIVE MODERATOR
+    // ========================================================
 
-    if (pin.length < 4) {
-      send(client, {
-        type: "error",
-        message:
-          "Moderator PIN must be at least 4 characters."
-      });
+    if (
+      data.type ===
+      "giveModerator"
+    ) {
 
-      return;
-    }
+      if (
+        !isMasterModerator(client)
+      ) {
 
-    const duration =
-      calculateDuration(data);
+        send(client, {
+          type: "error",
+          message:
+            "Only the master moderator can give moderator access."
+        });
 
-    const access = {
-      id: makeId("mod_"),
-      pinHash: hashPin(pin),
-      name: target.name,
-      targetUserId: target.userId,
-      createdBy: client.name,
-      createdAt: Date.now(),
-      expiresAt: duration.expiresAt,
-      durationText: duration.durationText
-    };
+        return;
+      }
 
-    moderatorAccess.set(
-      access.id,
-      access
-    );
+      const target =
+        clients.get(
+          data.targetId
+        );
 
-    addLog(
-      "Moderator access granted",
-      client.name +
-        " gave moderator access to " +
-        target.name +
-        " for " +
+      if (!target) {
+
+        send(client, {
+          type: "error",
+          message:
+            "That participant is no longer connected."
+        });
+
+        return;
+      }
+
+      if (
+        target.role ===
+        "moderator"
+      ) {
+
+        send(client, {
+          type: "error",
+          message:
+            "That person is already a moderator."
+        });
+
+        return;
+      }
+
+      const pin =
+        cleanPin(data.pin);
+
+      if (pin.length < 4) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Moderator PIN must be at least 4 characters."
+        });
+
+        return;
+      }
+
+      const duration =
+        calculateDuration(data);
+
+      if (
+        duration === 0
+      ) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Enter a moderator access duration or choose Permanent."
+        });
+
+        return;
+      }
+
+      const now =
+        Date.now();
+
+      const expiresAt =
+        duration === null
+          ? null
+          : now +
+            duration * 1000;
+
+      const access = {
+        id: makeId("mod"),
+        pinHash:
+          hashPin(pin),
+        name:
+          target.name,
+        targetUserId:
+          target.userId,
+        createdBy:
+          client.name,
+        createdAt:
+          now,
+        expiresAt,
+        durationText:
+          formatDuration(duration)
+      };
+
+      moderatorAccess.set(
+        access.id,
+        access
+      );
+
+      addLog(
+        "Give Moderator",
+        client.name,
+        target.name,
+        target.roomCode,
         access.durationText
-    );
+      );
 
-    send(client, {
-      type: "moderatorAccessCreated",
-      pin: pin,
-      durationText:
-        access.durationText
-    });
+      send(client, {
+        type:
+          "moderatorAccessCreated",
+        pin,
+        durationText:
+          access.durationText
+      });
 
-    send(target, {
-      type: "moderatorAccessGranted",
-      durationText:
-        access.durationText
-    });
+      send(target, {
+        type:
+          "moderatorAccessGranted",
+        durationText:
+          access.durationText
+      });
 
-    broadcastRoomList();
+      broadcastModeratorData();
 
-    return;
-  }
-
-  if (data.type === "revokeModerator") {
-    if (!isMasterModerator(client)) {
       return;
     }
 
-    const access =
-      moderatorAccess.get(
+    // ========================================================
+    // REVOKE MODERATOR
+    // ========================================================
+
+    if (
+      data.type ===
+      "revokeModerator"
+    ) {
+
+      if (
+        !isMasterModerator(client)
+      ) {
+
+        send(client, {
+          type: "error",
+          message:
+            "Only the master moderator can revoke access."
+        });
+
+        return;
+      }
+
+      const access =
+        moderatorAccess.get(
+          data.accessId
+        );
+
+      if (!access) {
+        return;
+      }
+
+      moderatorAccess.delete(
         data.accessId
       );
 
-    if (!access) return;
+      addLog(
+        "Revoke Moderator",
+        client.name,
+        access.name,
+        "",
+        ""
+      );
 
-    moderatorAccess.delete(
-      data.accessId
-    );
+      for (const target of clients.values()) {
 
-    addLog(
-      "Moderator access revoked",
-      client.name +
-        " revoked moderator access for " +
-        access.name
-    );
+        if (
+          target.role ===
+            "moderator" &&
+          target.moderatorAccessId ===
+            access.id
+        ) {
 
-    for (const target of clients.values()) {
-      if (
-        target.role === "moderator" &&
-        target.moderatorAccessId ===
-          data.accessId
-      ) {
-        send(target, {
-          type: "moderatorAccessRevoked"
-        });
+          send(target, {
+            type:
+              "moderatorAccessRevoked"
+          });
 
-        try {
-          target.ws.close();
-        } catch {}
+          try {
+            target.ws.close();
+          } catch {}
+        }
       }
-    }
 
-    broadcastRoomList();
+      broadcastModeratorData();
 
-    return;
-  }
-
-  if (data.type === "getModeratorData") {
-    if (!canModerate(client)) {
       return;
     }
 
-    send(client, {
-      type: "moderatorData",
-      rooms: getRoomList(),
-      bans: getBanList(),
-      moderatorAccess:
-        getModeratorAccessList(),
-      log: getModeratorLog()
-    });
+    // ========================================================
+    // MODERATOR DATA
+    // ========================================================
 
-    return;
-  }
-}
+    if (
+      data.type ===
+      "getModeratorData"
+    ) {
 
-setInterval(function() {
-  cleanExpiredModeratorAccess();
+      if (!canModerate(client)) {
+        return;
+      }
+
+      send(client, {
+        type: "moderatorData",
+        rooms:
+          getRoomList(),
+        bans:
+          getBanList(),
+        moderatorAccess:
+          getModeratorAccessList(),
+        moderationLog:
+          getModeratorLog()
+      });
+
+      return;
+    }
+  });
+
+  ws.on("close", () => {
+
+    removeFromRoom(client);
+
+    clients.delete(
+      client.id
+    );
+
+    broadcastRoomList();
+    broadcastModeratorData();
+  });
+
+  ws.on("error", () => {
+    try {
+      ws.close();
+    } catch {}
+  });
+});
+
+// ============================================================
+// CLEANUP
+// ============================================================
+
+setInterval(() => {
+
   cleanExpiredBans();
-  broadcastRoomList();
+  cleanExpiredModeratorAccess();
+
+  broadcastModeratorData();
+
 }, 5000);
 
-server.listen(PORT, function() {
-  console.log(
-    "Video chat server running on port " +
+// ============================================================
+// START
+// ============================================================
+
+server.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      "Video chat server running on port " +
       PORT
-  );
-});
+    );
+  }
+);

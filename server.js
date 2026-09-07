@@ -11,22 +11,26 @@ const rooms = new Map();
 const clients = new Map();
 const bannedUsers = new Set();
 
-function makeId(length = 12) {
-  return crypto.randomBytes(12).toString("hex").slice(0, length);
+function makeId() {
+  return crypto.randomBytes(16).toString("hex");
 }
 
 function cleanName(name) {
-  return String(name || "")
+  const result = String(name || "")
     .trim()
     .replace(/\s+/g, " ")
-    .slice(0, 30) || "Guest";
+    .slice(0, 30);
+
+  return result || "Guest";
 }
 
 function cleanRoomName(name) {
-  return String(name || "")
+  const result = String(name || "")
     .trim()
     .replace(/\s+/g, " ")
-    .slice(0, 40) || "Untitled Room";
+    .slice(0, 40);
+
+  return result || "Untitled Room";
 }
 
 function cleanRoomCode(code) {
@@ -56,22 +60,19 @@ function makeRoomCode() {
 }
 
 function send(ws, data) {
-  if (
-    ws &&
-    ws.readyState === WebSocket.OPEN
-  ) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
   }
 }
 
-function roomInfo(room) {
+function getRoomInfo(room) {
   return {
     code: room.code,
     name: room.name,
     createdAt: room.createdAt,
     userCount: room.users.size,
 
-    participants: [...room.users]
+    participants: Array.from(room.users)
       .map(id => clients.get(id))
       .filter(Boolean)
       .map(client => ({
@@ -84,8 +85,7 @@ function roomInfo(room) {
 }
 
 function getRoomList() {
-  return [...rooms.values()]
-    .map(roomInfo);
+  return Array.from(rooms.values()).map(getRoomInfo);
 }
 
 function broadcastRoomList() {
@@ -102,8 +102,7 @@ function broadcastRoomList() {
 }
 
 function createRoom(name, requestedCode) {
-  let code =
-    cleanRoomCode(requestedCode);
+  let code = cleanRoomCode(requestedCode);
 
   if (!code) {
     code = makeRoomCode();
@@ -114,7 +113,7 @@ function createRoom(name, requestedCode) {
   }
 
   const room = {
-    code,
+    code: code,
     name: cleanRoomName(name),
     users: new Set(),
     createdAt: Date.now()
@@ -130,24 +129,25 @@ function removeFromRoom(client) {
     return;
   }
 
-  const room =
-    rooms.get(client.room);
+  const room = rooms.get(client.room);
 
   if (!room) {
     client.room = null;
+    client.anonymous = false;
     return;
   }
 
   room.users.delete(client.id);
 
   for (const id of room.users) {
-    const other =
-      clients.get(id);
+    const other = clients.get(id);
 
-    send(other?.ws, {
-      type: "userLeft",
-      userId: client.id
-    });
+    if (other) {
+      send(other.ws, {
+        type: "userLeft",
+        userId: client.id
+      });
+    }
   }
 
   client.room = null;
@@ -160,19 +160,13 @@ function removeFromRoom(client) {
   broadcastRoomList();
 }
 
-function addToRoom(
-  client,
-  roomCode,
-  anonymous = false
-) {
-  const room =
-    rooms.get(roomCode);
+function addToRoom(client, roomCode, anonymous) {
+  const room = rooms.get(roomCode);
 
   if (!room) {
     send(client.ws, {
       type: "error",
-      message:
-        "That room does not exist."
+      message: "That room does not exist."
     });
 
     return;
@@ -182,19 +176,18 @@ function addToRoom(
     removeFromRoom(client);
   }
 
-  client.room = roomCode;
-  client.anonymous = anonymous;
+  const existingUsers = Array.from(room.users)
+    .map(id => clients.get(id))
+    .filter(Boolean)
+    .map(user => ({
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      anonymous: user.anonymous
+    }));
 
-  const existingUsers =
-    [...room.users]
-      .map(id => clients.get(id))
-      .filter(Boolean)
-      .map(user => ({
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        anonymous: user.anonymous
-      }));
+  client.room = roomCode;
+  client.anonymous = !!anonymous;
 
   room.users.add(client.id);
 
@@ -215,445 +208,409 @@ function addToRoom(
   });
 
   for (const id of room.users) {
-    if (id === client.id) continue;
+    if (id === client.id) {
+      continue;
+    }
 
-    const other =
-      clients.get(id);
+    const other = clients.get(id);
 
-    send(other?.ws, {
-      type: "userJoined",
-
-      user: {
-        id: client.id,
-        name: client.name,
-        role: client.role,
-        anonymous: client.anonymous
-      }
-    });
+    if (other) {
+      send(other.ws, {
+        type: "userJoined",
+        user: {
+          id: client.id,
+          name: client.name,
+          role: client.role,
+          anonymous: client.anonymous
+        }
+      });
+    }
   }
 
   broadcastRoomList();
 }
 
-const server = http.createServer(
-  (req, res) => {
+const server = http.createServer((req, res) => {
+  let fileName;
 
-    let file;
+  if (
+    req.url === "/" ||
+    req.url === "/index.html"
+  ) {
+    fileName = "index.html";
+  } else if (
+    req.url === "/moderator" ||
+    req.url === "/moderator.html"
+  ) {
+    fileName = "moderator.html";
+  } else if (
+    req.url === "/health"
+  ) {
+    res.writeHead(200, {
+      "Content-Type": "text/plain"
+    });
 
-    if (
-      req.url === "/" ||
-      req.url === "/index.html"
-    ) {
-      file = "index.html";
+    res.end("OK");
+    return;
+  } else {
+    res.writeHead(404);
+    res.end("Not found");
+    return;
+  }
 
-    } else if (
-      req.url === "/moderator" ||
-      req.url === "/moderator.html"
-    ) {
-      file = "moderator.html";
+  const filePath = path.join(
+    __dirname,
+    fileName
+  );
 
-    } else if (
-      req.url === "/health"
-    ) {
+  fs.readFile(
+    filePath,
+    (error, data) => {
+      if (error) {
+        console.error(error);
+
+        res.writeHead(500);
+        res.end("Server error");
+        return;
+      }
+
       res.writeHead(200, {
         "Content-Type":
-          "text/plain"
+          "text/html; charset=utf-8"
       });
 
-      res.end("OK");
-      return;
+      res.end(data);
+    }
+  );
+});
 
-    } else {
-      res.writeHead(404);
-      res.end("Not found");
+const wss = new WebSocket.Server({
+  server: server,
+  path: "/ws"
+});
+
+wss.on("connection", ws => {
+  const client = {
+    ws: ws,
+    id: null,
+    name: "Guest",
+    role: "user",
+    room: null,
+    anonymous: false
+  };
+
+  ws.on("message", raw => {
+    let message;
+
+    try {
+      message = JSON.parse(
+        raw.toString()
+      );
+    } catch (error) {
+      console.error(
+        "Invalid WebSocket message"
+      );
       return;
     }
 
-    const filePath =
-      path.join(__dirname, file);
+    switch (message.type) {
 
-    fs.readFile(
-      filePath,
-      (err, data) => {
+      case "register": {
+        client.id = String(
+          message.id || makeId()
+        );
 
-        if (err) {
-          res.writeHead(500);
-          res.end("Server error");
+        client.name = cleanName(
+          message.name
+        );
+
+        client.role =
+          message.role === "moderator"
+            ? "moderator"
+            : "user";
+
+        if (
+          bannedUsers.has(client.id)
+        ) {
+          send(ws, {
+            type: "banned",
+            message: "You are banned."
+          });
+
+          ws.close();
           return;
         }
 
-        res.writeHead(200, {
-          "Content-Type":
-            "text/html; charset=utf-8"
-        });
-
-        res.end(data);
-      }
-    );
-  }
-);
-
-const wss =
-  new WebSocket.Server({
-    server,
-    path: "/ws"
-  });
-
-wss.on(
-  "connection",
-  ws => {
-
-    const client = {
-      ws,
-      id: null,
-      name: "Guest",
-      role: "user",
-      room: null,
-      anonymous: false
-    };
-
-    ws.on(
-      "message",
-      raw => {
-
-        let msg;
-
-        try {
-          msg =
-            JSON.parse(
-              raw.toString()
-            );
-        } catch {
-          return;
-        }
-
-        switch (msg.type) {
-
-          case "register": {
-
-            client.id =
-              String(
-                msg.id ||
-                makeId()
-              );
-
-            client.name =
-              cleanName(
-                msg.name
-              );
-
-            client.role =
-              msg.role ===
-              "moderator"
-                ? "moderator"
-                : "user";
-
-            if (
-              bannedUsers.has(
-                client.id
-              )
-            ) {
-
-              send(ws, {
-                type: "banned",
-                message:
-                  "You are banned."
-              });
-
-              ws.close();
-              return;
-            }
-
-            clients.set(
-              client.id,
-              client
-            );
-
-            if (
-              client.role ===
-              "moderator"
-            ) {
-
-              send(ws, {
-                type: "roomList",
-                rooms:
-                  getRoomList()
-              });
-
-            }
-
-            broadcastRoomList();
-
-            break;
-          }
-
-          case "setName": {
-
-            if (!client.id) {
-              return;
-            }
-
-            client.name =
-              cleanName(
-                msg.name
-              );
-
-            broadcastRoomList();
-
-            break;
-          }
-
-          case "createRoom": {
-
-            const room =
-              createRoom(
-                msg.name,
-                msg.code
-              );
-
-            if (!room) {
-
-              send(ws, {
-                type: "error",
-                message:
-                  "That room code is already in use."
-              });
-
-              return;
-            }
-
-            send(ws, {
-              type: "roomCreated",
-              room: roomInfo(room)
-            });
-
-            broadcastRoomList();
-
-            break;
-          }
-
-          case "moderatorCreateRoom": {
-
-            if (
-              client.role !==
-              "moderator"
-            ) {
-              return;
-            }
-
-            const room =
-              createRoom(
-                msg.name,
-                msg.code
-              );
-
-            if (!room) {
-
-              send(ws, {
-                type: "error",
-                message:
-                  "That room code is already in use."
-              });
-
-              return;
-            }
-
-            send(ws, {
-              type: "roomCreated",
-              room: roomInfo(room)
-            });
-
-            broadcastRoomList();
-
-            break;
-          }
-
-          case "joinRoom": {
-
-            if (!client.id) {
-              return;
-            }
-
-            const code =
-              cleanRoomCode(
-                msg.code
-              );
-
-            addToRoom(
-              client,
-              code,
-              false
-            );
-
-            break;
-          }
-
-          case "moderatorJoinRoom": {
-
-            if (
-              client.role !==
-              "moderator"
-            ) {
-              return;
-            }
-
-            const code =
-              cleanRoomCode(
-                msg.code
-              );
-
-            addToRoom(
-              client,
-              code,
-              !!msg.anonymous
-            );
-
-            break;
-          }
-
-          case "leaveRoom": {
-
-            removeFromRoom(
-              client
-            );
-
-            break;
-          }
-
-          case "signal": {
-
-            if (!client.id) {
-              return;
-            }
-
-            const target =
-              clients.get(
-                msg.target
-              );
-
-            if (!target) {
-              return;
-            }
-
-            /*
-             * Only relay signaling between
-             * people who are actually in the
-             * same room.
-             */
-
-            if (
-              !client.room ||
-              client.room !==
-              target.room
-            ) {
-              return;
-            }
-
-            send(target.ws, {
-              type: "signal",
-              from: client.id,
-              data: msg.data
-            });
-
-            break;
-          }
-
-          case "kick": {
-
-            if (
-              client.role !==
-              "moderator"
-            ) {
-              return;
-            }
-
-            const target =
-              clients.get(
-                msg.userId
-              );
-
-            if (!target) {
-              return;
-            }
-
-            send(target.ws, {
-              type: "kicked",
-              message:
-                "You were kicked by a moderator."
-            });
-
-            removeFromRoom(
-              target
-            );
-
-            break;
-          }
-
-          case "ban": {
-
-            if (
-              client.role !==
-              "moderator"
-            ) {
-              return;
-            }
-
-            const target =
-              clients.get(
-                msg.userId
-              );
-
-            if (!target) {
-              return;
-            }
-
-            bannedUsers.add(
-              target.id
-            );
-
-            send(target.ws, {
-              type: "banned",
-              message:
-                "You were banned by a moderator."
-            });
-
-            removeFromRoom(
-              target
-            );
-
-            break;
-          }
-        }
-      }
-    );
-
-    ws.on(
-      "close",
-      () => {
-
-        removeFromRoom(
+        clients.set(
+          client.id,
           client
         );
 
-        if (client.id) {
-          clients.delete(
-            client.id
-          );
+        if (
+          client.role === "moderator"
+        ) {
+          send(ws, {
+            type: "roomList",
+            rooms: getRoomList()
+          });
         }
 
         broadcastRoomList();
-      }
-    );
 
-  }
-);
+        break;
+      }
+
+      case "setName": {
+        if (!client.id) {
+          return;
+        }
+
+        client.name = cleanName(
+          message.name
+        );
+
+        broadcastRoomList();
+
+        if (client.room) {
+          const room = rooms.get(
+            client.room
+          );
+
+          if (room) {
+            for (
+              const id of room.users
+            ) {
+              if (id === client.id) {
+                continue;
+              }
+
+              const other =
+                clients.get(id);
+
+              if (other) {
+                send(other.ws, {
+                  type: "userNameChanged",
+                  userId: client.id,
+                  name: client.name
+                });
+              }
+            }
+          }
+        }
+
+        break;
+      }
+
+      case "createRoom": {
+        const room = createRoom(
+          message.name,
+          message.code
+        );
+
+        if (!room) {
+          send(ws, {
+            type: "error",
+            message:
+              "That room code is already in use."
+          });
+
+          return;
+        }
+
+        send(ws, {
+          type: "roomCreated",
+          room: getRoomInfo(room)
+        });
+
+        broadcastRoomList();
+
+        break;
+      }
+
+      case "moderatorCreateRoom": {
+        if (
+          client.role !== "moderator"
+        ) {
+          return;
+        }
+
+        const room = createRoom(
+          message.name,
+          message.code
+        );
+
+        if (!room) {
+          send(ws, {
+            type: "error",
+            message:
+              "That room code is already in use."
+          });
+
+          return;
+        }
+
+        send(ws, {
+          type: "roomCreated",
+          room: getRoomInfo(room)
+        });
+
+        broadcastRoomList();
+
+        break;
+      }
+
+      case "joinRoom": {
+        if (!client.id) {
+          return;
+        }
+
+        const code = cleanRoomCode(
+          message.code
+        );
+
+        addToRoom(
+          client,
+          code,
+          false
+        );
+
+        break;
+      }
+
+      case "moderatorJoinRoom": {
+        if (
+          client.role !== "moderator"
+        ) {
+          return;
+        }
+
+        const code = cleanRoomCode(
+          message.code
+        );
+
+        addToRoom(
+          client,
+          code,
+          !!message.anonymous
+        );
+
+        break;
+      }
+
+      case "leaveRoom": {
+        removeFromRoom(client);
+        break;
+      }
+
+      case "signal": {
+        if (!client.id) {
+          return;
+        }
+
+        const target =
+          clients.get(message.target);
+
+        if (!target) {
+          return;
+        }
+
+        if (
+          !client.room ||
+          client.room !== target.room
+        ) {
+          return;
+        }
+
+        send(target.ws, {
+          type: "signal",
+          from: client.id,
+          data: message.data
+        });
+
+        break;
+      }
+
+      case "kick": {
+        if (
+          client.role !== "moderator"
+        ) {
+          return;
+        }
+
+        const target =
+          clients.get(message.userId);
+
+        if (!target) {
+          return;
+        }
+
+        send(target.ws, {
+          type: "kicked",
+          message:
+            "You were kicked by a moderator."
+        });
+
+        removeFromRoom(target);
+
+        break;
+      }
+
+      case "ban": {
+        if (
+          client.role !== "moderator"
+        ) {
+          return;
+        }
+
+        const target =
+          clients.get(message.userId);
+
+        if (!target) {
+          return;
+        }
+
+        bannedUsers.add(target.id);
+
+        send(target.ws, {
+          type: "banned",
+          message:
+            "You were banned by a moderator."
+        });
+
+        removeFromRoom(target);
+
+        break;
+      }
+
+      default:
+        break;
+    }
+  });
+
+  ws.on("close", () => {
+    removeFromRoom(client);
+
+    if (client.id) {
+      clients.delete(client.id);
+    }
+
+    broadcastRoomList();
+  });
+
+  ws.on("error", error => {
+    console.error(
+      "WebSocket error:",
+      error
+    );
+  });
+});
 
 server.listen(
   PORT,
   "0.0.0.0",
   () => {
     console.log(
-      `Server running on port ${PORT}`
+      "Server running on port " + PORT
     );
   }
 );

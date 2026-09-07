@@ -1,557 +1,453 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
->
-<title>Blueberry Video Chat</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blueberry Video Chat</title>
 
-<style>
-* {
-  box-sizing: border-box;
-}
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: #101114;
-  color: white;
-  font-family: Arial, sans-serif;
-}
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #08090d;
+      color: white;
+    }
 
-button,
-input {
-  font: inherit;
-}
+    button,
+    input {
+      font: inherit;
+    }
 
-button {
-  border: none;
-  border-radius: 10px;
-  padding: 11px 16px;
-  cursor: pointer;
-  background: #5968ff;
-  color: white;
-  font-weight: bold;
-}
+    button {
+      cursor: pointer;
+    }
 
-button:hover {
-  filter: brightness(1.1);
-}
+    .page {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
 
-button:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-}
+    .panel {
+      width: min(520px, 100%);
+      background: #11131a;
+      border: 1px solid #292d38;
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
 
-.secondary {
-  background: #30333a;
-}
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
 
-.danger {
-  background: #d83b4b;
-}
+    .subtitle {
+      color: #9da3b0;
+      margin-bottom: 25px;
+    }
 
-#startScreen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
+    label {
+      display: block;
+      margin: 15px 0 7px;
+      color: #dfe3ea;
+      font-size: 14px;
+    }
 
-.startBox {
-  width: 100%;
-  max-width: 450px;
-  background: #1b1d22;
-  border-radius: 20px;
-  padding: 30px;
-  box-shadow: 0 20px 70px rgba(0,0,0,.45);
-}
+    input {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 12px;
+      border: 1px solid #343946;
+      background: #090b10;
+      color: white;
+      outline: none;
+    }
 
-.startBox h1 {
-  text-align: center;
-  margin-top: 0;
-}
+    input:focus {
+      border-color: #6977ff;
+    }
 
-.startBox p {
-  color: #999;
-  text-align: center;
-  line-height: 1.5;
-}
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 22px;
+    }
 
-.startBox input {
-  width: 100%;
-  padding: 13px;
-  margin-top: 10px;
-  border-radius: 10px;
-  border: 1px solid #3b3e46;
-  background: #111216;
-  color: white;
-}
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 15px;
+      background: #5664ff;
+      color: white;
+      font-weight: bold;
+    }
 
-.startBox button {
-  width: 100%;
-  margin-top: 10px;
-}
+    button:hover {
+      filter: brightness(1.1);
+    }
 
-.divider {
-  height: 1px;
-  background: #30333a;
-  margin: 20px 0;
-}
+    button.secondary {
+      background: #292d38;
+    }
 
-#status {
-  text-align: center;
-  min-height: 20px;
-  color: #aaa;
-  margin-top: 12px;
-}
+    button.danger {
+      background: #b83c4d;
+    }
 
-#app {
-  display: none;
-  min-height: 100vh;
-}
+    .status {
+      min-height: 22px;
+      margin-top: 15px;
+      color: #aeb4c0;
+      font-size: 14px;
+    }
 
-.topbar {
-  min-height: 65px;
-  padding: 10px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #1b1d22;
-  border-bottom: 1px solid #292c33;
-  gap: 10px;
-}
+    .hidden {
+      display: none !important;
+    }
 
-.topbarTitle {
-  font-size: 19px;
-  font-weight: bold;
-}
+    /* ROOM */
 
-.roomInfo {
-  color: #999;
-  font-size: 12px;
-  margin-top: 3px;
-}
+    #roomScreen {
+      width: 100%;
+      min-height: 100vh;
+      padding: 16px;
+    }
 
-#mainArea {
-  padding: 18px;
-  max-width: 1500px;
-  margin: auto;
-}
+    .roomHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
 
-.contentGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 15px;
-}
+    .roomTitle {
+      font-size: 22px;
+      font-weight: bold;
+    }
 
-.largeVideoBox {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: #050506;
-  border-radius: 18px;
-  overflow: hidden;
-  border: 3px solid transparent;
-  cursor: pointer;
-}
+    .roomCode {
+      color: #9da3b0;
+      font-size: 14px;
+      margin-top: 4px;
+    }
 
-.largeVideoBox.speaking {
-  border-color: #38d66b;
-}
+    .roomLayout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 15px;
+    }
 
-#largeVideo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+    .videoArea {
+      min-width: 0;
+    }
 
-.videoName {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  background: rgba(0,0,0,.65);
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-size: 13px;
-}
+    .mainVideoBox {
+      position: relative;
+      width: 100%;
+      height: min(68vh, 650px);
+      background: #050609;
+      border: 2px solid #292d38;
+      border-radius: 18px;
+      overflow: hidden;
+    }
 
-.noVideo {
-  position: absolute;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  font-size: 50px;
-  background: #17191e;
-}
+    .mainVideoBox.talking {
+      border-color: #35e06f;
+      box-shadow: 0 0 18px rgba(53,224,111,.45);
+    }
 
-.thumbnails {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 10px 0;
-}
+    #mainVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #050609;
+      cursor: pointer;
+    }
 
-.tile {
-  position: relative;
-  flex: 0 0 150px;
-  height: 95px;
-  background: #17191e;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 3px solid transparent;
-  cursor: pointer;
-}
+    .mainLabel {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      padding: 7px 10px;
+      background: rgba(0,0,0,.7);
+      border-radius: 9px;
+      pointer-events: none;
+    }
 
-.tile.speaking {
-  border-color: #38d66b;
-}
+    .thumbnailRow {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 12px 2px 4px;
+    }
 
-.tile video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+    .thumbnail {
+      position: relative;
+      flex: 0 0 145px;
+      height: 90px;
+      background: #11131a;
+      border: 2px solid #292d38;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+    }
 
-.tileName {
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  bottom: 5px;
-  background: rgba(0,0,0,.65);
-  border-radius: 5px;
-  padding: 4px 5px;
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+    .thumbnail.talking {
+      border-color: #35e06f;
+      box-shadow: 0 0 12px rgba(53,224,111,.4);
+    }
 
-.controls {
-  display: flex;
-  justify-content: center;
-  gap: 9px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
+    .thumbnail video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
-.roomPanel {
-  margin-top: 15px;
-  background: #1b1d22;
-  border-radius: 15px;
-  padding: 15px;
-}
+    .thumbnailName {
+      position: absolute;
+      bottom: 5px;
+      left: 5px;
+      right: 5px;
+      padding: 3px 6px;
+      border-radius: 5px;
+      background: rgba(0,0,0,.7);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-.roomPanel h2 {
-  margin: 0 0 10px;
-  font-size: 16px;
-}
+    /* CHAT */
 
-.participantList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+    .chatPanel {
+      min-height: 500px;
+      height: min(68vh, 650px);
+      background: #11131a;
+      border: 1px solid #292d38;
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-.participantBadge {
-  background: #30333a;
-  border-radius: 999px;
-  padding: 7px 10px;
-  font-size: 12px;
-}
+    .chatHeader {
+      padding: 15px;
+      border-bottom: 1px solid #292d38;
+      font-weight: bold;
+    }
 
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
 
-/* CHAT */
+    .message {
+      margin-bottom: 12px;
+    }
 
-.chatPanel {
-  background: #1b1d22;
-  border-radius: 15px;
-  overflow: hidden;
-  height: 100%;
-  min-height: 500px;
-  display: flex;
-  flex-direction: column;
-}
+    .messageName {
+      font-size: 12px;
+      color: #8e97a8;
+      margin-bottom: 3px;
+    }
 
-.chatHeader {
-  padding: 15px;
-  font-size: 17px;
-  font-weight: bold;
-  border-bottom: 1px solid #30333a;
-}
+    .messageBubble {
+      display: inline-block;
+      max-width: 90%;
+      padding: 8px 11px;
+      border-radius: 10px;
+      background: #252934;
+      word-wrap: break-word;
+    }
 
-.chatMessages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  min-height: 300px;
-}
+    .message.mine .messageBubble {
+      background: #4c59d9;
+    }
 
-.chatMessage {
-  margin-bottom: 11px;
-}
+    .message.moderator .messageName {
+      color: #c4b6ff;
+    }
 
-.chatName {
-  font-size: 12px;
-  font-weight: bold;
-  color: #8f9aff;
-  margin-bottom: 3px;
-}
+    .chatForm {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      border-top: 1px solid #292d38;
+    }
 
-.chatBubble {
-  display: inline-block;
-  max-width: 95%;
-  background: #30333a;
-  padding: 8px 10px;
-  border-radius: 10px;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-}
+    .chatForm input {
+      min-width: 0;
+    }
 
-.chatMessage.mine .chatName {
-  color: #63db86;
-}
+    .chatForm button {
+      flex: 0 0 auto;
+    }
 
-.chatMessage.mine .chatBubble {
-  background: #35483c;
-}
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
 
-.chatInputArea {
-  display: flex;
-  gap: 7px;
-  padding: 10px;
-  border-top: 1px solid #30333a;
-}
+    .controls button {
+      min-width: 110px;
+    }
 
-#chatInput {
-  flex: 1;
-  min-width: 0;
-  border: 1px solid #3b3e46;
-  background: #111216;
-  color: white;
-  border-radius: 9px;
-  padding: 10px;
-}
+    @media (max-width: 850px) {
+      .roomLayout {
+        grid-template-columns: 1fr;
+      }
 
-#sendChatButton {
-  padding-left: 14px;
-  padding-right: 14px;
-}
+      .chatPanel {
+        height: 400px;
+      }
 
-.hidden {
-  display: none !important;
-}
+      .mainVideoBox {
+        height: 55vh;
+      }
+    }
 
+    @media (max-width: 550px) {
+      .buttons {
+        grid-template-columns: 1fr;
+      }
 
-@media (max-width: 900px) {
+      #roomScreen {
+        padding: 8px;
+      }
 
-  .contentGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .chatPanel {
-    min-height: 350px;
-    height: 450px;
-  }
-}
-
-@media (max-width: 650px) {
-
-  .topbar {
-    padding: 10px;
-  }
-
-  #mainArea {
-    padding: 10px;
-  }
-
-  .tile {
-    flex-basis: 125px;
-    height: 80px;
-  }
-}
-</style>
+      .mainVideoBox {
+        height: 45vh;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-<div id="startScreen">
-
-  <div class="startBox">
-
-    <h1>🫐 Blueberry Video Chat</h1>
-
-    <p>
-      Create a temporary video call or join
-      one with a room code.
-    </p>
-
-    <input
-      id="nameInput"
-      maxlength="30"
-      placeholder="Your display name"
-      autocomplete="nickname"
-    >
-
-    <button id="createButton">
-      Create Room
-    </button>
-
-    <div class="divider"></div>
-
-    <input
-      id="roomNameInput"
-      maxlength="40"
-      placeholder="Room name"
-    >
-
-    <input
-      id="roomCodeInput"
-      maxlength="12"
-      placeholder="Room code"
-      autocomplete="off"
-    >
-
-    <button
-      id="joinButton"
-      class="secondary"
-    >
-      Join Room
-    </button>
-
-    <div id="status"></div>
-
-  </div>
-
-</div>
-
-
-<div id="app">
-
-  <div class="topbar">
-
-    <div>
-      <div
-        id="roomTitle"
-        class="topbarTitle"
-      >
-        Blueberry Video Chat
+  <!-- JOIN SCREEN -->
+  <div id="joinScreen" class="page">
+    <div class="panel">
+      <h1>Blueberry Video Chat</h1>
+      <div class="subtitle">
+        Video, audio, and text chat.
       </div>
 
-      <div
-        id="roomInfo"
-        class="roomInfo"
-      ></div>
+      <label for="nameInput">Your name</label>
+      <input
+        id="nameInput"
+        maxlength="30"
+        placeholder="Enter your name"
+        autocomplete="off"
+      >
+
+      <label for="roomNameInput">Room name</label>
+      <input
+        id="roomNameInput"
+        maxlength="50"
+        placeholder="Example: Game Night"
+        autocomplete="off"
+      >
+
+      <label for="roomCodeInput">
+        Room code
+        <span style="color:#777d89">(leave blank for a random code)</span>
+      </label>
+
+      <input
+        id="roomCodeInput"
+        maxlength="30"
+        placeholder="Example: FRIENDS123"
+        autocomplete="off"
+      >
+
+      <div class="buttons">
+        <button id="createButton">
+          Create Room
+        </button>
+
+        <button id="joinButton" class="secondary">
+          Join Room
+        </button>
+      </div>
+
+      <div id="joinStatus" class="status"></div>
     </div>
-
-    <button
-      id="leaveButton"
-      class="danger"
-    >
-      Leave
-    </button>
-
   </div>
 
+  <!-- ROOM SCREEN -->
+  <div id="roomScreen" class="hidden">
 
-  <div id="mainArea">
-
-    <div class="contentGrid">
-
+    <div class="roomHeader">
       <div>
+        <div id="roomTitle" class="roomTitle">
+          Room
+        </div>
 
-        <div
-          id="largeVideoBox"
-          class="largeVideoBox"
-        >
+        <div id="roomCodeDisplay" class="roomCode">
+          Code:
+        </div>
+      </div>
 
+      <button id="leaveButton" class="danger">
+        Leave Room
+      </button>
+    </div>
+
+    <div class="roomLayout">
+
+      <div class="videoArea">
+
+        <div id="mainVideoBox" class="mainVideoBox">
           <video
-            id="largeVideo"
+            id="mainVideo"
             autoplay
             playsinline
             muted
           ></video>
 
-          <div
-            id="noVideo"
-            class="noVideo"
-          >
-            👤
-          </div>
-
-          <div
-            id="largeVideoName"
-            class="videoName"
-          >
+          <div id="mainLabel" class="mainLabel">
             You
           </div>
-
         </div>
 
-
-        <div
-          id="thumbnails"
-          class="thumbnails"
-        ></div>
-
+        <div id="thumbnailRow" class="thumbnailRow"></div>
 
         <div class="controls">
-
           <button id="muteButton">
-            🎤 Mute
+            Mute Mic
           </button>
 
           <button id="cameraButton">
-            📷 Camera Off
+            Turn Camera Off
           </button>
-
-          <button
-            id="fullscreenButton"
-            class="secondary"
-          >
-            ⛶ Fullscreen
-          </button>
-
-        </div>
-
-
-        <div class="roomPanel">
-
-          <h2>
-            People in the call
-          </h2>
-
-          <div
-            id="participantList"
-            class="participantList"
-          ></div>
-
         </div>
 
       </div>
 
-
-      <!-- CHAT -->
-
       <div class="chatPanel">
 
         <div class="chatHeader">
-          💬 Room Chat
+          Chat
         </div>
 
-        <div
-          id="chatMessages"
-          class="chatMessages"
-        ></div>
+        <div id="messages"></div>
 
-        <div class="chatInputArea">
-
+        <form id="chatForm" class="chatForm">
           <input
             id="chatInput"
             maxlength="1000"
@@ -559,2035 +455,1278 @@ button:disabled {
             autocomplete="off"
           >
 
-          <button id="sendChatButton">
+          <button type="submit">
             Send
           </button>
-
-        </div>
+        </form>
 
       </div>
 
     </div>
-
   </div>
 
-</div>
-
-
 <script>
-const socketUrl =
-  (
-    location.protocol === "https:"
-      ? "wss://"
-      : "ws://"
-  ) +
-  location.host +
-  "/ws";
+  const joinScreen = document.getElementById("joinScreen");
+  const roomScreen = document.getElementById("roomScreen");
 
+  const nameInput = document.getElementById("nameInput");
+  const roomNameInput = document.getElementById("roomNameInput");
+  const roomCodeInput = document.getElementById("roomCodeInput");
 
-let ws = null;
-let myId = null;
-let myName = "";
-let localStream = null;
-let currentRoom = null;
-let selectedId = null;
+  const createButton = document.getElementById("createButton");
+  const joinButton = document.getElementById("joinButton");
 
-const participants = new Map();
-const peers = new Map();
-const remoteStreams = new Map();
-const tiles = new Map();
-const pendingCandidates = new Map();
+  const joinStatus = document.getElementById("joinStatus");
 
-let cameraEnabled = true;
-let microphoneEnabled = true;
+  const roomTitle = document.getElementById("roomTitle");
+  const roomCodeDisplay = document.getElementById("roomCodeDisplay");
 
-let audioContext = null;
-let audioAnalyser = null;
-let audioSource = null;
-let speakingTimer = null;
+  const mainVideoBox = document.getElementById("mainVideoBox");
+  const mainVideo = document.getElementById("mainVideo");
+  const mainLabel = document.getElementById("mainLabel");
 
+  const thumbnailRow = document.getElementById("thumbnailRow");
 
-const startScreen =
-  document.getElementById("startScreen");
+  const muteButton = document.getElementById("muteButton");
+  const cameraButton = document.getElementById("cameraButton");
+  const leaveButton = document.getElementById("leaveButton");
 
-const app =
-  document.getElementById("app");
+  const messages = document.getElementById("messages");
+  const chatForm = document.getElementById("chatForm");
+  const chatInput = document.getElementById("chatInput");
 
-const nameInput =
-  document.getElementById("nameInput");
+  let socket = null;
 
-const roomNameInput =
-  document.getElementById("roomNameInput");
+  let myId =
+    localStorage.getItem("blueberryUserId") ||
+    crypto.randomUUID();
 
-const roomCodeInput =
-  document.getElementById("roomCodeInput");
+  localStorage.setItem("blueberryUserId", myId);
 
-const createButton =
-  document.getElementById("createButton");
+  let myName =
+    localStorage.getItem("blueberryUserName") || "";
 
-const joinButton =
-  document.getElementById("joinButton");
+  nameInput.value = myName;
 
-const statusElement =
-  document.getElementById("status");
+  let localStream = null;
 
-const roomTitle =
-  document.getElementById("roomTitle");
+  let currentRoom = null;
 
-const roomInfo =
-  document.getElementById("roomInfo");
+  const peers = new Map();
 
-const largeVideo =
-  document.getElementById("largeVideo");
+  const participants = new Map();
 
-const largeVideoBox =
-  document.getElementById("largeVideoBox");
+  const remoteStreams = new Map();
 
-const largeVideoName =
-  document.getElementById("largeVideoName");
+  const pendingIce = new Map();
 
-const noVideo =
-  document.getElementById("noVideo");
+  const speakingDetectors = new Map();
 
-const thumbnails =
-  document.getElementById("thumbnails");
+  let selectedId = null;
 
-const participantList =
-  document.getElementById("participantList");
+  let micEnabled = true;
+  let cameraEnabled = true;
 
-const muteButton =
-  document.getElementById("muteButton");
+  /*
+   * WebSocket URL
+   */
+  function getWebSocketUrl() {
+    const protocol =
+      location.protocol === "https:"
+        ? "wss:"
+        : "ws:";
 
-const cameraButton =
-  document.getElementById("cameraButton");
-
-const fullscreenButton =
-  document.getElementById("fullscreenButton");
-
-const leaveButton =
-  document.getElementById("leaveButton");
-
-const chatMessages =
-  document.getElementById("chatMessages");
-
-const chatInput =
-  document.getElementById("chatInput");
-
-const sendChatButton =
-  document.getElementById("sendChatButton");
-
-
-function setStatus(text) {
-  statusElement.textContent =
-    text || "";
-}
-
-
-function getClientId() {
-
-  let id =
-    localStorage.getItem(
-      "blueberryClientId"
-    );
-
-  if (!id) {
-
-    id =
-      crypto.randomUUID();
-
-    localStorage.setItem(
-      "blueberryClientId",
-      id
-    );
+    return `${protocol}//${location.host}/ws`;
   }
 
-  return id;
-}
+  /*
+   * Escape HTML
+   */
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
+  /*
+   * CONNECT
+   */
+  function connectSocket() {
+    return new Promise((resolve, reject) => {
+      socket = new WebSocket(getWebSocketUrl());
 
-function saveName(name) {
+      socket.addEventListener("open", () => {
+        socket.send(JSON.stringify({
+          type: "register",
+          id: myId,
+          name: myName
+        }));
 
-  localStorage.setItem(
-    "blueberryDisplayName",
-    name
-  );
-}
+        resolve();
+      });
 
+      socket.addEventListener("error", () => {
+        reject(new Error("Could not connect to the server."));
+      });
 
-function connectSocket() {
+      socket.addEventListener("message", event => {
+        handleMessage(JSON.parse(event.data));
+      });
 
-  return new Promise(
-    (resolve, reject) => {
+      socket.addEventListener("close", () => {
+        socket = null;
+      });
+    });
+  }
 
-      ws =
-        new WebSocket(
-          socketUrl
-        );
-
-      let finished = false;
-
-      ws.addEventListener(
-        "open",
-        () => {
-
-          ws.send(
-            JSON.stringify({
-              type: "register",
-              id:
-                getClientId(),
-              name:
-                myName
-            })
-          );
-        }
-      );
-
-
-      ws.addEventListener(
-        "message",
-        event => {
-
-          let message;
-
-          try {
-            message =
-              JSON.parse(
-                event.data
-              );
-          }
-
-          catch {
-            return;
-          }
-
-          if (
-            message.type ===
-            "registered"
-          ) {
-
-            myId =
-              message.userId;
-
-            if (!finished) {
-
-              finished = true;
-              resolve();
-            }
-          }
-
-          handleMessage(
-            message
-          );
-        }
-      );
-
-
-      ws.addEventListener(
-        "error",
-        () => {
-
-          if (!finished) {
-
-            finished = true;
-
-            reject(
-              new Error(
-                "Could not connect to the server."
-              )
-            );
-          }
-        }
-      );
-
-
-      ws.addEventListener(
-        "close",
-        () => {
-
-          if (!finished) {
-
-            finished = true;
-
-            reject(
-              new Error(
-                "Connection closed."
-              )
-            );
-          }
-        }
-      );
-
+  /*
+   * SEND
+   */
+  function send(data) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
     }
-  );
-}
 
-
-function handleMessage(message) {
-
-  switch (message.type) {
-
-    case "roomJoined":
-      handleRoomJoined(message);
-      break;
-
-    case "userJoined":
-      handleUserJoined(message.user);
-      break;
-
-    case "userLeft":
-      handleUserLeft(message.userId);
-      break;
-
-    case "userNameChanged":
-      handleUserNameChanged(
-        message.userId,
-        message.name
-      );
-      break;
-
-    case "signal":
-      handleSignal(message);
-      break;
-
-    case "chatMessage":
-      addChatMessage(
-        message.message
-      );
-      break;
-
-    case "kicked":
-      alert(
-        message.message ||
-        "You were kicked."
-      );
-
-      cleanupCall();
-      break;
-
-    case "banned":
-      alert(
-        message.message ||
-        "You were banned."
-      );
-
-      cleanupCall();
-      break;
-
-    case "roomLeft":
-      cleanupCall();
-      break;
-
-    case "error":
-      if (
-        app.style.display ===
-        "none"
-      ) {
-        setStatus(
-          message.message
-        );
-      }
-
-      else {
-        alert(
-          message.message ||
-          "Something went wrong."
-        );
-      }
-
-      break;
-  }
-}
-
-
-async function getMedia() {
-
-  if (localStream) {
-    return;
+    socket.send(JSON.stringify(data));
   }
 
-  localStream =
-    await navigator.mediaDevices
-      .getUserMedia({
+  /*
+   * CAMERA + MIC
+   *
+   * Get these BEFORE joining the room so that normal users
+   * can immediately publish their streams to everyone.
+   */
+  async function getMedia() {
+    if (localStream) {
+      return localStream;
+    }
+
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true
       });
 
-  cameraEnabled = true;
-  microphoneEnabled = true;
-
-  largeVideo.srcObject =
-    localStream;
-
-  updateControls();
-
-  startSpeakingDetection();
-}
-
-
-async function createRoom() {
-
-  const name =
-    nameInput.value.trim();
-
-  if (!name) {
-
-    setStatus(
-      "Enter your display name first."
-    );
-
-    return;
-  }
-
-  try {
-
-    myName = name;
-    saveName(name);
-
-    createButton.disabled = true;
-    joinButton.disabled = true;
-
-    setStatus(
-      "Starting camera and microphone..."
-    );
-
-    await getMedia();
-
-    await connectSocket();
-
-    const roomName =
-      roomNameInput.value.trim() ||
-      `${myName}'s Room`;
-
-    ws.send(
-      JSON.stringify({
-        type: "createRoom",
-        name: roomName
-      })
-    );
-
-    setStatus(
-      "Creating room..."
-    );
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-    setStatus(
-      error.message
-    );
-
-    createButton.disabled = false;
-    joinButton.disabled = false;
-  }
-}
-
-
-async function joinRoom() {
-
-  const name =
-    nameInput.value.trim();
-
-  const code =
-    roomCodeInput.value
-      .trim()
-      .toUpperCase();
-
-  if (!name) {
-
-    setStatus(
-      "Enter your display name first."
-    );
-
-    return;
-  }
-
-  if (!code) {
-
-    setStatus(
-      "Enter a room code."
-    );
-
-    return;
-  }
-
-  try {
-
-    myName = name;
-    saveName(name);
-
-    createButton.disabled = true;
-    joinButton.disabled = true;
-
-    setStatus(
-      "Starting camera and microphone..."
-    );
-
-    await getMedia();
-
-    await connectSocket();
-
-    ws.send(
-      JSON.stringify({
-        type: "joinRoom",
-        code
-      })
-    );
-
-    setStatus(
-      "Joining room..."
-    );
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-    setStatus(
-      error.message
-    );
-
-    createButton.disabled = false;
-    joinButton.disabled = false;
-  }
-}
-
-
-function handleRoomJoined(message) {
-
-  currentRoom =
-    message.room;
-
-  myId =
-    message.self.id;
-
-  participants.clear();
-  peers.clear();
-  remoteStreams.clear();
-  pendingCandidates.clear();
-  tiles.clear();
-
-  thumbnails.innerHTML = "";
-  chatMessages.innerHTML = "";
-
-  participants.set(
-    myId,
-    {
-      id: myId,
-      name: myName,
-      role: "user"
+      return localStream;
+    } catch (error) {
+      throw new Error(
+        "Camera/microphone permission was denied or unavailable."
+      );
     }
-  );
-
-  for (
-    const user of
-    message.users || []
-  ) {
-
-    participants.set(
-      user.id,
-      user
-    );
   }
 
-  selectedId =
-    myId;
+  /*
+   * CREATE ROOM
+   */
+  async function createRoom() {
+    myName = nameInput.value.trim();
 
-  showApp();
+    if (!myName) {
+      joinStatus.textContent = "Enter your name first.";
+      return;
+    }
 
-  for (
-    const messageItem of
-    message.messages || []
-  ) {
+    const customRoomName =
+      roomNameInput.value.trim();
 
-    addChatMessage(
-      messageItem
+    const customRoomCode =
+      roomCodeInput.value.trim();
+
+    if (!customRoomName) {
+      joinStatus.textContent = "Enter a room name.";
+      return;
+    }
+
+    joinStatus.textContent =
+      "Getting camera and microphone...";
+
+    localStorage.setItem(
+      "blueberryUserName",
+      myName
     );
+
+    try {
+      await getMedia();
+
+      if (!socket) {
+        await connectSocket();
+      }
+
+      /*
+       * THIS IS THE IMPORTANT PART.
+       *
+       * The exact room code typed by the user is sent
+       * to the server.
+       *
+       * Blank = server generates a random code.
+       */
+      send({
+        type: "createRoom",
+        roomName: customRoomName,
+        roomCode: customRoomCode
+      });
+
+      joinStatus.textContent =
+        customRoomCode
+          ? `Creating room "${customRoomName}" with code "${customRoomCode}"...`
+          : `Creating room "${customRoomName}"...`;
+
+    } catch (error) {
+      joinStatus.textContent = error.message;
+    }
   }
 
-  renderParticipants();
+  /*
+   * JOIN EXISTING ROOM
+   */
+  async function joinRoom() {
+    myName = nameInput.value.trim();
 
-  selectParticipant(
-    myId
-  );
+    if (!myName) {
+      joinStatus.textContent = "Enter your name first.";
+      return;
+    }
 
-  for (
-    const user of
-    message.users || []
-  ) {
+    const code = roomCodeInput.value.trim();
 
-    if (
-      shouldCreateOffer(
-        myId,
-        user.id
-      )
-    ) {
+    if (!code) {
+      joinStatus.textContent = "Enter a room code.";
+      return;
+    }
 
+    localStorage.setItem(
+      "blueberryUserName",
+      myName
+    );
+
+    joinStatus.textContent =
+      "Getting camera and microphone...";
+
+    try {
+      await getMedia();
+
+      if (!socket) {
+        await connectSocket();
+      }
+
+      send({
+        type: "joinRoom",
+        roomCode: code
+      });
+
+      joinStatus.textContent =
+        "Joining room...";
+
+    } catch (error) {
+      joinStatus.textContent = error.message;
+    }
+  }
+
+  /*
+   * ROOM JOINED
+   */
+  function enterRoom(room, existingParticipants, oldMessages) {
+    currentRoom = room;
+
+    joinScreen.classList.add("hidden");
+    roomScreen.classList.remove("hidden");
+
+    roomTitle.textContent = room.name;
+    roomCodeDisplay.textContent =
+      `Code: ${room.code}`;
+
+    messages.innerHTML = "";
+
+    for (const message of oldMessages || []) {
+      addChatMessage(message);
+    }
+
+    participants.clear();
+
+    for (const participant of existingParticipants || []) {
+      participants.set(
+        participant.id,
+        participant
+      );
+    }
+
+    /*
+     * Select ourselves initially.
+     */
+    selectedId = myId;
+
+    renderVideos();
+
+    /*
+     * Create WebRTC connections to existing users.
+     */
+    for (const participant of existingParticipants || []) {
       createPeerConnection(
-        user.id,
+        participant.id,
         true
       );
     }
   }
-}
 
-
-function handleUserJoined(user) {
-
-  if (!user || !user.id) {
-    return;
-  }
-
-  participants.set(
-    user.id,
-    user
-  );
-
-  renderParticipants();
-
-  if (
-    shouldCreateOffer(
-      myId,
-      user.id
-    )
-  ) {
-
-    createPeerConnection(
-      user.id,
-      true
-    );
-  }
-}
-
-
-function handleUserLeft(userId) {
-
-  participants.delete(
-    userId
-  );
-
-  const peer =
-    peers.get(
-      userId
-    );
-
-  if (peer) {
-
-    try {
-      peer.close();
+  /*
+   * CREATE PEER CONNECTION
+   */
+  async function createPeerConnection(remoteId, makeOffer) {
+    if (peers.has(remoteId)) {
+      return peers.get(remoteId);
     }
 
-    catch {}
-
-    peers.delete(
-      userId
-    );
-  }
-
-  remoteStreams.delete(
-    userId
-  );
-
-  const tile =
-    tiles.get(
-      userId
-    );
-
-  if (tile) {
-
-    tile.remove();
-
-    tiles.delete(
-      userId
-    );
-  }
-
-  if (
-    selectedId ===
-    userId
-  ) {
-
-    selectedId =
-      myId;
-
-    selectParticipant(
-      myId
-    );
-  }
-
-  renderParticipants();
-}
-
-
-function handleUserNameChanged(
-  userId,
-  name
-) {
-
-  const user =
-    participants.get(
-      userId
-    );
-
-  if (!user) {
-    return;
-  }
-
-  user.name =
-    name;
-
-  const tile =
-    tiles.get(
-      userId
-    );
-
-  if (tile) {
-
-    tile.querySelector(
-      ".tileName"
-    ).textContent =
-      name;
-  }
-
-  if (
-    selectedId ===
-    userId
-  ) {
-
-    largeVideoName.textContent =
-      name;
-  }
-
-  renderParticipants();
-}
-
-
-/* WEBRTC */
-
-function shouldCreateOffer(
-  a,
-  b
-) {
-  return String(a) <
-    String(b);
-}
-
-
-function createPeerConnection(
-  userId,
-  createOffer
-) {
-
-  if (
-    peers.has(userId)
-  ) {
-    return peers.get(userId);
-  }
-
-  const peer =
-    new RTCPeerConnection({
+    const pc = new RTCPeerConnection({
       iceServers: [
         {
-          urls:
-            "stun:stun.l.google.com:19302"
+          urls: "stun:stun.l.google.com:19302"
         }
       ]
     });
 
-  peers.set(
-    userId,
-    peer
-  );
+    peers.set(remoteId, pc);
 
-  if (localStream) {
+    pendingIce.set(remoteId, []);
 
-    for (
-      const track of
-      localStream.getTracks()
-    ) {
-
-      peer.addTrack(
-        track,
-        localStream
-      );
+    /*
+     * Add our camera and microphone.
+     */
+    if (localStream) {
+      for (const track of localStream.getTracks()) {
+        pc.addTrack(track, localStream);
+      }
     }
-  }
 
-  peer.addEventListener(
-    "icecandidate",
-    event => {
-
+    pc.onicecandidate = event => {
       if (!event.candidate) {
         return;
       }
 
-      sendSignal(
-        userId,
-        {
-          type:
-            "candidate",
-          candidate:
-            event.candidate
+      send({
+        type: "signal",
+        target: remoteId,
+        signal: {
+          type: "ice",
+          candidate: event.candidate
         }
-      );
-    }
-  );
+      });
+    };
 
-
-  peer.addEventListener(
-    "track",
-    event => {
-
-      let stream =
-        remoteStreams.get(
-          userId
-        );
+    pc.ontrack = event => {
+      let stream = event.streams[0];
 
       if (!stream) {
+        stream = remoteStreams.get(remoteId);
 
-        stream =
-          new MediaStream();
+        if (!stream) {
+          stream = new MediaStream();
+          remoteStreams.set(remoteId, stream);
+        }
 
-        remoteStreams.set(
-          userId,
-          stream
-        );
+        if (!stream.getTracks().includes(event.track)) {
+          stream.addTrack(event.track);
+        }
+      } else {
+        remoteStreams.set(remoteId, stream);
       }
 
-      if (
-        !stream
-          .getTracks()
-          .some(
-            track =>
-              track.id ===
-              event.track.id
-          )
-      ) {
-
-        stream.addTrack(
-          event.track
-        );
-      }
-
-      updateRemoteTile(
-        userId,
+      renderVideos();
+      setupSpeakingDetection(
+        remoteId,
         stream
       );
+    };
 
+    pc.onconnectionstatechange = () => {
       if (
-        selectedId ===
-        userId
+        pc.connectionState === "failed" ||
+        pc.connectionState === "closed" ||
+        pc.connectionState === "disconnected"
       ) {
+        /*
+         * Don't immediately destroy on disconnected because
+         * WebRTC can recover.
+         */
+      }
+    };
 
-        largeVideo.srcObject =
-          stream;
+    /*
+     * Only one side creates the initial offer.
+     */
+    if (makeOffer) {
+      try {
+        const offer = await pc.createOffer();
 
-        largeVideo.muted =
-          false;
+        await pc.setLocalDescription(offer);
 
-        noVideo.style.display =
-          "none";
+        send({
+          type: "signal",
+          target: remoteId,
+          signal: {
+            type: "offer",
+            description: pc.localDescription
+          }
+        });
+      } catch (error) {
+        console.error(error);
       }
     }
-  );
 
-
-  peer.addEventListener(
-    "connectionstatechange",
-    () => {
-
-      if (
-        peer.connectionState ===
-          "failed" ||
-        peer.connectionState ===
-          "closed"
-      ) {
-
-        peers.delete(
-          userId
-        );
-      }
-    }
-  );
-
-
-  if (createOffer) {
-
-    peer.createOffer()
-      .then(
-        offer =>
-          peer.setLocalDescription(
-            offer
-          )
-      )
-      .then(
-        () => {
-
-          sendSignal(
-            userId,
-            {
-              type:
-                "offer",
-              offer:
-                peer.localDescription
-            }
-          );
-        }
-      )
-      .catch(
-        console.error
-      );
+    return pc;
   }
 
-  return peer;
-}
+  /*
+   * HANDLE WEBRTC SIGNAL
+   */
+  async function handleSignal(from, signal) {
+    let pc = peers.get(from);
 
-
-async function handleSignal(
-  message
-) {
-
-  const userId =
-    message.from;
-
-  const data =
-    message.data;
-
-  if (!userId || !data) {
-    return;
-  }
-
-  let peer =
-    peers.get(
-      userId
-    );
-
-  if (!peer) {
-
-    peer =
-      createPeerConnection(
-        userId,
+    if (!pc) {
+      pc = await createPeerConnection(
+        from,
         false
       );
-  }
-
-  try {
-
-    if (
-      data.type ===
-      "offer"
-    ) {
-
-      await peer.setRemoteDescription(
-        new RTCSessionDescription(
-          data.offer
-        )
-      );
-
-      await flushCandidates(
-        userId,
-        peer
-      );
-
-      const answer =
-        await peer.createAnswer();
-
-      await peer.setLocalDescription(
-        answer
-      );
-
-      sendSignal(
-        userId,
-        {
-          type:
-            "answer",
-          answer:
-            peer.localDescription
-        }
-      );
     }
-
-    else if (
-      data.type ===
-      "answer"
-    ) {
-
-      await peer.setRemoteDescription(
-        new RTCSessionDescription(
-          data.answer
-        )
-      );
-
-      await flushCandidates(
-        userId,
-        peer
-      );
-    }
-
-    else if (
-      data.type ===
-      "candidate"
-    ) {
-
-      if (
-        peer.remoteDescription
-      ) {
-
-        await peer.addIceCandidate(
-          data.candidate
-        );
-
-      }
-
-      else {
-
-        if (
-          !pendingCandidates.has(
-            userId
-          )
-        ) {
-
-          pendingCandidates.set(
-            userId,
-            []
-          );
-        }
-
-        pendingCandidates
-          .get(userId)
-          .push(
-            data.candidate
-          );
-      }
-    }
-
-  }
-
-  catch (error) {
-
-    console.error(
-      "WebRTC error:",
-      error
-    );
-  }
-}
-
-
-async function flushCandidates(
-  userId,
-  peer
-) {
-
-  const candidates =
-    pendingCandidates.get(
-      userId
-    );
-
-  if (!candidates) {
-    return;
-  }
-
-  pendingCandidates.delete(
-    userId
-  );
-
-  for (
-    const candidate of
-    candidates
-  ) {
 
     try {
-
-      await peer.addIceCandidate(
-        candidate
-      );
-
-    }
-
-    catch (error) {
-
-      console.error(error);
-    }
-  }
-}
-
-
-function sendSignal(
-  target,
-  data
-) {
-
-  if (
-    !ws ||
-    ws.readyState !==
-      WebSocket.OPEN
-  ) {
-    return;
-  }
-
-  ws.send(
-    JSON.stringify({
-      type:
-        "signal",
-      target,
-      data
-    })
-  );
-}
-
-
-/* VIDEO */
-
-function createTile(
-  userId
-) {
-
-  if (
-    tiles.has(userId)
-  ) {
-
-    return tiles.get(
-      userId
-    );
-  }
-
-  const tile =
-    document.createElement(
-      "div"
-    );
-
-  tile.className =
-    "tile";
-
-  const video =
-    document.createElement(
-      "video"
-    );
-
-  video.autoplay = true;
-  video.playsInline = true;
-
-  const label =
-    document.createElement(
-      "div"
-    );
-
-  label.className =
-    "tileName";
-
-  const user =
-    participants.get(
-      userId
-    );
-
-  label.textContent =
-    user?.name ||
-    "User";
-
-  tile.appendChild(video);
-  tile.appendChild(label);
-
-  tile.addEventListener(
-    "click",
-    () => {
-      selectParticipant(
-        userId
-      );
-    }
-  );
-
-  thumbnails.appendChild(
-    tile
-  );
-
-  tiles.set(
-    userId,
-    tile
-  );
-
-  return tile;
-}
-
-
-function updateRemoteTile(
-  userId,
-  stream
-) {
-
-  const tile =
-    createTile(
-      userId
-    );
-
-  const video =
-    tile.querySelector(
-      "video"
-    );
-
-  video.srcObject =
-    stream;
-
-  tile.style.display =
-    userId === selectedId
-      ? "none"
-      : "";
-
-  video.play()
-    .catch(() => {});
-
-  startRemoteSpeakingDetection(
-    userId,
-    stream,
-    tile
-  );
-}
-
-
-function updateLocalTile() {
-
-  if (!myId || !localStream) {
-    return;
-  }
-
-  const tile =
-    createTile(
-      myId
-    );
-
-  tile.querySelector(
-    "video"
-  ).srcObject =
-    localStream;
-
-  tile.style.display =
-    myId === selectedId
-      ? "none"
-      : "";
-}
-
-
-/* SELECT VIDEO */
-
-function selectParticipant(
-  userId
-) {
-
-  if (
-    !participants.has(
-      userId
-    )
-  ) {
-    return;
-  }
-
-  selectedId =
-    userId;
-
-  const user =
-    participants.get(
-      userId
-    );
-
-  largeVideoName.textContent =
-    user.name;
-
-  if (
-    userId ===
-    myId
-  ) {
-
-    largeVideo.srcObject =
-      localStream;
-
-    largeVideo.muted =
-      true;
-
-    noVideo.style.display =
-      "none";
-
-  }
-
-  else {
-
-    const stream =
-      remoteStreams.get(
-        userId
-      );
-
-    if (stream) {
-
-      largeVideo.srcObject =
-        stream;
-
-      largeVideo.muted =
-        false;
-
-      noVideo.style.display =
-        "none";
-
-    }
-
-    else {
-
-      largeVideo.srcObject =
-        null;
-
-      noVideo.style.display =
-        "flex";
-    }
-  }
-
-  for (
-    const [
-      id,
-      tile
-    ] of tiles
-  ) {
-
-    tile.style.display =
-      id === selectedId
-        ? "none"
-        : "";
-  }
-}
-
-
-function renderParticipants() {
-
-  participantList.innerHTML =
-    "";
-
-  for (
-    const user of
-    participants.values()
-  ) {
-
-    const badge =
-      document.createElement(
-        "div"
-      );
-
-    badge.className =
-      "participantBadge";
-
-    badge.textContent =
-      user.id === myId
-        ? `${user.name} (You)`
-        : user.name;
-
-    participantList.appendChild(
-      badge
-    );
-  }
-
-  updateLocalTile();
-
-  for (
-    const [
-      id,
-      stream
-    ] of remoteStreams
-  ) {
-
-    updateRemoteTile(
-      id,
-      stream
-    );
-  }
-}
-
-
-/* SPEAKING DETECTION */
-
-function startSpeakingDetection() {
-
-  if (!localStream) {
-    return;
-  }
-
-  try {
-
-    audioContext =
-      new (
-        window.AudioContext ||
-        window.webkitAudioContext
-      )();
-
-    audioAnalyser =
-      audioContext.createAnalyser();
-
-    audioAnalyser.fftSize =
-      512;
-
-    audioSource =
-      audioContext
-        .createMediaStreamSource(
-          localStream
+      if (signal.type === "offer") {
+        await pc.setRemoteDescription(
+          new RTCSessionDescription(
+            signal.description
+          )
         );
 
-    audioSource.connect(
-      audioAnalyser
-    );
+        const queued =
+          pendingIce.get(from) || [];
 
-    const data =
-      new Uint8Array(
-        audioAnalyser.fftSize
-      );
-
-    speakingTimer =
-      setInterval(
-        () => {
-
-          if (
-            !microphoneEnabled
-          ) {
-            return;
-          }
-
-          audioAnalyser
-            .getByteTimeDomainData(
-              data
+        for (const candidate of queued) {
+          try {
+            await pc.addIceCandidate(
+              new RTCIceCandidate(candidate)
             );
+          } catch {}
+        }
 
-          let total = 0;
+        pendingIce.set(from, []);
 
-          for (
-            const value of data
-          ) {
+        const answer =
+          await pc.createAnswer();
 
-            const n =
-              (value - 128) /
-              128;
+        await pc.setLocalDescription(answer);
 
-            total +=
-              n * n;
+        send({
+          type: "signal",
+          target: from,
+          signal: {
+            type: "answer",
+            description: pc.localDescription
           }
+        });
+      }
 
-          const volume =
-            Math.sqrt(
-              total /
-              data.length
+      if (signal.type === "answer") {
+        await pc.setRemoteDescription(
+          new RTCSessionDescription(
+            signal.description
+          )
+        );
+
+        const queued =
+          pendingIce.get(from) || [];
+
+        for (const candidate of queued) {
+          try {
+            await pc.addIceCandidate(
+              new RTCIceCandidate(candidate)
             );
+          } catch {}
+        }
 
-          const speaking =
-            volume >
-            0.035;
+        pendingIce.set(from, []);
+      }
 
-          const tile =
-            tiles.get(
-              myId
-            );
+      if (signal.type === "ice") {
+        if (!pc.remoteDescription) {
+          const queue =
+            pendingIce.get(from) || [];
 
-          if (speaking) {
+          queue.push(signal.candidate);
 
-            largeVideoBox
-              .classList
-              .add("speaking");
+          pendingIce.set(from, queue);
 
-            if (tile) {
-              tile.classList.add(
-                "speaking"
-              );
-            }
+          return;
+        }
 
-          }
-
-          else {
-
-            largeVideoBox
-              .classList
-              .remove("speaking");
-
-            if (tile) {
-              tile.classList.remove(
-                "speaking"
-              );
-            }
-          }
-
-        },
-        100
-      );
-
-  }
-
-  catch (error) {
-    console.error(error);
-  }
-}
-
-
-/*
- * Visual speaking detection for remote
- * participants.
- */
-function startRemoteSpeakingDetection(
-  userId,
-  stream,
-  tile
-) {
-
-  if (
-    tile.dataset.audioDetection ===
-    "yes"
-  ) {
-    return;
-  }
-
-  if (
-    !stream.getAudioTracks().length
-  ) {
-    return;
-  }
-
-  tile.dataset.audioDetection =
-    "yes";
-
-  try {
-
-    const context =
-      new (
-        window.AudioContext ||
-        window.webkitAudioContext
-      )();
-
-    const analyser =
-      context.createAnalyser();
-
-    analyser.fftSize =
-      512;
-
-    const source =
-      context.createMediaStreamSource(
-        stream
-      );
-
-    source.connect(
-      analyser
-    );
-
-    const data =
-      new Uint8Array(
-        analyser.fftSize
-      );
-
-    const timer =
-      setInterval(
-        () => {
-
-          if (
-            !document.body.contains(
-              tile
+        try {
+          await pc.addIceCandidate(
+            new RTCIceCandidate(
+              signal.candidate
             )
-          ) {
+          );
+        } catch {}
+      }
 
-            clearInterval(timer);
+    } catch (error) {
+      console.error(
+        "WebRTC signaling error:",
+        error
+      );
+    }
+  }
 
-            context.close()
-              .catch(() => {});
+  /*
+   * USER JOINED
+   */
+  function handleUserJoined(participant) {
+    participants.set(
+      participant.id,
+      participant
+    );
 
-            return;
-          }
+    renderVideos();
 
-          analyser
-            .getByteTimeDomainData(
-              data
-            );
+    /*
+     * Deterministic offer:
+     * the user with the lower ID creates the offer.
+     */
+    const shouldOffer =
+      String(myId) <
+      String(participant.id);
 
-          let total = 0;
+    createPeerConnection(
+      participant.id,
+      shouldOffer
+    );
+  }
 
-          for (
-            const value of data
-          ) {
+  /*
+   * USER LEFT
+   */
+  function handleUserLeft(id) {
+    participants.delete(id);
 
-            const n =
-              (value - 128) /
-              128;
+    const pc = peers.get(id);
 
-            total +=
-              n * n;
-          }
+    if (pc) {
+      try {
+        pc.close();
+      } catch {}
+    }
 
-          const volume =
-            Math.sqrt(
-              total /
-              data.length
-            );
+    peers.delete(id);
+    pendingIce.delete(id);
+    remoteStreams.delete(id);
 
-          if (
-            volume >
-            0.035
-          ) {
+    const detector =
+      speakingDetectors.get(id);
 
-            tile.classList.add(
-              "speaking"
-            );
+    if (detector) {
+      try {
+        detector.stop();
+      } catch {}
+    }
 
-            if (
-              selectedId ===
-              userId
-            ) {
+    speakingDetectors.delete(id);
 
-              largeVideoBox
-                .classList
-                .add("speaking");
-            }
+    if (selectedId === id) {
+      selectedId = myId;
+    }
 
-          }
+    renderVideos();
+  }
 
-          else {
+  /*
+   * VIDEO RENDERING
+   */
+  function renderVideos() {
+    if (!localStream) {
+      return;
+    }
 
-            tile.classList.remove(
-              "speaking"
-            );
+    const all = [
+      {
+        id: myId,
+        name: myName,
+        stream: localStream,
+        local: true
+      }
+    ];
 
-            if (
-              selectedId ===
-              userId
-            ) {
+    for (const participant of participants.values()) {
+      if (participant.id === myId) {
+        continue;
+      }
 
-              largeVideoBox
-                .classList
-                .remove("speaking");
-            }
-          }
+      const stream =
+        remoteStreams.get(
+          participant.id
+        );
 
-        },
-        100
+      all.push({
+        id: participant.id,
+        name: participant.name,
+        stream,
+        local: false
+      });
+    }
+
+    let selected =
+      all.find(item =>
+        item.id === selectedId
       );
 
+    if (!selected) {
+      selected = all[0];
+      selectedId = selected.id;
+    }
+
+    mainVideo.srcObject =
+      selected.stream || null;
+
+    mainVideo.muted =
+      selected.local;
+
+    mainLabel.textContent =
+      selected.local
+        ? `${selected.name} (You)`
+        : selected.name;
+
+    thumbnailRow.innerHTML = "";
+
+    for (const item of all) {
+      if (item.id === selected.id) {
+        continue;
+      }
+
+      const thumbnail =
+        document.createElement("div");
+
+      thumbnail.className =
+        "thumbnail";
+
+      thumbnail.dataset.id =
+        item.id;
+
+      const video =
+        document.createElement("video");
+
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = item.local;
+
+      if (item.stream) {
+        video.srcObject =
+          item.stream;
+      }
+
+      const name =
+        document.createElement("div");
+
+      name.className =
+        "thumbnailName";
+
+      name.textContent =
+        item.local
+          ? `${item.name} (You)`
+          : item.name;
+
+      thumbnail.appendChild(video);
+      thumbnail.appendChild(name);
+
+      thumbnail.addEventListener(
+        "click",
+        () => {
+          selectedId = item.id;
+          renderVideos();
+        }
+      );
+
+      thumbnailRow.appendChild(
+        thumbnail
+      );
+    }
+
+    /*
+     * Make sure the main video can play.
+     */
+    mainVideo.play().catch(() => {});
+
+    updateTalkingVisuals();
   }
 
-  catch (error) {
-    console.error(error);
-  }
-}
+  /*
+   * FULLSCREEN VIDEO
+   *
+   * Clicking the large video enters fullscreen.
+   * Clicking it again exits fullscreen.
+   */
+  mainVideo.addEventListener(
+    "click",
+    async () => {
+      try {
+        if (
+          document.fullscreenElement
+        ) {
+          await document.exitFullscreen();
+        } else {
+          await mainVideo.requestFullscreen();
+        }
+      } catch {}
+    }
+  );
 
-
-/* CHAT */
-
-function addChatMessage(
-  message
-) {
-
-  if (!message) {
-    return;
-  }
-
-  const wrapper =
-    document.createElement(
-      "div"
-    );
-
-  wrapper.className =
-    "chatMessage";
-
-  if (
-    message.userId ===
-    myId
+  /*
+   * TALKING DETECTION
+   */
+  function setupSpeakingDetection(
+    id,
+    stream
   ) {
+    if (
+      speakingDetectors.has(id)
+    ) {
+      return;
+    }
 
-    wrapper.classList.add(
-      "mine"
-    );
+    const audioTracks =
+      stream.getAudioTracks();
+
+    if (!audioTracks.length) {
+      return;
+    }
+
+    try {
+      const AudioContext =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+      const context =
+        new AudioContext();
+
+      const source =
+        context.createMediaStreamSource(
+          stream
+        );
+
+      const analyser =
+        context.createAnalyser();
+
+      analyser.fftSize = 512;
+
+      const data =
+        new Uint8Array(
+          analyser.fftSize
+        );
+
+      source.connect(analyser);
+
+      let talking = false;
+
+      function check() {
+        if (
+          !speakingDetectors.has(id)
+        ) {
+          return;
+        }
+
+        analyser.getByteTimeDomainData(
+          data
+        );
+
+        let total = 0;
+
+        for (let i = 0; i < data.length; i++) {
+          const value =
+            (data[i] - 128) / 128;
+
+          total += value * value;
+        }
+
+        const volume =
+          Math.sqrt(
+            total / data.length
+          );
+
+        const newTalking =
+          volume > 0.035;
+
+        if (newTalking !== talking) {
+          talking = newTalking;
+
+          speakingDetectors
+            .get(id)
+            .talking = talking;
+
+          updateTalkingVisuals();
+        }
+
+        requestAnimationFrame(check);
+      }
+
+      speakingDetectors.set(id, {
+        context,
+        analyser,
+        talking: false,
+        stop() {
+          try {
+            source.disconnect();
+          } catch {}
+
+          try {
+            analyser.disconnect();
+          } catch {}
+
+          try {
+            context.close();
+          } catch {}
+        }
+      });
+
+      check();
+
+    } catch (error) {
+      console.error(
+        "Speaking detection failed:",
+        error
+      );
+    }
   }
 
-  const name =
-    document.createElement(
-      "div"
-    );
-
-  name.className =
-    "chatName";
-
-  name.textContent =
-    message.name ||
-    "User";
-
-  const bubble =
-    document.createElement(
-      "div"
-    );
-
-  bubble.className =
-    "chatBubble";
-
-  bubble.textContent =
-    message.message || "";
-
-  wrapper.appendChild(
-    name
-  );
-
-  wrapper.appendChild(
-    bubble
-  );
-
-  chatMessages.appendChild(
-    wrapper
-  );
-
-  chatMessages.scrollTop =
-    chatMessages.scrollHeight;
-}
-
-
-function sendChat() {
-
-  const text =
-    chatInput.value.trim();
-
-  if (!text) {
-    return;
-  }
-
-  if (
-    !ws ||
-    ws.readyState !==
-      WebSocket.OPEN
-  ) {
-    return;
-  }
-
-  ws.send(
-    JSON.stringify({
-      type:
-        "chat",
-      message:
-        text
-    })
-  );
-
-  chatInput.value =
-    "";
-
-  chatInput.focus();
-}
-
-
-/* UI */
-
-function showApp() {
-
-  startScreen.style.display =
-    "none";
-
-  app.style.display =
-    "block";
-
-  roomTitle.textContent =
-    currentRoom?.name ||
-    "Video Chat";
-
-  roomInfo.textContent =
-    `Room code: ${currentRoom?.code || ""}`;
-}
-
-
-function updateControls() {
-
-  muteButton.textContent =
-    microphoneEnabled
-      ? "🎤 Mute"
-      : "🔇 Unmute";
-
-  cameraButton.textContent =
-    cameraEnabled
-      ? "📷 Camera Off"
-      : "📷 Camera On";
-}
-
-
-/* CONTROLS */
-
-muteButton.addEventListener(
-  "click",
-  () => {
-
+  function setupLocalSpeakingDetection() {
     if (!localStream) {
       return;
     }
 
-    microphoneEnabled =
-      !microphoneEnabled;
-
-    for (
-      const track of
-      localStream.getAudioTracks()
-    ) {
-
-      track.enabled =
-        microphoneEnabled;
-    }
-
-    updateControls();
+    setupSpeakingDetection(
+      myId,
+      localStream
+    );
   }
-);
 
+  function updateTalkingVisuals() {
+    const localDetector =
+      speakingDetectors.get(myId);
 
-cameraButton.addEventListener(
-  "click",
-  () => {
+    mainVideoBox.classList.toggle(
+      "talking",
+      Boolean(
+        speakingDetectors.get(
+          selectedId
+        )?.talking
+      )
+    );
 
-    if (!localStream) {
-      return;
-    }
+    document
+      .querySelectorAll(".thumbnail")
+      .forEach(thumbnail => {
+        const id =
+          thumbnail.dataset.id;
 
-    cameraEnabled =
-      !cameraEnabled;
-
-    for (
-      const track of
-      localStream.getVideoTracks()
-    ) {
-
-      track.enabled =
-        cameraEnabled;
-    }
-
-    updateControls();
+        thumbnail.classList.toggle(
+          "talking",
+          Boolean(
+            speakingDetectors.get(
+              id
+            )?.talking
+          )
+        );
+      });
   }
-);
 
+  /*
+   * CHAT
+   */
+  function addChatMessage(message) {
+    const wrapper =
+      document.createElement("div");
 
-fullscreenButton.addEventListener(
-  "click",
-  () => {
+    wrapper.className =
+      "message";
 
-    if (
-      document.fullscreenElement
-    ) {
-
-      document.exitFullscreen()
-        .catch(() => {});
-
+    if (message.userId === myId) {
+      wrapper.classList.add("mine");
     }
 
-    else {
-
-      largeVideoBox
-        .requestFullscreen()
-        .catch(() => {});
+    if (message.moderator) {
+      wrapper.classList.add("moderator");
     }
+
+    const name =
+      document.createElement("div");
+
+    name.className =
+      "messageName";
+
+    name.textContent =
+      message.moderator
+        ? `${message.name} • Moderator`
+        : message.name;
+
+    const bubble =
+      document.createElement("div");
+
+    bubble.className =
+      "messageBubble";
+
+    bubble.textContent =
+      message.text;
+
+    wrapper.appendChild(name);
+    wrapper.appendChild(bubble);
+
+    messages.appendChild(wrapper);
+
+    messages.scrollTop =
+      messages.scrollHeight;
   }
-);
 
-
-largeVideoBox.addEventListener(
-  "click",
-  () => {
-
-    if (
-      document.fullscreenElement
-    ) {
-
-      document.exitFullscreen()
-        .catch(() => {});
-
-    }
-
-    else {
-
-      largeVideoBox
-        .requestFullscreen()
-        .catch(() => {});
-    }
-  }
-);
-
-
-/* CHAT BUTTONS */
-
-sendChatButton.addEventListener(
-  "click",
-  sendChat
-);
-
-
-chatInput.addEventListener(
-  "keydown",
-  event => {
-
-    if (
-      event.key ===
-      "Enter"
-    ) {
-
+  chatForm.addEventListener(
+    "submit",
+    event => {
       event.preventDefault();
 
-      sendChat();
-    }
-  }
-);
+      const text =
+        chatInput.value.trim();
 
-
-/* LEAVE */
-
-leaveButton.addEventListener(
-  "click",
-  () => {
-
-    if (
-      confirm(
-        "Leave this call?"
-      )
-    ) {
-
-      if (
-        ws &&
-        ws.readyState ===
-          WebSocket.OPEN
-      ) {
-
-        ws.send(
-          JSON.stringify({
-            type:
-              "leaveRoom"
-          })
-        );
+      if (!text) {
+        return;
       }
 
-      cleanupCall();
+      send({
+        type: "chatMessage",
+        text
+      });
+
+      chatInput.value = "";
+      chatInput.focus();
     }
-  }
-);
-
-
-function cleanupCall() {
-
-  currentRoom = null;
-  selectedId = null;
-
-  participants.clear();
-  remoteStreams.clear();
-  pendingCandidates.clear();
-
-  for (
-    const peer of
-    peers.values()
-  ) {
-
-    try {
-      peer.close();
-    }
-
-    catch {}
-  }
-
-  peers.clear();
-
-  tiles.clear();
-
-  thumbnails.innerHTML =
-    "";
-
-  participantList.innerHTML =
-    "";
-
-  chatMessages.innerHTML =
-    "";
-
-  if (localStream) {
-
-    localStream
-      .getTracks()
-      .forEach(
-        track =>
-          track.stop()
-      );
-
-    localStream =
-      null;
-  }
-
-  if (speakingTimer) {
-
-    clearInterval(
-      speakingTimer
-    );
-
-    speakingTimer =
-      null;
-  }
-
-  if (audioContext) {
-
-    audioContext.close()
-      .catch(() => {});
-
-    audioContext =
-      null;
-  }
-
-  largeVideo.srcObject =
-    null;
-
-  app.style.display =
-    "none";
-
-  startScreen.style.display =
-    "flex";
-
-  setStatus(
-    "You left the room."
   );
 
-  createButton.disabled =
-    false;
+  /*
+   * MUTE
+   */
+  muteButton.addEventListener(
+    "click",
+    () => {
+      if (!localStream) {
+        return;
+      }
 
-  joinButton.disabled =
-    false;
-}
+      const tracks =
+        localStream.getAudioTracks();
 
+      for (const track of tracks) {
+        track.enabled =
+          !track.enabled;
+      }
 
-/* START */
+      micEnabled =
+        tracks.length
+          ? tracks[0].enabled
+          : false;
 
-createButton.addEventListener(
-  "click",
-  createRoom
-);
+      muteButton.textContent =
+        micEnabled
+          ? "Mute Mic"
+          : "Unmute Mic";
+    }
+  );
 
-joinButton.addEventListener(
-  "click",
-  joinRoom
-);
+  /*
+   * CAMERA
+   */
+  cameraButton.addEventListener(
+    "click",
+    () => {
+      if (!localStream) {
+        return;
+      }
 
+      const tracks =
+        localStream.getVideoTracks();
 
-nameInput.value =
-  localStorage.getItem(
-    "blueberryDisplayName"
-  ) || "";
+      for (const track of tracks) {
+        track.enabled =
+          !track.enabled;
+      }
 
+      cameraEnabled =
+        tracks.length
+          ? tracks[0].enabled
+          : false;
 
-nameInput.addEventListener(
-  "keydown",
-  event => {
+      cameraButton.textContent =
+        cameraEnabled
+          ? "Turn Camera Off"
+          : "Turn Camera On";
+    }
+  );
 
-    if (
-      event.key ===
-      "Enter"
-    ) {
-      createRoom();
+  /*
+   * LEAVE
+   */
+  function leaveRoom() {
+    send({
+      type: "leaveRoom"
+    });
+
+    cleanupRoom();
+
+    roomScreen.classList.add("hidden");
+    joinScreen.classList.remove("hidden");
+
+    joinStatus.textContent =
+      "You left the room.";
+  }
+
+  leaveButton.addEventListener(
+    "click",
+    leaveRoom
+  );
+
+  function cleanupRoom() {
+    for (const pc of peers.values()) {
+      try {
+        pc.close();
+      } catch {}
+    }
+
+    peers.clear();
+    participants.clear();
+    remoteStreams.clear();
+    pendingIce.clear();
+
+    for (const detector of speakingDetectors.values()) {
+      try {
+        detector.stop();
+      } catch {}
+    }
+
+    speakingDetectors.clear();
+
+    selectedId = null;
+    currentRoom = null;
+
+    thumbnailRow.innerHTML = "";
+    messages.innerHTML = "";
+
+    mainVideo.srcObject = null;
+  }
+
+  /*
+   * SERVER MESSAGES
+   */
+  function handleMessage(message) {
+    switch (message.type) {
+
+      case "registered":
+        myId = message.id;
+
+        localStorage.setItem(
+          "blueberryUserId",
+          myId
+        );
+
+        break;
+
+      case "roomCreated":
+        /*
+         * The server automatically joins us.
+         * DO NOT call joinRoom() here.
+         */
+        joinStatus.textContent =
+          `Room created: ${message.room.code}`;
+
+        break;
+
+      case "roomJoined":
+        enterRoom(
+          message.room,
+          message.participants,
+          message.messages
+        );
+
+        setupLocalSpeakingDetection();
+
+        break;
+
+      case "userJoined":
+        handleUserJoined(
+          message.participant
+        );
+
+        break;
+
+      case "userLeft":
+        handleUserLeft(
+          message.id
+        );
+
+        break;
+
+      case "userNameChanged":
+        if (
+          message.id === myId
+        ) {
+          myName =
+            message.name;
+
+          localStorage.setItem(
+            "blueberryUserName",
+            myName
+          );
+        }
+
+        const participant =
+          participants.get(
+            message.id
+          );
+
+        if (participant) {
+          participant.name =
+            message.name;
+        }
+
+        renderVideos();
+
+        break;
+
+      case "signal":
+        handleSignal(
+          message.from,
+          message.signal
+        );
+
+        break;
+
+      case "chatMessage":
+        addChatMessage(
+          message.message
+        );
+
+        break;
+
+      case "kicked":
+        alert(
+          message.message ||
+          "You were kicked."
+        );
+
+        cleanupRoom();
+
+        roomScreen.classList.add(
+          "hidden"
+        );
+
+        joinScreen.classList.remove(
+          "hidden"
+        );
+
+        break;
+
+      case "banned":
+        alert(
+          message.message ||
+          "You are banned."
+        );
+
+        cleanupRoom();
+
+        roomScreen.classList.add(
+          "hidden"
+        );
+
+        joinScreen.classList.remove(
+          "hidden"
+        );
+
+        break;
+
+      case "roomLeft":
+        cleanupRoom();
+        break;
+
+      case "error":
+        joinStatus.textContent =
+          message.message ||
+          "Something went wrong.";
+
+        /*
+         * If already in the room, show errors as an alert.
+         */
+        if (
+          !roomScreen.classList.contains(
+            "hidden"
+          )
+        ) {
+          alert(
+            message.message ||
+            "Something went wrong."
+          );
+        }
+
+        break;
     }
   }
-);
 
+  /*
+   * BUTTONS
+   */
+  createButton.addEventListener(
+    "click",
+    createRoom
+  );
 
-roomCodeInput.addEventListener(
-  "keydown",
-  event => {
+  joinButton.addEventListener(
+    "click",
+    joinRoom
+  );
 
-    if (
-      event.key ===
-      "Enter"
-    ) {
-      joinRoom();
+  /*
+   * Enter in room code = join
+   */
+  roomCodeInput.addEventListener(
+    "keydown",
+    event => {
+      if (
+        event.key === "Enter"
+      ) {
+        joinRoom();
+      }
     }
-  }
-);
+  );
+
+  /*
+   * Enter in create fields = create.
+   */
+  roomNameInput.addEventListener(
+    "keydown",
+    event => {
+      if (
+        event.key === "Enter"
+      ) {
+        createRoom();
+      }
+    }
+  );
+
+  /*
+   * Page unload:
+   * WebSocket closes automatically.
+   */
+  window.addEventListener(
+    "beforeunload",
+    () => {
+      try {
+        send({
+          type: "leaveRoom"
+        });
+      } catch {}
+    }
+  );
 </script>
 
 </body>

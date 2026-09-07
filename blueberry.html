@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Blueberry Console</title>
+<title>Blueberry Moderator Console</title>
 
 <style>
 * {
@@ -14,7 +14,7 @@ body {
   margin: 0;
   min-height: 100vh;
   background: #101114;
-  color: white;
+  color: #fff;
   font-family: Arial, sans-serif;
 }
 
@@ -26,7 +26,7 @@ input {
 button {
   border: 0;
   border-radius: 10px;
-  padding: 11px 15px;
+  padding: 10px 14px;
   cursor: pointer;
   background: #5968ff;
   color: white;
@@ -34,7 +34,12 @@ button {
 }
 
 button:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.12);
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
 }
 
 .danger {
@@ -43,6 +48,14 @@ button:hover {
 
 .secondary {
   background: #30333a;
+}
+
+.success {
+  background: #278c57;
+}
+
+.orange {
+  background: #c87828;
 }
 
 #login {
@@ -55,23 +68,30 @@ button:hover {
 
 .loginBox {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   background: #1b1d22;
-  padding: 30px;
   border-radius: 20px;
-  box-shadow: 0 15px 50px rgba(0,0,0,.4);
+  padding: 30px;
+  box-shadow: 0 20px 70px rgba(0,0,0,.45);
 }
 
 .loginBox h1 {
   text-align: center;
+  margin-top: 0;
+}
+
+.loginBox p {
+  color: #aaa;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .loginBox input {
   width: 100%;
-  margin-top: 15px;
   padding: 14px;
+  margin-top: 12px;
+  border: 1px solid #3b3e46;
   background: #111216;
-  border: 1px solid #3a3d44;
   color: white;
   border-radius: 10px;
 }
@@ -82,20 +102,23 @@ button:hover {
 }
 
 #loginStatus {
-  text-align: center;
+  min-height: 20px;
   margin-top: 12px;
+  text-align: center;
   color: #aaa;
 }
 
 #dashboard {
   display: none;
   padding: 20px;
+  max-width: 1600px;
+  margin: auto;
 }
 
 header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 15px;
   margin-bottom: 20px;
 }
@@ -104,10 +127,22 @@ header h1 {
   margin: 0;
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.levelBadge {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #30333a;
+  font-size: 12px;
+}
+
 .grid {
   display: grid;
-  grid-template-columns:
-    repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit,minmax(350px,1fr));
   gap: 18px;
 }
 
@@ -115,93 +150,158 @@ header h1 {
   background: #1b1d22;
   border-radius: 18px;
   padding: 18px;
+  overflow: hidden;
+}
+
+.panel.full {
+  grid-column: 1 / -1;
 }
 
 .panel h2 {
   margin-top: 0;
 }
 
+.panelDescription {
+  color: #999;
+  font-size: 13px;
+  margin-top: -5px;
+  margin-bottom: 15px;
+}
+
 .room {
   background: #24272e;
-  border-radius: 12px;
+  border-radius: 13px;
   padding: 14px;
   margin-bottom: 10px;
 }
 
 .roomTitle {
-  font-weight: bold;
   font-size: 17px;
+  font-weight: bold;
 }
 
 .roomCode {
   color: #aaa;
-  margin-top: 3px;
+  margin-top: 4px;
+}
+
+.roomButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.roomButtons button {
+  font-size: 12px;
+  padding: 8px 10px;
 }
 
 .participant {
+  background: #24272e;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 9px;
+}
+
+.participantTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 0;
-  border-bottom: 1px solid #34363d;
+  gap: 10px;
 }
 
-.participant:last-child {
-  border-bottom: 0;
+.participantName {
+  font-weight: bold;
+}
+
+.roleBadge {
+  background: #343842;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
 }
 
 .participantButtons {
   display: flex;
-  gap: 5px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .participantButtons button {
-  padding: 7px 9px;
   font-size: 12px;
+  padding: 7px 9px;
 }
 
-.banItem {
+.item {
   background: #24272e;
-  padding: 12px;
   border-radius: 12px;
+  padding: 13px;
   margin-bottom: 9px;
 }
 
-.banName {
+.itemTitle {
   font-weight: bold;
 }
 
-.banTime {
+.itemDetails {
   color: #aaa;
-  font-size: 13px;
-  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 5px;
 }
 
-.small {
+.itemButtons {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.log {
+  background: #24272e;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.logAction {
+  font-weight: bold;
+}
+
+.logDetails {
+  color: #aaa;
   font-size: 12px;
-  color: #999;
+  margin-top: 4px;
+  line-height: 1.5;
 }
 
 .empty {
-  color: #888;
+  color: #777;
   padding: 15px 0;
 }
 
-#modal {
+.small {
+  color: #999;
+  font-size: 12px;
+}
+
+.modal {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.7);
+  z-index: 100;
+  background: rgba(0,0,0,.72);
   align-items: center;
   justify-content: center;
   padding: 20px;
-  z-index: 100;
 }
 
 .modalBox {
   width: 100%;
-  max-width: 440px;
+  max-width: 470px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: #1b1d22;
   border-radius: 18px;
   padding: 22px;
@@ -211,48 +311,76 @@ header h1 {
   margin-top: 0;
 }
 
-.durationGrid {
-  display: grid;
-  grid-template-columns:
-    1fr 1fr;
-  gap: 10px;
+.modalBox input {
+  width: 100%;
+  padding: 11px;
+  margin-top: 5px;
+  border: 1px solid #3b3e46;
+  border-radius: 9px;
+  background: #111216;
+  color: white;
 }
 
-.durationGrid label {
-  display: block;
+.field {
+  margin-bottom: 12px;
+}
+
+.field label {
   color: #aaa;
   font-size: 13px;
 }
 
-.durationGrid input {
-  width: 100%;
-  margin-top: 4px;
-  padding: 10px;
-  background: #111216;
-  border: 1px solid #3a3d44;
-  color: white;
-  border-radius: 8px;
+.durationGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .permanent {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 15px;
+  margin-top: 12px;
 }
 
 .permanent input {
   width: auto;
+  margin: 0;
 }
 
 .modalButtons {
   display: flex;
-  gap: 10px;
+  gap: 9px;
   margin-top: 18px;
 }
 
 .modalButtons button {
   flex: 1;
+}
+
+.notice {
+  background: #252932;
+  border-radius: 10px;
+  padding: 10px;
+  color: #bbb;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 15px;
+}
+
+@media (max-width: 600px) {
+  #dashboard {
+    padding: 12px;
+  }
+
+  header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .durationGrid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
@@ -263,17 +391,30 @@ header h1 {
 
   <div class="loginBox">
 
-    <h1>Blueberry Console</h1>
+    <h1>🫐 Blueberry</h1>
+
+    <p>
+      Enter your moderator PIN to access
+      the moderation console.
+    </p>
 
     <input
       id="pinInput"
       type="password"
       inputmode="numeric"
+      autocomplete="off"
       placeholder="Moderator PIN"
     >
 
+    <input
+      id="nameInput"
+      type="text"
+      maxlength="30"
+      placeholder="Your moderator name"
+    >
+
     <button id="loginButton">
-      Enter Console
+      Enter Moderator Console
     </button>
 
     <div id="loginStatus"></div>
@@ -282,115 +423,212 @@ header h1 {
 
 </div>
 
+
 <div id="dashboard">
 
   <header>
-    <h1>Blueberry Console</h1>
 
-    <button
-      id="disconnectButton"
-      class="secondary"
-    >
-      Disconnect
-    </button>
+    <div>
+      <h1>🫐 Blueberry Console</h1>
+      <div class="small">
+        Moderator control center
+      </div>
+    </div>
+
+    <div class="headerRight">
+
+      <div
+        id="levelBadge"
+        class="levelBadge"
+      >
+        Moderator
+      </div>
+
+      <button
+        id="disconnectButton"
+        class="secondary"
+      >
+        Disconnect
+      </button>
+
+    </div>
+
   </header>
+
 
   <div class="grid">
 
     <div class="panel">
+
       <h2>Open Rooms</h2>
+
+      <div
+        class="panelDescription"
+      >
+        Every currently open call.
+      </div>
+
       <div id="rooms"></div>
+
     </div>
 
+
     <div class="panel">
+
+      <h2>Participants</h2>
+
+      <div
+        class="panelDescription"
+      >
+        Select a room to manage its participants.
+      </div>
+
+      <div id="participants">
+        <div class="empty">
+          Select a room.
+        </div>
+      </div>
+
+    </div>
+
+
+    <div class="panel">
+
       <h2>Banned Users</h2>
+
+      <div
+        class="panelDescription"
+      >
+        Active bans on the server.
+      </div>
+
       <div id="bans"></div>
+
+    </div>
+
+
+    <div class="panel">
+
+      <h2>Moderator Access</h2>
+
+      <div
+        class="panelDescription"
+      >
+        Temporary moderator permissions.
+      </div>
+
+      <div id="moderatorAccess"></div>
+
+    </div>
+
+
+    <div class="panel full">
+
+      <h2>Moderation History</h2>
+
+      <div
+        class="panelDescription"
+      >
+        See who kicked or banned people,
+        how long bans were, and when actions
+        happened.
+      </div>
+
+      <div id="logs"></div>
+
     </div>
 
   </div>
 
 </div>
 
-<div id="modal">
+
+<!-- BAN MODAL -->
+
+<div
+  id="banModal"
+  class="modal"
+>
 
   <div class="modalBox">
 
-    <h2 id="banTitle">
-      Ban User
+    <h2>
+      Ban <span id="banTargetName"></span>
     </h2>
 
-    <p class="small">
-      Enter any combination of time.
-      Leave everything blank for a
-      permanent ban, or check Permanent.
-    </p>
+    <div class="notice">
+      You can combine multiple units.
+      For example, 1 day + 4 hours.
+      Leave everything empty for a
+      permanent ban.
+    </div>
 
     <div class="durationGrid">
 
-      <div>
+      <div class="field">
         <label>Seconds</label>
         <input
-          id="seconds"
+          id="banSeconds"
           type="number"
           min="0"
           step="1"
         >
       </div>
 
-      <div>
+      <div class="field">
         <label>Minutes</label>
         <input
-          id="minutes"
+          id="banMinutes"
           type="number"
           min="0"
           step="1"
         >
       </div>
 
-      <div>
+      <div class="field">
         <label>Hours</label>
         <input
-          id="hours"
+          id="banHours"
           type="number"
           min="0"
           step="1"
         >
       </div>
 
-      <div>
+      <div class="field">
         <label>Days</label>
         <input
-          id="days"
+          id="banDays"
           type="number"
           min="0"
           step="1"
         >
       </div>
 
-      <div>
+      <div class="field">
         <label>Weeks</label>
         <input
-          id="weeks"
+          id="banWeeks"
           type="number"
           min="0"
           step="1"
         >
       </div>
 
-      <div>
+      <div class="field">
         <label>Months</label>
         <input
-          id="months"
+          id="banMonths"
           type="number"
           min="0"
           step="1"
         >
       </div>
 
-      <div>
+      <div class="field">
         <label>Years</label>
         <input
-          id="years"
+          id="banYears"
           type="number"
           min="0"
           step="1"
@@ -401,7 +639,7 @@ header h1 {
 
     <label class="permanent">
       <input
-        id="permanent"
+        id="banPermanent"
         type="checkbox"
       >
       Permanent ban
@@ -410,14 +648,14 @@ header h1 {
     <div class="modalButtons">
 
       <button
-        id="cancelBan"
+        id="banCancel"
         class="secondary"
       >
         Cancel
       </button>
 
       <button
-        id="confirmBan"
+        id="banConfirm"
         class="danger"
       >
         Ban User
@@ -429,13 +667,173 @@ header h1 {
 
 </div>
 
+
+<!-- GIVE MODERATOR MODAL -->
+
+<div
+  id="moderatorModal"
+  class="modal"
+>
+
+  <div class="modalBox">
+
+    <h2>
+      Give Moderator Access
+    </h2>
+
+    <div class="notice">
+      Create a PIN for
+      <strong id="moderatorTargetName"></strong>.
+      Give that PIN to them. They can enter
+      it on this page to become a moderator.
+    </div>
+
+    <div class="field">
+
+      <label>
+        Moderator PIN
+      </label>
+
+      <input
+        id="newModeratorPin"
+        type="password"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="Create a PIN"
+      >
+
+    </div>
+
+    <div class="durationGrid">
+
+      <div class="field">
+        <label>Seconds</label>
+        <input
+          id="modSeconds"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div class="field">
+        <label>Minutes</label>
+        <input
+          id="modMinutes"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div class="field">
+        <label>Hours</label>
+        <input
+          id="modHours"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div class="field">
+        <label>Days</label>
+        <input
+          id="modDays"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div class="field">
+        <label>Weeks</label>
+        <input
+          id="modWeeks"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div class="field">
+        <label>Months</label>
+        <input
+          id="modMonths"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div class="field">
+        <label>Years</label>
+        <input
+          id="modYears"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+    </div>
+
+    <label class="permanent">
+      <input
+        id="modPermanent"
+        type="checkbox"
+      >
+      Permanent moderator access
+    </label>
+
+    <div class="modalButtons">
+
+      <button
+        id="modCancel"
+        class="secondary"
+      >
+        Cancel
+      </button>
+
+      <button
+        id="modConfirm"
+        class="success"
+      >
+        Give Access
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
 <script>
-const WS_URL =
-  (location.protocol === "https:"
-    ? "wss://"
-    : "ws://") +
+const socketUrl =
+  (
+    location.protocol === "https:"
+      ? "wss://"
+      : "ws://"
+  ) +
   location.host +
   "/ws";
+
+let ws = null;
+
+let myId = null;
+let myName = "Moderator";
+let moderatorLevel = null;
+
+let rooms = [];
+let bans = [];
+let moderatorAccess = [];
+let logs = [];
+
+let selectedRoomCode = null;
+let banTargetId = null;
+let moderatorTargetId = null;
+
 
 const login =
   document.getElementById("login");
@@ -446,132 +844,125 @@ const dashboard =
 const pinInput =
   document.getElementById("pinInput");
 
+const nameInput =
+  document.getElementById("nameInput");
+
 const loginButton =
   document.getElementById("loginButton");
 
 const loginStatus =
   document.getElementById("loginStatus");
 
+const levelBadge =
+  document.getElementById("levelBadge");
+
 const roomsElement =
   document.getElementById("rooms");
+
+const participantsElement =
+  document.getElementById("participants");
 
 const bansElement =
   document.getElementById("bans");
 
-const disconnectButton =
-  document.getElementById(
-    "disconnectButton"
-  );
+const moderatorAccessElement =
+  document.getElementById("moderatorAccess");
 
-const modal =
-  document.getElementById("modal");
+const logsElement =
+  document.getElementById("logs");
 
-const banTitle =
-  document.getElementById("banTitle");
 
-const seconds =
-  document.getElementById("seconds");
-
-const minutes =
-  document.getElementById("minutes");
-
-const hours =
-  document.getElementById("hours");
-
-const days =
-  document.getElementById("days");
-
-const weeks =
-  document.getElementById("weeks");
-
-const months =
-  document.getElementById("months");
-
-const years =
-  document.getElementById("years");
-
-const permanent =
-  document.getElementById("permanent");
-
-const cancelBan =
-  document.getElementById("cancelBan");
-
-const confirmBan =
-  document.getElementById(
-    "confirmBan"
-  );
-
-let socket = null;
-let pendingBanUserId = null;
-let pendingBanName = "";
-
-let roomList = [];
-let banList = [];
-
-function makeModeratorId() {
-  let id =
-    sessionStorage.getItem(
-      "blueberry_moderator_id"
-    );
-
-  if (!id) {
-    id =
-      crypto.randomUUID();
-
-    sessionStorage.setItem(
-      "blueberry_moderator_id",
-      id
-    );
-  }
-
-  return id;
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-function send(message) {
-  if (
-    socket &&
-    socket.readyState === WebSocket.OPEN
-  ) {
-    socket.send(
-      JSON.stringify(message)
-    );
+
+function formatDate(timestamp) {
+  if (!timestamp) {
+    return "Unknown";
   }
+
+  return new Date(timestamp)
+    .toLocaleString();
 }
 
-function connect() {
-  const pin =
-    pinInput.value;
 
-  if (!pin) {
-    loginStatus.textContent =
-      "Enter the PIN.";
-
-    return;
+function formatRemaining(expiresAt) {
+  if (!expiresAt) {
+    return "Permanent";
   }
 
-  loginButton.disabled = true;
+  const remaining =
+    expiresAt - Date.now();
 
+  if (remaining <= 0) {
+    return "Expired";
+  }
+
+  const seconds =
+    Math.floor(remaining / 1000);
+
+  if (seconds < 60) {
+    return `${seconds}s remaining`;
+  }
+
+  const minutes =
+    Math.floor(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes}m remaining`;
+  }
+
+  const hours =
+    Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours}h remaining`;
+  }
+
+  const days =
+    Math.floor(hours / 24);
+
+  return `${days}d remaining`;
+}
+
+
+function connectModerator() {
   loginStatus.textContent =
     "Connecting...";
 
-  socket =
-    new WebSocket(WS_URL);
+  ws = new WebSocket(
+    socketUrl
+  );
 
-  socket.onopen = () => {
+  ws.addEventListener(
+    "open",
+    () => {
+      ws.send(
+        JSON.stringify({
+          type: "moderatorAuth",
+          pin: pinInput.value,
+          name:
+            nameInput.value.trim() ||
+            "Moderator",
+          id:
+            localStorage.getItem(
+              "blueberryModeratorId"
+            ) || undefined
+        })
+      );
+    }
+  );
 
-    send({
-      type: "register",
-      id: makeModeratorId(),
-      name: "Moderator",
-      role: "moderator",
-      pin
-    });
 
-  };
-
-  socket.onmessage =
+  ws.addEventListener(
+    "message",
     event => {
-
       let message;
 
       try {
@@ -579,565 +970,1093 @@ function connect() {
           JSON.parse(
             event.data
           );
-      } catch {
+      }
+
+      catch {
         return;
       }
 
-      handleMessage(
-        message
-      );
-    };
-
-  socket.onerror = () => {
-    loginButton.disabled =
-      false;
-
-    loginStatus.textContent =
-      "Could not connect.";
-  };
-
-  socket.onclose = () => {
-    if (
-      dashboard.style.display !==
-      "none"
-    ) {
-      dashboard.style.display =
-        "none";
-
-      login.style.display =
-        "flex";
-
-      loginButton.disabled =
-        false;
-
-      loginStatus.textContent =
-        "Disconnected.";
+      handleMessage(message);
     }
-  };
+  );
+
+
+  ws.addEventListener(
+    "close",
+    () => {
+      if (
+        dashboard.style.display !==
+        "none"
+      ) {
+        login.style.display =
+          "flex";
+
+        dashboard.style.display =
+          "none";
+
+        loginStatus.textContent =
+          "Disconnected from the server.";
+      }
+    }
+  );
+
+
+  ws.addEventListener(
+    "error",
+    () => {
+      loginStatus.textContent =
+        "Could not connect to the server.";
+    }
+  );
 }
+
 
 function handleMessage(message) {
 
   switch (message.type) {
 
-    case "authError":
-      loginButton.disabled =
-        false;
+    case "moderatorAuthSuccess":
 
-      loginStatus.textContent =
-        message.message;
+      myId =
+        message.moderator.id;
 
-      break;
+      myName =
+        message.moderator.name;
 
-    case "roomList":
-      roomList =
-        message.rooms || [];
+      moderatorLevel =
+        message.moderator.level;
 
-      showDashboard();
-      renderRooms();
-
-      break;
-
-    case "roomsUpdated":
-      roomList =
-        message.rooms || [];
-
-      renderRooms();
-
-      break;
-
-    case "banList":
-      banList =
-        message.bans || [];
-
-      renderBans();
-
-      break;
-
-    case "roomCreated":
-      renderRooms();
-      break;
-
-    case "error":
-      alert(
-        message.message
-      );
-      break;
-  }
-}
-
-function showDashboard() {
-  login.style.display =
-    "none";
-
-  dashboard.style.display =
-    "block";
-
-  send({
-    type: "getBans"
-  });
-}
-
-function renderRooms() {
-
-  roomsElement.innerHTML = "";
-
-  if (!roomList.length) {
-    roomsElement.innerHTML =
-      '<div class="empty">No open rooms.</div>';
-
-    return;
-  }
-
-  for (const room of roomList) {
-
-    const element =
-      document.createElement("div");
-
-    element.className =
-      "room";
-
-    const title =
-      document.createElement("div");
-
-    title.className =
-      "roomTitle";
-
-    title.textContent =
-      room.name;
-
-    const code =
-      document.createElement("div");
-
-    code.className =
-      "roomCode";
-
-    code.textContent =
-      room.code +
-      " • " +
-      room.userCount +
-      " participant(s)";
-
-    element.appendChild(title);
-    element.appendChild(code);
-
-    const joinNormal =
-      document.createElement("button");
-
-    joinNormal.textContent =
-      "Join";
-
-    joinNormal.onclick =
-      () => joinRoom(
-        room.code,
-        false
-      );
-
-    const joinAnonymous =
-      document.createElement("button");
-
-    joinAnonymous.textContent =
-      "Join Anonymous";
-
-    joinAnonymous.className =
-      "secondary";
-
-    joinAnonymous.onclick =
-      () => joinRoom(
-        room.code,
-        true
-      );
-
-    element.appendChild(
-      joinNormal
-    );
-
-    element.appendChild(
-      joinAnonymous
-    );
-
-    const participants =
-      document.createElement(
-        "div"
-      );
-
-    for (
-      const participant
-      of room.participants || []
-    ) {
-
-      const row =
-        document.createElement(
-          "div"
-        );
-
-      row.className =
-        "participant";
-
-      const name =
-        document.createElement(
-          "span"
-        );
-
-      name.textContent =
-        participant.name +
-        (
-          participant.role ===
-          "moderator"
-            ? " (Moderator)"
-            : ""
-        );
-
-      const buttons =
-        document.createElement(
-          "div"
-        );
-
-      buttons.className =
-        "participantButtons";
-
-      if (
-        participant.role !==
-        "moderator"
-      ) {
-
-        const kick =
-          document.createElement(
-            "button"
-          );
-
-        kick.textContent =
-          "Kick";
-
-        kick.className =
-          "secondary";
-
-        kick.onclick =
-          () => kickUser(
-            participant.id
-          );
-
-        const ban =
-          document.createElement(
-            "button"
-          );
-
-        ban.textContent =
-          "Ban";
-
-        ban.className =
-          "danger";
-
-        ban.onclick =
-          () => openBanPopup(
-            participant.id,
-            participant.name
-          );
-
-        buttons.appendChild(
-          kick
-        );
-
-        buttons.appendChild(
-          ban
+      if (myId) {
+        localStorage.setItem(
+          "blueberryModeratorId",
+          myId
         );
       }
 
-      row.appendChild(name);
-      row.appendChild(buttons);
+      rooms =
+        message.rooms || [];
 
-      participants.appendChild(
-        row
+      bans =
+        message.bans || [];
+
+      moderatorAccess =
+        message.moderatorAccess || [];
+
+      logs =
+        message.logs || [];
+
+      login.style.display =
+        "none";
+
+      dashboard.style.display =
+        "block";
+
+      levelBadge.textContent =
+        moderatorLevel === "master"
+          ? "MASTER MODERATOR"
+          : "DELEGATED MODERATOR";
+
+      renderEverything();
+
+      break;
+
+
+    case "moderatorAuthFailed":
+
+      loginStatus.textContent =
+        message.message ||
+        "Invalid moderator PIN.";
+
+      break;
+
+
+    case "moderatorData":
+
+      rooms =
+        message.rooms || [];
+
+      bans =
+        message.bans || [];
+
+      moderatorAccess =
+        message.moderatorAccess || [];
+
+      logs =
+        message.logs || [];
+
+      renderEverything();
+
+      break;
+
+
+    case "roomsUpdated":
+
+      rooms =
+        message.rooms || [];
+
+      renderRooms();
+      renderParticipants();
+
+      break;
+
+
+    case "moderatorAccessCreated":
+
+      alert(
+        `Moderator access created for ${message.name}.\n\nDuration: ${message.durationText}\n\nMake sure you gave them the PIN you entered.`
       );
-    }
 
-    element.appendChild(
-      participants
-    );
+      closeModeratorModal();
 
-    roomsElement.appendChild(
-      element
-    );
+      break;
+
+
+    case "moderatorAccessGranted":
+
+      alert(
+        message.message
+      );
+
+      break;
+
+
+    case "moderatorAccessRevoked":
+
+      alert(
+        message.message
+      );
+
+      ws.close();
+
+      break;
+
+
+    case "error":
+
+      alert(
+        message.message ||
+        "Something went wrong."
+      );
+
+      break;
+
+
+    default:
+      break;
   }
 }
+
+
+function renderEverything() {
+  renderRooms();
+  renderParticipants();
+  renderBans();
+  renderModeratorAccess();
+  renderLogs();
+}
+
+
+function renderRooms() {
+
+  if (!rooms.length) {
+    roomsElement.innerHTML =
+      `<div class="empty">
+        No open rooms.
+      </div>`;
+
+    selectedRoomCode = null;
+
+    renderParticipants();
+
+    return;
+  }
+
+  if (
+    !selectedRoomCode ||
+    !rooms.some(
+      room =>
+        room.code ===
+        selectedRoomCode
+    )
+  ) {
+    selectedRoomCode =
+      rooms[0].code;
+  }
+
+  roomsElement.innerHTML =
+    rooms.map(room => {
+
+      const selected =
+        room.code ===
+        selectedRoomCode;
+
+      return `
+        <div class="room">
+
+          <div class="roomTitle">
+            ${escapeHtml(room.name)}
+          </div>
+
+          <div class="roomCode">
+            Code: ${escapeHtml(room.code)}
+            · ${room.userCount}
+            participant${room.userCount === 1 ? "" : "s"}
+          </div>
+
+          <div class="roomButtons">
+
+            <button
+              onclick="selectRoom('${escapeHtml(room.code)}')"
+              ${selected ? "disabled" : ""}
+            >
+              ${selected ? "Selected" : "Manage"}
+            </button>
+
+            <button
+              class="success"
+              onclick="joinRoom('${escapeHtml(room.code)}', false)"
+            >
+              Join
+            </button>
+
+            <button
+              class="secondary"
+              onclick="joinRoom('${escapeHtml(room.code)}', true)"
+            >
+              Join Anonymous
+            </button>
+
+          </div>
+
+        </div>
+      `;
+    }).join("");
+}
+
+
+function selectRoom(code) {
+  selectedRoomCode =
+    code;
+
+  renderRooms();
+  renderParticipants();
+}
+
+
+function renderParticipants() {
+
+  const room =
+    rooms.find(
+      item =>
+        item.code ===
+        selectedRoomCode
+    );
+
+  if (!room) {
+    participantsElement.innerHTML =
+      `<div class="empty">
+        Select a room.
+      </div>`;
+
+    return;
+  }
+
+  if (!room.participants.length) {
+    participantsElement.innerHTML =
+      `<div class="empty">
+        No participants.
+      </div>`;
+
+    return;
+  }
+
+  participantsElement.innerHTML =
+    room.participants
+      .map(user => {
+
+        const isSelf =
+          user.id === myId;
+
+        const isModerator =
+          user.role === "moderator";
+
+        const canControl =
+          !isSelf &&
+          (
+            moderatorLevel ===
+              "master" ||
+            !isModerator
+          );
+
+        return `
+          <div class="participant">
+
+            <div class="participantTop">
+
+              <div class="participantName">
+                ${escapeHtml(user.name)}
+              </div>
+
+              <div class="roleBadge">
+                ${
+                  isModerator
+                    ? "Moderator"
+                    : "User"
+                }
+              </div>
+
+            </div>
+
+            <div class="participantButtons">
+
+              ${
+                canControl
+                  ? `
+                    <button
+                      class="secondary"
+                      onclick="kickUser('${escapeHtml(user.id)}')"
+                    >
+                      Kick
+                    </button>
+
+                    <button
+                      class="danger"
+                      onclick="openBanModal('${escapeHtml(user.id)}','${escapeHtml(user.name)}')"
+                    >
+                      Ban
+                    </button>
+                  `
+                  : ""
+              }
+
+              ${
+                moderatorLevel === "master" &&
+                !isSelf &&
+                !isModerator
+                  ? `
+                    <button
+                      class="success"
+                      onclick="openModeratorModal('${escapeHtml(user.id)}','${escapeHtml(user.name)}')"
+                    >
+                      Give Moderator
+                    </button>
+                  `
+                  : ""
+              }
+
+            </div>
+
+          </div>
+        `;
+      })
+      .join("");
+}
+
 
 function renderBans() {
 
-  bansElement.innerHTML = "";
-
-  if (!banList.length) {
+  if (!bans.length) {
     bansElement.innerHTML =
-      '<div class="empty">No banned users.</div>';
+      `<div class="empty">
+        No active bans.
+      </div>`;
 
     return;
   }
 
-  for (const ban of banList) {
+  bansElement.innerHTML =
+    bans.map(ban => {
 
-    const element =
-      document.createElement(
-        "div"
-      );
+      return `
+        <div class="item">
 
-    element.className =
-      "banItem";
+          <div class="itemTitle">
+            ${escapeHtml(ban.name)}
+          </div>
 
-    const name =
-      document.createElement(
-        "div"
-      );
+          <div class="itemDetails">
+            Banned by:
+            ${escapeHtml(ban.moderatorName)}
+            <br>
 
-    name.className =
-      "banName";
+            Duration:
+            ${escapeHtml(ban.durationText)}
+            <br>
 
-    name.textContent =
-      ban.name ||
-      "Unknown user";
+            ${
+              ban.expiresAt
+                ? `Expires:
+                   ${formatDate(ban.expiresAt)}
+                   (${formatRemaining(ban.expiresAt)})`
+                : "Permanent ban"
+            }
 
-    const time =
-      document.createElement(
-        "div"
-      );
+            <br>
 
-    time.className =
-      "banTime";
+            Created:
+            ${formatDate(ban.createdAt)}
+          </div>
 
-    if (
-      ban.expiresAt === null
-    ) {
-      time.textContent =
-        "Permanent ban";
-    } else {
-      time.textContent =
-        "Expires: " +
-        new Date(
-          ban.expiresAt
-        ).toLocaleString();
-    }
+          <div class="itemButtons">
 
-    const unban =
-      document.createElement(
-        "button"
-      );
+            <button
+              class="success"
+              onclick="unbanUser('${escapeHtml(ban.id)}')"
+            >
+              Unban
+            </button>
 
-    unban.textContent =
-      "Unban";
+          </div>
 
-    unban.className =
-      "secondary";
-
-    unban.style.marginTop =
-      "9px";
-
-    unban.onclick =
-      () => unbanUser(
-        ban.userId
-      );
-
-    element.appendChild(name);
-    element.appendChild(time);
-    element.appendChild(unban);
-
-    bansElement.appendChild(
-      element
-    );
-  }
+        </div>
+      `;
+    }).join("");
 }
 
-function joinRoom(
-  code,
-  anonymous
-) {
-  send({
-    type: "moderatorJoinRoom",
-    code,
-    anonymous
-  });
-}
 
-function kickUser(userId) {
+function renderModeratorAccess() {
+
   if (
-    !confirm(
-      "Kick this user from the room?"
-    )
+    moderatorLevel !==
+    "master"
+  ) {
+    moderatorAccessElement.innerHTML =
+      `<div class="notice">
+        Only the master moderator can
+        manage moderator access.
+      </div>`;
+
+    return;
+  }
+
+  if (!moderatorAccess.length) {
+    moderatorAccessElement.innerHTML =
+      `<div class="empty">
+        No temporary moderator access
+        has been created.
+      </div>`;
+
+    return;
+  }
+
+  moderatorAccessElement.innerHTML =
+    moderatorAccess.map(access => {
+
+      return `
+        <div class="item">
+
+          <div class="itemTitle">
+            ${escapeHtml(access.name)}
+          </div>
+
+          <div class="itemDetails">
+            Created by:
+            ${escapeHtml(access.createdBy)}
+            <br>
+
+            Duration:
+            ${escapeHtml(access.durationText)}
+            <br>
+
+            ${
+              access.expiresAt
+                ? `Expires:
+                   ${formatDate(access.expiresAt)}
+                   (${formatRemaining(access.expiresAt)})`
+                : "Permanent access"
+            }
+
+            <br>
+
+            Created:
+            ${formatDate(access.createdAt)}
+          </div>
+
+          <div class="itemButtons">
+
+            <button
+              class="danger"
+              onclick="revokeModerator('${escapeHtml(access.id)}')"
+            >
+              Revoke
+            </button>
+
+          </div>
+
+        </div>
+      `;
+    }).join("");
+}
+
+
+function renderLogs() {
+
+  if (!logs.length) {
+    logsElement.innerHTML =
+      `<div class="empty">
+        No moderation actions yet.
+      </div>`;
+
+    return;
+  }
+
+  logsElement.innerHTML =
+    logs.map(log => {
+
+      let actionText =
+        log.action;
+
+      if (
+        log.action ===
+        "ban"
+      ) {
+        actionText =
+          "Banned user";
+      }
+
+      else if (
+        log.action ===
+        "kick"
+      ) {
+        actionText =
+          "Kicked user";
+      }
+
+      else if (
+        log.action ===
+        "unban"
+      ) {
+        actionText =
+          "Unbanned user";
+      }
+
+      else if (
+        log.action ===
+        "moderator_granted"
+      ) {
+        actionText =
+          "Gave moderator access";
+      }
+
+      else if (
+        log.action ===
+        "moderator_revoked"
+      ) {
+        actionText =
+          "Revoked moderator access";
+      }
+
+      return `
+        <div class="log">
+
+          <div class="logAction">
+            ${escapeHtml(actionText)}
+          </div>
+
+          <div class="logDetails">
+
+            Moderator:
+            ${escapeHtml(log.moderatorName)}
+
+            <br>
+
+            Person:
+            ${escapeHtml(log.targetName)}
+
+            ${
+              log.durationText
+                ? `
+                  <br>
+                  Duration:
+                  ${escapeHtml(log.durationText)}
+                `
+                : ""
+            }
+
+            <br>
+
+            Time:
+            ${formatDate(log.createdAt)}
+
+          </div>
+
+        </div>
+      `;
+    }).join("");
+}
+
+
+function joinRoom(code, anonymous) {
+
+  if (
+    !ws ||
+    ws.readyState !==
+      WebSocket.OPEN
   ) {
     return;
   }
 
-  send({
-    type: "kick",
-    userId
-  });
+  ws.send(
+    JSON.stringify({
+      type:
+        "moderatorJoinRoom",
+      code,
+      anonymous
+    })
+  );
 }
 
-function openBanPopup(
+
+function kickUser(userId) {
+
+  if (!confirm(
+    "Kick this person from the room?"
+  )) {
+    return;
+  }
+
+  if (!ws) {
+    return;
+  }
+
+  ws.send(
+    JSON.stringify({
+      type: "kick",
+      userId
+    })
+  );
+}
+
+
+function openBanModal(
   userId,
   name
 ) {
-  pendingBanUserId =
+
+  banTargetId =
     userId;
 
-  pendingBanName =
+  document.getElementById(
+    "banTargetName"
+  ).textContent =
     name;
 
-  banTitle.textContent =
-    "Ban " + name;
+  clearBanInputs();
 
-  seconds.value = "";
-  minutes.value = "";
-  hours.value = "";
-  days.value = "";
-  weeks.value = "";
-  months.value = "";
-  years.value = "";
-
-  permanent.checked =
-    false;
-
-  modal.style.display =
+  document.getElementById(
+    "banModal"
+  ).style.display =
     "flex";
 }
 
-function closeBanPopup() {
-  modal.style.display =
-    "none";
 
-  pendingBanUserId =
+function closeBanModal() {
+
+  banTargetId =
     null;
 
-  pendingBanName =
-    "";
+  document.getElementById(
+    "banModal"
+  ).style.display =
+    "none";
 }
 
-function numberValue(input) {
-  const value =
-    Number(input.value);
 
-  if (
-    !Number.isFinite(value) ||
-    value < 0
-  ) {
-    return 0;
-  }
+function clearBanInputs() {
 
-  return value;
+  [
+    "banSeconds",
+    "banMinutes",
+    "banHours",
+    "banDays",
+    "banWeeks",
+    "banMonths",
+    "banYears"
+  ].forEach(id => {
+    document.getElementById(
+      id
+    ).value = "";
+  });
+
+  document.getElementById(
+    "banPermanent"
+  ).checked = false;
 }
 
-function confirmBanUser() {
 
-  if (!pendingBanUserId) {
+function confirmBan() {
+
+  if (!banTargetId) {
     return;
   }
 
-  let duration = 0;
+  const permanent =
+    document.getElementById(
+      "banPermanent"
+    ).checked;
 
-  if (!permanent.checked) {
-
-    duration +=
-      numberValue(seconds) *
-      1000;
-
-    duration +=
-      numberValue(minutes) *
-      60 *
-      1000;
-
-    duration +=
-      numberValue(hours) *
-      60 *
-      60 *
-      1000;
-
-    duration +=
-      numberValue(days) *
-      24 *
-      60 *
-      60 *
-      1000;
-
-    duration +=
-      numberValue(weeks) *
-      7 *
-      24 *
-      60 *
-      60 *
-      1000;
-
-    /*
-     * Month = 30 days
-     */
-    duration +=
-      numberValue(months) *
-      30 *
-      24 *
-      60 *
-      60 *
-      1000;
-
-    /*
-     * Year = 365 days
-     */
-    duration +=
-      numberValue(years) *
-      365 *
-      24 *
-      60 *
-      60 *
-      1000;
-  }
-
-  send({
+  const data = {
     type: "ban",
-    userId:
-      pendingBanUserId,
-    duration
-  });
+    userId: banTargetId,
 
-  closeBanPopup();
+    seconds:
+      document.getElementById(
+        "banSeconds"
+      ).value,
+
+    minutes:
+      document.getElementById(
+        "banMinutes"
+      ).value,
+
+    hours:
+      document.getElementById(
+        "banHours"
+      ).value,
+
+    days:
+      document.getElementById(
+        "banDays"
+      ).value,
+
+    weeks:
+      document.getElementById(
+        "banWeeks"
+      ).value,
+
+    months:
+      document.getElementById(
+        "banMonths"
+      ).value,
+
+    years:
+      document.getElementById(
+        "banYears"
+      ).value,
+
+    permanent
+  };
+
+  ws.send(
+    JSON.stringify(data)
+  );
+
+  closeBanModal();
 }
 
-function unbanUser(userId) {
+
+function unbanUser(banId) {
+
+  if (!confirm(
+    "Unban this person?"
+  )) {
+    return;
+  }
+
+  ws.send(
+    JSON.stringify({
+      type: "unban",
+      banId
+    })
+  );
+}
+
+
+function openModeratorModal(
+  userId,
+  name
+) {
 
   if (
-    !confirm(
-      "Unban this user?"
-    )
+    moderatorLevel !==
+    "master"
   ) {
     return;
   }
 
-  send({
-    type: "unban",
-    userId
-  });
+  moderatorTargetId =
+    userId;
+
+  document.getElementById(
+    "moderatorTargetName"
+  ).textContent =
+    name;
+
+  clearModeratorInputs();
+
+  document.getElementById(
+    "moderatorModal"
+  ).style.display =
+    "flex";
 }
 
-cancelBan.onclick =
-  closeBanPopup;
 
-confirmBan.onclick =
-  confirmBanUser;
+function closeModeratorModal() {
 
-loginButton.onclick =
-  connect;
+  moderatorTargetId =
+    null;
+
+  document.getElementById(
+    "moderatorModal"
+  ).style.display =
+    "none";
+}
+
+
+function clearModeratorInputs() {
+
+  document.getElementById(
+    "newModeratorPin"
+  ).value = "";
+
+  [
+    "modSeconds",
+    "modMinutes",
+    "modHours",
+    "modDays",
+    "modWeeks",
+    "modMonths",
+    "modYears"
+  ].forEach(id => {
+    document.getElementById(
+      id
+    ).value = "";
+  });
+
+  document.getElementById(
+    "modPermanent"
+  ).checked = false;
+}
+
+
+function confirmModeratorAccess() {
+
+  if (!moderatorTargetId) {
+    return;
+  }
+
+  const pin =
+    document.getElementById(
+      "newModeratorPin"
+    ).value.trim();
+
+  if (pin.length < 4) {
+    alert(
+      "The moderator PIN must be at least 4 characters."
+    );
+
+    return;
+  }
+
+  const permanent =
+    document.getElementById(
+      "modPermanent"
+    ).checked;
+
+  ws.send(
+    JSON.stringify({
+      type:
+        "giveModerator",
+
+      userId:
+        moderatorTargetId,
+
+      pin,
+
+      seconds:
+        document.getElementById(
+          "modSeconds"
+        ).value,
+
+      minutes:
+        document.getElementById(
+          "modMinutes"
+        ).value,
+
+      hours:
+        document.getElementById(
+          "modHours"
+        ).value,
+
+      days:
+        document.getElementById(
+          "modDays"
+        ).value,
+
+      weeks:
+        document.getElementById(
+          "modWeeks"
+        ).value,
+
+      months:
+        document.getElementById(
+          "modMonths"
+        ).value,
+
+      years:
+        document.getElementById(
+          "modYears"
+        ).value,
+
+      permanent
+    })
+  );
+}
+
+
+function revokeModerator(accessId) {
+
+  if (!confirm(
+    "Revoke this person's moderator access?"
+  )) {
+    return;
+  }
+
+  ws.send(
+    JSON.stringify({
+      type:
+        "revokeModerator",
+      accessId
+    })
+  );
+}
+
+
+document.getElementById(
+  "loginButton"
+).addEventListener(
+  "click",
+  connectModerator
+);
+
 
 pinInput.addEventListener(
   "keydown",
   event => {
     if (
-      event.key === "Enter"
+      event.key ===
+      "Enter"
     ) {
-      connect();
+      connectModerator();
     }
   }
 );
 
-disconnectButton.onclick =
+
+document.getElementById(
+  "disconnectButton"
+).addEventListener(
+  "click",
   () => {
-    if (socket) {
-      socket.close();
+
+    if (ws) {
+      ws.close();
     }
-  };
+
+    location.reload();
+  }
+);
+
+
+document.getElementById(
+  "banCancel"
+).addEventListener(
+  "click",
+  closeBanModal
+);
+
+
+document.getElementById(
+  "banConfirm"
+).addEventListener(
+  "click",
+  confirmBan
+);
+
+
+document.getElementById(
+  "modCancel"
+).addEventListener(
+  "click",
+  closeModeratorModal
+);
+
+
+document.getElementById(
+  "modConfirm"
+).addEventListener(
+  "click",
+  confirmModeratorAccess
+);
+
+
+document.getElementById(
+  "banPermanent"
+).addEventListener(
+  "change",
+  event => {
+
+    const disabled =
+      event.target.checked;
+
+    [
+      "banSeconds",
+      "banMinutes",
+      "banHours",
+      "banDays",
+      "banWeeks",
+      "banMonths",
+      "banYears"
+    ].forEach(id => {
+      document.getElementById(
+        id
+      ).disabled = disabled;
+    });
+  }
+);
+
+
+document.getElementById(
+  "modPermanent"
+).addEventListener(
+  "change",
+  event => {
+
+    const disabled =
+      event.target.checked;
+
+    [
+      "modSeconds",
+      "modMinutes",
+      "modHours",
+      "modDays",
+      "modWeeks",
+      "modMonths",
+      "modYears"
+    ].forEach(id => {
+      document.getElementById(
+        id
+      ).disabled = disabled;
+    });
+  }
+);
+
+
+/*
+ * Update countdown displays every second.
+ */
+setInterval(
+  () => {
+    if (
+      dashboard.style.display !==
+      "none"
+    ) {
+      renderBans();
+      renderModeratorAccess();
+    }
+  },
+  1000
+);
 </script>
 
 </body>

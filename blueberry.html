@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Blueberry Console</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #101114;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 15px;
+  cursor: pointer;
+  background: #5968ff;
+  color: white;
+  font-weight: bold;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+.danger {
+  background: #d83b4b;
+}
+
+.secondary {
+  background: #30333a;
+}
+
+#login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.loginBox {
+  width: 100%;
+  max-width: 400px;
+  background: #1b1d22;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 15px 50px rgba(0,0,0,.4);
+}
+
+.loginBox h1 {
+  text-align: center;
+}
+
+.loginBox input {
+  width: 100%;
+  margin-top: 15px;
+  padding: 14px;
+  background: #111216;
+  border: 1px solid #3a3d44;
+  color: white;
+  border-radius: 10px;
+}
+
+.loginBox button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+#loginStatus {
+  text-align: center;
+  margin-top: 12px;
+  color: #aaa;
+}
+
+#dashboard {
+  display: none;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.panel {
+  background: #1b1d22;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.room {
+  background: #24272e;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.roomTitle {
+  font-weight: bold;
+  font-size: 17px;
+}
+
+.roomCode {
+  color: #aaa;
+  margin-top: 3px;
+}
+
+.participant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #34363d;
+}
+
+.participant:last-child {
+  border-bottom: 0;
+}
+
+.participantButtons {
+  display: flex;
+  gap: 5px;
+}
+
+.participantButtons button {
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+.banItem {
+  background: #24272e;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 9px;
+}
+
+.banName {
+  font-weight: bold;
+}
+
+.banTime {
+  color: #aaa;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.small {
+  font-size: 12px;
+  color: #999;
+}
+
+.empty {
+  color: #888;
+  padding: 15px 0;
+}
+
+#modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modalBox {
+  width: 100%;
+  max-width: 440px;
+  background: #1b1d22;
+  border-radius: 18px;
+  padding: 22px;
+}
+
+.modalBox h2 {
+  margin-top: 0;
+}
+
+.durationGrid {
+  display: grid;
+  grid-template-columns:
+    1fr 1fr;
+  gap: 10px;
+}
+
+.durationGrid label {
+  display: block;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.durationGrid input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  background: #111216;
+  border: 1px solid #3a3d44;
+  color: white;
+  border-radius: 8px;
+}
+
+.permanent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.permanent input {
+  width: auto;
+}
+
+.modalButtons {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.modalButtons button {
+  flex: 1;
+}
+</style>
+</head>
+
+<body>
+
+<div id="login">
+
+  <div class="loginBox">
+
+    <h1>Blueberry Console</h1>
+
+    <input
+      id="pinInput"
+      type="password"
+      inputmode="numeric"
+      placeholder="Moderator PIN"
+    >
+
+    <button id="loginButton">
+      Enter Console
+    </button>
+
+    <div id="loginStatus"></div>
+
+  </div>
+
+</div>
+
+<div id="dashboard">
+
+  <header>
+    <h1>Blueberry Console</h1>
+
+    <button
+      id="disconnectButton"
+      class="secondary"
+    >
+      Disconnect
+    </button>
+  </header>
+
+  <div class="grid">
+
+    <div class="panel">
+      <h2>Open Rooms</h2>
+      <div id="rooms"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Banned Users</h2>
+      <div id="bans"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<div id="modal">
+
+  <div class="modalBox">
+
+    <h2 id="banTitle">
+      Ban User
+    </h2>
+
+    <p class="small">
+      Enter any combination of time.
+      Leave everything blank for a
+      permanent ban, or check Permanent.
+    </p>
+
+    <div class="durationGrid">
+
+      <div>
+        <label>Seconds</label>
+        <input
+          id="seconds"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div>
+        <label>Minutes</label>
+        <input
+          id="minutes"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div>
+        <label>Hours</label>
+        <input
+          id="hours"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div>
+        <label>Days</label>
+        <input
+          id="days"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div>
+        <label>Weeks</label>
+        <input
+          id="weeks"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div>
+        <label>Months</label>
+        <input
+          id="months"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+      <div>
+        <label>Years</label>
+        <input
+          id="years"
+          type="number"
+          min="0"
+          step="1"
+        >
+      </div>
+
+    </div>
+
+    <label class="permanent">
+      <input
+        id="permanent"
+        type="checkbox"
+      >
+      Permanent ban
+    </label>
+
+    <div class="modalButtons">
+
+      <button
+        id="cancelBan"
+        class="secondary"
+      >
+        Cancel
+      </button>
+
+      <button
+        id="confirmBan"
+        class="danger"
+      >
+        Ban User
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+const WS_URL =
+  (location.protocol === "https:"
+    ? "wss://"
+    : "ws://") +
+  location.host +
+  "/ws";
+
+const login =
+  document.getElementById("login");
+
+const dashboard =
+  document.getElementById("dashboard");
+
+const pinInput =
+  document.getElementById("pinInput");
+
+const loginButton =
+  document.getElementById("loginButton");
+
+const loginStatus =
+  document.getElementById("loginStatus");
+
+const roomsElement =
+  document.getElementById("rooms");
+
+const bansElement =
+  document.getElementById("bans");
+
+const disconnectButton =
+  document.getElementById(
+    "disconnectButton"
+  );
+
+const modal =
+  document.getElementById("modal");
+
+const banTitle =
+  document.getElementById("banTitle");
+
+const seconds =
+  document.getElementById("seconds");
+
+const minutes =
+  document.getElementById("minutes");
+
+const hours =
+  document.getElementById("hours");
+
+const days =
+  document.getElementById("days");
+
+const weeks =
+  document.getElementById("weeks");
+
+const months =
+  document.getElementById("months");
+
+const years =
+  document.getElementById("years");
+
+const permanent =
+  document.getElementById("permanent");
+
+const cancelBan =
+  document.getElementById("cancelBan");
+
+const confirmBan =
+  document.getElementById(
+    "confirmBan"
+  );
+
+let socket = null;
+let pendingBanUserId = null;
+let pendingBanName = "";
+
+let roomList = [];
+let banList = [];
+
+function makeModeratorId() {
+  let id =
+    sessionStorage.getItem(
+      "blueberry_moderator_id"
+    );
+
+  if (!id) {
+    id =
+      crypto.randomUUID();
+
+    sessionStorage.setItem(
+      "blueberry_moderator_id",
+      id
+    );
+  }
+
+  return id;
+}
+
+function send(message) {
+  if (
+    socket &&
+    socket.readyState === WebSocket.OPEN
+  ) {
+    socket.send(
+      JSON.stringify(message)
+    );
+  }
+}
+
+function connect() {
+  const pin =
+    pinInput.value;
+
+  if (!pin) {
+    loginStatus.textContent =
+      "Enter the PIN.";
+
+    return;
+  }
+
+  loginButton.disabled = true;
+
+  loginStatus.textContent =
+    "Connecting...";
+
+  socket =
+    new WebSocket(WS_URL);
+
+  socket.onopen = () => {
+
+    send({
+      type: "register",
+      id: makeModeratorId(),
+      name: "Moderator",
+      role: "moderator",
+      pin
+    });
+
+  };
+
+  socket.onmessage =
+    event => {
+
+      let message;
+
+      try {
+        message =
+          JSON.parse(
+            event.data
+          );
+      } catch {
+        return;
+      }
+
+      handleMessage(
+        message
+      );
+    };
+
+  socket.onerror = () => {
+    loginButton.disabled =
+      false;
+
+    loginStatus.textContent =
+      "Could not connect.";
+  };
+
+  socket.onclose = () => {
+    if (
+      dashboard.style.display !==
+      "none"
+    ) {
+      dashboard.style.display =
+        "none";
+
+      login.style.display =
+        "flex";
+
+      loginButton.disabled =
+        false;
+
+      loginStatus.textContent =
+        "Disconnected.";
+    }
+  };
+}
+
+function handleMessage(message) {
+
+  switch (message.type) {
+
+    case "authError":
+      loginButton.disabled =
+        false;
+
+      loginStatus.textContent =
+        message.message;
+
+      break;
+
+    case "roomList":
+      roomList =
+        message.rooms || [];
+
+      showDashboard();
+      renderRooms();
+
+      break;
+
+    case "roomsUpdated":
+      roomList =
+        message.rooms || [];
+
+      renderRooms();
+
+      break;
+
+    case "banList":
+      banList =
+        message.bans || [];
+
+      renderBans();
+
+      break;
+
+    case "roomCreated":
+      renderRooms();
+      break;
+
+    case "error":
+      alert(
+        message.message
+      );
+      break;
+  }
+}
+
+function showDashboard() {
+  login.style.display =
+    "none";
+
+  dashboard.style.display =
+    "block";
+
+  send({
+    type: "getBans"
+  });
+}
+
+function renderRooms() {
+
+  roomsElement.innerHTML = "";
+
+  if (!roomList.length) {
+    roomsElement.innerHTML =
+      '<div class="empty">No open rooms.</div>';
+
+    return;
+  }
+
+  for (const room of roomList) {
+
+    const element =
+      document.createElement("div");
+
+    element.className =
+      "room";
+
+    const title =
+      document.createElement("div");
+
+    title.className =
+      "roomTitle";
+
+    title.textContent =
+      room.name;
+
+    const code =
+      document.createElement("div");
+
+    code.className =
+      "roomCode";
+
+    code.textContent =
+      room.code +
+      " • " +
+      room.userCount +
+      " participant(s)";
+
+    element.appendChild(title);
+    element.appendChild(code);
+
+    const joinNormal =
+      document.createElement("button");
+
+    joinNormal.textContent =
+      "Join";
+
+    joinNormal.onclick =
+      () => joinRoom(
+        room.code,
+        false
+      );
+
+    const joinAnonymous =
+      document.createElement("button");
+
+    joinAnonymous.textContent =
+      "Join Anonymous";
+
+    joinAnonymous.className =
+      "secondary";
+
+    joinAnonymous.onclick =
+      () => joinRoom(
+        room.code,
+        true
+      );
+
+    element.appendChild(
+      joinNormal
+    );
+
+    element.appendChild(
+      joinAnonymous
+    );
+
+    const participants =
+      document.createElement(
+        "div"
+      );
+
+    for (
+      const participant
+      of room.participants || []
+    ) {
+
+      const row =
+        document.createElement(
+          "div"
+        );
+
+      row.className =
+        "participant";
+
+      const name =
+        document.createElement(
+          "span"
+        );
+
+      name.textContent =
+        participant.name +
+        (
+          participant.role ===
+          "moderator"
+            ? " (Moderator)"
+            : ""
+        );
+
+      const buttons =
+        document.createElement(
+          "div"
+        );
+
+      buttons.className =
+        "participantButtons";
+
+      if (
+        participant.role !==
+        "moderator"
+      ) {
+
+        const kick =
+          document.createElement(
+            "button"
+          );
+
+        kick.textContent =
+          "Kick";
+
+        kick.className =
+          "secondary";
+
+        kick.onclick =
+          () => kickUser(
+            participant.id
+          );
+
+        const ban =
+          document.createElement(
+            "button"
+          );
+
+        ban.textContent =
+          "Ban";
+
+        ban.className =
+          "danger";
+
+        ban.onclick =
+          () => openBanPopup(
+            participant.id,
+            participant.name
+          );
+
+        buttons.appendChild(
+          kick
+        );
+
+        buttons.appendChild(
+          ban
+        );
+      }
+
+      row.appendChild(name);
+      row.appendChild(buttons);
+
+      participants.appendChild(
+        row
+      );
+    }
+
+    element.appendChild(
+      participants
+    );
+
+    roomsElement.appendChild(
+      element
+    );
+  }
+}
+
+function renderBans() {
+
+  bansElement.innerHTML = "";
+
+  if (!banList.length) {
+    bansElement.innerHTML =
+      '<div class="empty">No banned users.</div>';
+
+    return;
+  }
+
+  for (const ban of banList) {
+
+    const element =
+      document.createElement(
+        "div"
+      );
+
+    element.className =
+      "banItem";
+
+    const name =
+      document.createElement(
+        "div"
+      );
+
+    name.className =
+      "banName";
+
+    name.textContent =
+      ban.name ||
+      "Unknown user";
+
+    const time =
+      document.createElement(
+        "div"
+      );
+
+    time.className =
+      "banTime";
+
+    if (
+      ban.expiresAt === null
+    ) {
+      time.textContent =
+        "Permanent ban";
+    } else {
+      time.textContent =
+        "Expires: " +
+        new Date(
+          ban.expiresAt
+        ).toLocaleString();
+    }
+
+    const unban =
+      document.createElement(
+        "button"
+      );
+
+    unban.textContent =
+      "Unban";
+
+    unban.className =
+      "secondary";
+
+    unban.style.marginTop =
+      "9px";
+
+    unban.onclick =
+      () => unbanUser(
+        ban.userId
+      );
+
+    element.appendChild(name);
+    element.appendChild(time);
+    element.appendChild(unban);
+
+    bansElement.appendChild(
+      element
+    );
+  }
+}
+
+function joinRoom(
+  code,
+  anonymous
+) {
+  send({
+    type: "moderatorJoinRoom",
+    code,
+    anonymous
+  });
+}
+
+function kickUser(userId) {
+  if (
+    !confirm(
+      "Kick this user from the room?"
+    )
+  ) {
+    return;
+  }
+
+  send({
+    type: "kick",
+    userId
+  });
+}
+
+function openBanPopup(
+  userId,
+  name
+) {
+  pendingBanUserId =
+    userId;
+
+  pendingBanName =
+    name;
+
+  banTitle.textContent =
+    "Ban " + name;
+
+  seconds.value = "";
+  minutes.value = "";
+  hours.value = "";
+  days.value = "";
+  weeks.value = "";
+  months.value = "";
+  years.value = "";
+
+  permanent.checked =
+    false;
+
+  modal.style.display =
+    "flex";
+}
+
+function closeBanPopup() {
+  modal.style.display =
+    "none";
+
+  pendingBanUserId =
+    null;
+
+  pendingBanName =
+    "";
+}
+
+function numberValue(input) {
+  const value =
+    Number(input.value);
+
+  if (
+    !Number.isFinite(value) ||
+    value < 0
+  ) {
+    return 0;
+  }
+
+  return value;
+}
+
+function confirmBanUser() {
+
+  if (!pendingBanUserId) {
+    return;
+  }
+
+  let duration = 0;
+
+  if (!permanent.checked) {
+
+    duration +=
+      numberValue(seconds) *
+      1000;
+
+    duration +=
+      numberValue(minutes) *
+      60 *
+      1000;
+
+    duration +=
+      numberValue(hours) *
+      60 *
+      60 *
+      1000;
+
+    duration +=
+      numberValue(days) *
+      24 *
+      60 *
+      60 *
+      1000;
+
+    duration +=
+      numberValue(weeks) *
+      7 *
+      24 *
+      60 *
+      60 *
+      1000;
+
+    /*
+     * Month = 30 days
+     */
+    duration +=
+      numberValue(months) *
+      30 *
+      24 *
+      60 *
+      60 *
+      1000;
+
+    /*
+     * Year = 365 days
+     */
+    duration +=
+      numberValue(years) *
+      365 *
+      24 *
+      60 *
+      60 *
+      1000;
+  }
+
+  send({
+    type: "ban",
+    userId:
+      pendingBanUserId,
+    duration
+  });
+
+  closeBanPopup();
+}
+
+function unbanUser(userId) {
+
+  if (
+    !confirm(
+      "Unban this user?"
+    )
+  ) {
+    return;
+  }
+
+  send({
+    type: "unban",
+    userId
+  });
+}
+
+cancelBan.onclick =
+  closeBanPopup;
+
+confirmBan.onclick =
+  confirmBanUser;
+
+loginButton.onclick =
+  connect;
+
+pinInput.addEventListener(
+  "keydown",
+  event => {
+    if (
+      event.key === "Enter"
+    ) {
+      connect();
+    }
+  }
+);
+
+disconnectButton.onclick =
+  () => {
+    if (socket) {
+      socket.close();
+    }
+  };
+</script>
+
+</body>
+</html>

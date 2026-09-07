@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Blueberry Moderator Console</title>
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
+<title>Blueberry Console</title>
 
 <style>
 * {
@@ -12,21 +15,21 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
-  background: #101114;
-  color: #fff;
+  background: #0d0f13;
+  color: white;
   font-family: Arial, sans-serif;
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
 button {
-  border: 0;
-  border-radius: 10px;
-  padding: 10px 14px;
+  border: none;
+  border-radius: 9px;
+  padding: 9px 13px;
   cursor: pointer;
   background: #5968ff;
   color: white;
@@ -34,31 +37,29 @@ button {
 }
 
 button:hover {
-  filter: brightness(1.12);
-}
-
-button:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-}
-
-.danger {
-  background: #d83b4b;
+  filter: brightness(1.1);
 }
 
 .secondary {
   background: #30333a;
 }
 
-.success {
-  background: #278c57;
+.danger {
+  background: #d83b4b;
 }
 
-.orange {
-  background: #c87828;
+.green {
+  background: #299b56;
 }
 
-#login {
+.hidden {
+  display: none !important;
+}
+
+
+/* LOGIN */
+
+#loginScreen {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -68,318 +69,394 @@ button:disabled {
 
 .loginBox {
   width: 100%;
-  max-width: 420px;
-  background: #1b1d22;
-  border-radius: 20px;
+  max-width: 400px;
+  background: #191c22;
   padding: 30px;
-  box-shadow: 0 20px 70px rgba(0,0,0,.45);
+  border-radius: 18px;
 }
 
 .loginBox h1 {
   text-align: center;
-  margin-top: 0;
-}
-
-.loginBox p {
-  color: #aaa;
-  text-align: center;
-  line-height: 1.5;
 }
 
 .loginBox input {
   width: 100%;
-  padding: 14px;
-  margin-top: 12px;
-  border: 1px solid #3b3e46;
-  background: #111216;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 9px;
+  border: 1px solid #3b3f48;
+  background: #0f1115;
   color: white;
-  border-radius: 10px;
 }
 
 .loginBox button {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 #loginStatus {
-  min-height: 20px;
   margin-top: 12px;
-  text-align: center;
   color: #aaa;
+  text-align: center;
 }
+
+
+/* DASHBOARD */
 
 #dashboard {
   display: none;
-  padding: 20px;
-  max-width: 1600px;
-  margin: auto;
 }
 
-header {
+.header {
+  min-height: 65px;
+  padding: 10px 18px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-header h1 {
-  margin: 0;
-}
-
-.headerRight {
-  display: flex;
   align-items: center;
+  background: #191c22;
+  border-bottom: 1px solid #292d35;
   gap: 10px;
 }
 
-.levelBadge {
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: #30333a;
+.headerTitle {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.headerSub {
+  color: #999;
   font-size: 12px;
+  margin-top: 3px;
+}
+
+.container {
+  max-width: 1600px;
+  margin: auto;
+  padding: 15px;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit,minmax(350px,1fr));
-  gap: 18px;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
 }
 
 .panel {
-  background: #1b1d22;
-  border-radius: 18px;
-  padding: 18px;
+  background: #191c22;
+  border-radius: 15px;
   overflow: hidden;
 }
 
-.panel.full {
-  grid-column: 1 / -1;
+.panelHeader {
+  padding: 14px;
+  border-bottom: 1px solid #30333a;
+  font-weight: bold;
 }
 
-.panel h2 {
-  margin-top: 0;
+.panelBody {
+  padding: 13px;
 }
 
-.panelDescription {
-  color: #999;
-  font-size: 13px;
-  margin-top: -5px;
-  margin-bottom: 15px;
-}
+
+/* ROOMS */
 
 .room {
-  background: #24272e;
-  border-radius: 13px;
-  padding: 14px;
+  background: #25282f;
+  padding: 12px;
+  border-radius: 10px;
   margin-bottom: 10px;
 }
 
-.roomTitle {
-  font-size: 17px;
+.roomName {
   font-weight: bold;
 }
 
 .roomCode {
-  color: #aaa;
+  color: #8e97ff;
+  font-family: monospace;
   margin-top: 4px;
 }
 
-.roomButtons {
+.roomActions {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  margin-top: 12px;
+  margin-top: 9px;
 }
 
-.roomButtons button {
-  font-size: 12px;
-  padding: 8px 10px;
-}
+
+/* PARTICIPANTS */
 
 .participant {
-  background: #24272e;
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 9px;
-}
-
-.participantTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  background: #25282f;
+  padding: 10px;
+  border-radius: 9px;
+  margin-bottom: 7px;
 }
 
 .participantName {
   font-weight: bold;
 }
 
-.roleBadge {
-  background: #343842;
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
-.participantButtons {
+.participantActions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 7px;
 }
 
-.participantButtons button {
-  font-size: 12px;
-  padding: 7px 9px;
-}
 
-.item {
-  background: #24272e;
-  border-radius: 12px;
-  padding: 13px;
-  margin-bottom: 9px;
-}
+/* BANS / ACCESS / LOG */
 
-.itemTitle {
-  font-weight: bold;
-}
-
-.itemDetails {
-  color: #aaa;
-  font-size: 12px;
-  line-height: 1.5;
-  margin-top: 5px;
-}
-
-.itemButtons {
-  display: flex;
-  gap: 7px;
-  margin-top: 9px;
-}
-
-.log {
-  background: #24272e;
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 8px;
-}
-
-.logAction {
-  font-weight: bold;
-}
-
-.logDetails {
-  color: #aaa;
-  font-size: 12px;
-  margin-top: 4px;
-  line-height: 1.5;
-}
-
-.empty {
-  color: #777;
-  padding: 15px 0;
+.listItem {
+  background: #25282f;
+  border-radius: 9px;
+  padding: 10px;
+  margin-bottom: 7px;
 }
 
 .small {
   color: #999;
   font-size: 12px;
+  margin-top: 3px;
 }
 
-.modal {
+.listActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+
+
+/* WATCH AREA */
+
+#watchArea {
   display: none;
+  margin-top: 15px;
+}
+
+.watchGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 15px;
+}
+
+.watchVideoBox {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #050506;
+  border-radius: 15px;
+  overflow: hidden;
+  border: 3px solid transparent;
+}
+
+.watchVideoBox.speaking {
+  border-color: #38d66b;
+}
+
+#watchLargeVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.watchName {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0,0,0,.7);
+  padding: 7px 9px;
+  border-radius: 7px;
+}
+
+.watchThumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+.watchThumb {
+  position: relative;
+  flex: 0 0 140px;
+  height: 85px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #17191e;
+  border: 3px solid transparent;
+  cursor: pointer;
+}
+
+.watchThumb.speaking {
+  border-color: #38d66b;
+}
+
+.watchThumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.watchThumbName {
+  position: absolute;
+  bottom: 4px;
+  left: 5px;
+  right: 5px;
+  padding: 3px 5px;
+  background: rgba(0,0,0,.7);
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+
+/* CHAT */
+
+.chatBox {
+  height: 100%;
+  min-height: 500px;
+  background: #191c22;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chatTitle {
+  padding: 14px;
+  border-bottom: 1px solid #30333a;
+  font-weight: bold;
+}
+
+.chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.chatMessage {
+  margin-bottom: 10px;
+}
+
+.chatName {
+  font-size: 12px;
+  color: #8f9aff;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.chatBubble {
+  display: inline-block;
+  max-width: 95%;
+  background: #30333a;
+  border-radius: 9px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chatInput {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid #30333a;
+}
+
+.chatInput input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+  background: #101216;
+  color: white;
+  border: 1px solid #3b3f48;
+  border-radius: 8px;
+}
+
+
+/* MODALS */
+
+.modal {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  background: rgba(0,0,0,.72);
+  background: rgba(0,0,0,.7);
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  z-index: 100;
 }
 
 .modalBox {
   width: 100%;
-  max-width: 470px;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: #1b1d22;
-  border-radius: 18px;
-  padding: 22px;
+  max-width: 430px;
+  background: #1a1d23;
+  border-radius: 15px;
+  padding: 20px;
 }
 
 .modalBox h2 {
   margin-top: 0;
 }
 
-.modalBox input {
+.modalBox input,
+.modalBox select {
   width: 100%;
+  margin-top: 8px;
   padding: 11px;
-  margin-top: 5px;
-  border: 1px solid #3b3e46;
-  border-radius: 9px;
-  background: #111216;
+  background: #101216;
   color: white;
-}
-
-.field {
-  margin-bottom: 12px;
-}
-
-.field label {
-  color: #aaa;
-  font-size: 13px;
-}
-
-.durationGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.permanent {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.permanent input {
-  width: auto;
-  margin: 0;
+  border: 1px solid #3b3f48;
+  border-radius: 8px;
 }
 
 .modalButtons {
   display: flex;
-  gap: 9px;
-  margin-top: 18px;
+  gap: 7px;
+  margin-top: 15px;
 }
 
 .modalButtons button {
   flex: 1;
 }
 
-.notice {
-  background: #252932;
-  border-radius: 10px;
-  padding: 10px;
-  color: #bbb;
-  font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 15px;
+.durationRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 8px;
 }
 
-@media (max-width: 600px) {
-  #dashboard {
-    padding: 12px;
-  }
+.durationRow input,
+.durationRow select {
+  margin-top: 0;
+}
 
-  header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
 
-  .durationGrid {
+.checkboxRow input {
+  width: auto;
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 1000px) {
+
+  .grid {
     grid-template-columns: 1fr;
+  }
+
+  .watchGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chatBox {
+    min-height: 400px;
   }
 }
 </style>
@@ -387,34 +464,29 @@ header h1 {
 
 <body>
 
-<div id="login">
+
+<!-- LOGIN -->
+
+<div id="loginScreen">
 
   <div class="loginBox">
 
-    <h1>🫐 Blueberry</h1>
-
-    <p>
-      Enter your moderator PIN to access
-      the moderation console.
-    </p>
+    <h1>🫐 Blueberry Console</h1>
 
     <input
-      id="pinInput"
+      id="moderatorName"
+      maxlength="30"
+      placeholder="Moderator name"
+    >
+
+    <input
+      id="moderatorPin"
       type="password"
-      inputmode="numeric"
-      autocomplete="off"
       placeholder="Moderator PIN"
     >
 
-    <input
-      id="nameInput"
-      type="text"
-      maxlength="30"
-      placeholder="Your moderator name"
-    >
-
     <button id="loginButton">
-      Enter Moderator Console
+      Enter Console
     </button>
 
     <div id="loginStatus"></div>
@@ -424,117 +496,191 @@ header h1 {
 </div>
 
 
+<!-- DASHBOARD -->
+
 <div id="dashboard">
 
-  <header>
+  <div class="header">
 
     <div>
-      <h1>🫐 Blueberry Console</h1>
-      <div class="small">
-        Moderator control center
-      </div>
-    </div>
 
-    <div class="headerRight">
+      <div class="headerTitle">
+        🫐 Blueberry Console
+      </div>
 
       <div
-        id="levelBadge"
-        class="levelBadge"
-      >
-        Moderator
-      </div>
-
-      <button
-        id="disconnectButton"
-        class="secondary"
-      >
-        Disconnect
-      </button>
+        id="headerSub"
+        class="headerSub"
+      ></div>
 
     </div>
 
-  </header>
+    <button
+      id="logoutButton"
+      class="danger"
+    >
+      Logout
+    </button>
+
+  </div>
 
 
-  <div class="grid">
+  <div class="container">
 
-    <div class="panel">
-
-      <h2>Open Rooms</h2>
-
-      <div
-        class="panelDescription"
-      >
-        Every currently open call.
-      </div>
-
-      <div id="rooms"></div>
-
-    </div>
+    <div class="grid">
 
 
-    <div class="panel">
+      <!-- ROOMS -->
 
-      <h2>Participants</h2>
+      <div class="panel">
 
-      <div
-        class="panelDescription"
-      >
-        Select a room to manage its participants.
-      </div>
-
-      <div id="participants">
-        <div class="empty">
-          Select a room.
+        <div class="panelHeader">
+          Open Rooms
         </div>
+
+        <div
+          id="roomsList"
+          class="panelBody"
+        ></div>
+
       </div>
+
+
+      <!-- PARTICIPANTS -->
+
+      <div class="panel">
+
+        <div class="panelHeader">
+          Participants
+        </div>
+
+        <div
+          id="participantsList"
+          class="panelBody"
+        ></div>
+
+      </div>
+
+
+      <!-- BANS -->
+
+      <div class="panel">
+
+        <div class="panelHeader">
+          Banned Users
+        </div>
+
+        <div
+          id="bansList"
+          class="panelBody"
+        ></div>
+
+      </div>
+
+
+      <!-- MODERATOR ACCESS -->
+
+      <div class="panel">
+
+        <div class="panelHeader">
+          Moderator Access
+        </div>
+
+        <div
+          id="moderatorAccessList"
+          class="panelBody"
+        ></div>
+
+      </div>
+
+
+      <!-- HISTORY -->
+
+      <div class="panel">
+
+        <div class="panelHeader">
+          Moderation History
+        </div>
+
+        <div
+          id="logsList"
+          class="panelBody"
+        ></div>
+
+      </div>
+
 
     </div>
 
 
-    <div class="panel">
+    <!-- WATCH ROOM -->
 
-      <h2>Banned Users</h2>
+    <div id="watchArea">
 
-      <div
-        class="panelDescription"
-      >
-        Active bans on the server.
+      <div class="watchGrid">
+
+        <div>
+
+          <div
+            id="watchLargeBox"
+            class="watchVideoBox"
+          >
+
+            <video
+              id="watchLargeVideo"
+              autoplay
+              playsinline
+            ></video>
+
+            <div
+              id="watchLargeName"
+              class="watchName"
+            >
+              Select a participant
+            </div>
+
+          </div>
+
+          <div
+            id="watchThumbs"
+            class="watchThumbs"
+          ></div>
+
+        </div>
+
+
+        <!-- MODERATOR CHAT -->
+
+        <div class="chatBox">
+
+          <div class="chatTitle">
+            💬 Room Chat
+          </div>
+
+          <div
+            id="watchChatMessages"
+            class="chatMessages"
+          ></div>
+
+          <div class="chatInput">
+
+            <input
+              id="moderatorChatInput"
+              maxlength="1000"
+              placeholder="Moderator message..."
+            >
+
+            <button
+              id="moderatorChatButton"
+            >
+              Send
+            </button>
+
+          </div>
+
+        </div>
+
       </div>
-
-      <div id="bans"></div>
-
-    </div>
-
-
-    <div class="panel">
-
-      <h2>Moderator Access</h2>
-
-      <div
-        class="panelDescription"
-      >
-        Temporary moderator permissions.
-      </div>
-
-      <div id="moderatorAccess"></div>
-
-    </div>
-
-
-    <div class="panel full">
-
-      <h2>Moderation History</h2>
-
-      <div
-        class="panelDescription"
-      >
-        See who kicked or banned people,
-        how long bans were, and when actions
-        happened.
-      </div>
-
-      <div id="logs"></div>
 
     </div>
 
@@ -552,97 +698,62 @@ header h1 {
 
   <div class="modalBox">
 
-    <h2>
-      Ban <span id="banTargetName"></span>
-    </h2>
+    <h2>Ban User</h2>
 
-    <div class="notice">
-      You can combine multiple units.
-      For example, 1 day + 4 hours.
-      Leave everything empty for a
-      permanent ban.
-    </div>
+    <div id="banTargetName"></div>
 
-    <div class="durationGrid">
+    <div class="durationRow">
 
-      <div class="field">
-        <label>Seconds</label>
-        <input
-          id="banSeconds"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+      <input
+        id="banAmount"
+        type="number"
+        min="1"
+        value="10"
+      >
 
-      <div class="field">
-        <label>Minutes</label>
-        <input
-          id="banMinutes"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+      <select id="banUnit">
 
-      <div class="field">
-        <label>Hours</label>
-        <input
-          id="banHours"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="seconds">
+          Seconds
+        </option>
 
-      <div class="field">
-        <label>Days</label>
-        <input
-          id="banDays"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="minutes" selected>
+          Minutes
+        </option>
 
-      <div class="field">
-        <label>Weeks</label>
-        <input
-          id="banWeeks"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="hours">
+          Hours
+        </option>
 
-      <div class="field">
-        <label>Months</label>
-        <input
-          id="banMonths"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="days">
+          Days
+        </option>
 
-      <div class="field">
-        <label>Years</label>
-        <input
-          id="banYears"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="weeks">
+          Weeks
+        </option>
+
+        <option value="months">
+          Months
+        </option>
+
+        <option value="years">
+          Years
+        </option>
+
+      </select>
 
     </div>
 
-    <label class="permanent">
+    <label class="checkboxRow">
+
       <input
         id="banPermanent"
         type="checkbox"
       >
+
       Permanent ban
+
     </label>
 
     <div class="modalButtons">
@@ -658,7 +769,7 @@ header h1 {
         id="banConfirm"
         class="danger"
       >
-        Ban User
+        Ban
       </button>
 
     </div>
@@ -681,125 +792,82 @@ header h1 {
       Give Moderator Access
     </h2>
 
-    <div class="notice">
-      Create a PIN for
-      <strong id="moderatorTargetName"></strong>.
-      Give that PIN to them. They can enter
-      it on this page to become a moderator.
-    </div>
+    <div id="moderatorTargetName"></div>
 
-    <div class="field">
+    <input
+      id="newModeratorPin"
+      type="text"
+      maxlength="100"
+      placeholder="Custom moderator PIN"
+    >
 
-      <label>
-        Moderator PIN
-      </label>
+    <div class="durationRow">
 
       <input
-        id="newModeratorPin"
-        type="password"
-        inputmode="numeric"
-        autocomplete="off"
-        placeholder="Create a PIN"
+        id="moderatorAmount"
+        type="number"
+        min="1"
+        value="1"
       >
 
-    </div>
+      <select id="moderatorUnit">
 
-    <div class="durationGrid">
+        <option value="seconds">
+          Seconds
+        </option>
 
-      <div class="field">
-        <label>Seconds</label>
-        <input
-          id="modSeconds"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="minutes">
+          Minutes
+        </option>
 
-      <div class="field">
-        <label>Minutes</label>
-        <input
-          id="modMinutes"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="hours">
+          Hours
+        </option>
 
-      <div class="field">
-        <label>Hours</label>
-        <input
-          id="modHours"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="days" selected>
+          Days
+        </option>
 
-      <div class="field">
-        <label>Days</label>
-        <input
-          id="modDays"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="weeks">
+          Weeks
+        </option>
 
-      <div class="field">
-        <label>Weeks</label>
-        <input
-          id="modWeeks"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="months">
+          Months
+        </option>
 
-      <div class="field">
-        <label>Months</label>
-        <input
-          id="modMonths"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+        <option value="years">
+          Years
+        </option>
 
-      <div class="field">
-        <label>Years</label>
-        <input
-          id="modYears"
-          type="number"
-          min="0"
-          step="1"
-        >
-      </div>
+      </select>
 
     </div>
 
-    <label class="permanent">
+    <label class="checkboxRow">
+
       <input
-        id="modPermanent"
+        id="moderatorPermanent"
         type="checkbox"
       >
-      Permanent moderator access
+
+      Permanent access
+
     </label>
 
     <div class="modalButtons">
 
       <button
-        id="modCancel"
+        id="moderatorCancel"
         class="secondary"
       >
         Cancel
       </button>
 
       <button
-        id="modConfirm"
-        class="success"
+        id="moderatorConfirm"
       >
-        Give Access
+        Give Moderator
       </button>
 
     </div>
@@ -819,10 +887,10 @@ const socketUrl =
   location.host +
   "/ws";
 
-let ws = null;
 
-let myId = null;
-let myName = "Moderator";
+let ws = null;
+let moderatorId = null;
+let moderatorName = "";
 let moderatorLevel = null;
 
 let rooms = [];
@@ -830,182 +898,351 @@ let bans = [];
 let moderatorAccess = [];
 let logs = [];
 
-let selectedRoomCode = null;
-let banTargetId = null;
-let moderatorTargetId = null;
+let selectedBanUser = null;
+let selectedModeratorUser = null;
+
+let watchingRoom = null;
+let selectedWatchUser = null;
+
+const watchPeers = new Map();
+const watchStreams = new Map();
+const watchThumbs = new Map();
+const watchPendingCandidates = new Map();
+const watchParticipants = new Map();
 
 
-const login =
-  document.getElementById("login");
+const loginScreen =
+  document.getElementById(
+    "loginScreen"
+  );
 
 const dashboard =
-  document.getElementById("dashboard");
+  document.getElementById(
+    "dashboard"
+  );
 
-const pinInput =
-  document.getElementById("pinInput");
+const moderatorNameInput =
+  document.getElementById(
+    "moderatorName"
+  );
 
-const nameInput =
-  document.getElementById("nameInput");
+const moderatorPinInput =
+  document.getElementById(
+    "moderatorPin"
+  );
 
 const loginButton =
-  document.getElementById("loginButton");
+  document.getElementById(
+    "loginButton"
+  );
 
 const loginStatus =
-  document.getElementById("loginStatus");
+  document.getElementById(
+    "loginStatus"
+  );
 
-const levelBadge =
-  document.getElementById("levelBadge");
+const headerSub =
+  document.getElementById(
+    "headerSub"
+  );
 
-const roomsElement =
-  document.getElementById("rooms");
+const roomsList =
+  document.getElementById(
+    "roomsList"
+  );
 
-const participantsElement =
-  document.getElementById("participants");
+const participantsList =
+  document.getElementById(
+    "participantsList"
+  );
 
-const bansElement =
-  document.getElementById("bans");
+const bansList =
+  document.getElementById(
+    "bansList"
+  );
 
-const moderatorAccessElement =
-  document.getElementById("moderatorAccess");
+const moderatorAccessList =
+  document.getElementById(
+    "moderatorAccessList"
+  );
 
-const logsElement =
-  document.getElementById("logs");
+const logsList =
+  document.getElementById(
+    "logsList"
+  );
+
+const logoutButton =
+  document.getElementById(
+    "logoutButton"
+  );
+
+const watchArea =
+  document.getElementById(
+    "watchArea"
+  );
+
+const watchLargeBox =
+  document.getElementById(
+    "watchLargeBox"
+  );
+
+const watchLargeVideo =
+  document.getElementById(
+    "watchLargeVideo"
+  );
+
+const watchLargeName =
+  document.getElementById(
+    "watchLargeName"
+  );
+
+const watchThumbs =
+  document.getElementById(
+    "watchThumbs"
+  );
+
+const watchChatMessages =
+  document.getElementById(
+    "watchChatMessages"
+  );
+
+const moderatorChatInput =
+  document.getElementById(
+    "moderatorChatInput"
+  );
+
+const moderatorChatButton =
+  document.getElementById(
+    "moderatorChatButton"
+  );
 
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+/* MODALS */
+
+const banModal =
+  document.getElementById(
+    "banModal"
+  );
+
+const banTargetName =
+  document.getElementById(
+    "banTargetName"
+  );
+
+const banAmount =
+  document.getElementById(
+    "banAmount"
+  );
+
+const banUnit =
+  document.getElementById(
+    "banUnit"
+  );
+
+const banPermanent =
+  document.getElementById(
+    "banPermanent"
+  );
+
+const banCancel =
+  document.getElementById(
+    "banCancel"
+  );
+
+const banConfirm =
+  document.getElementById(
+    "banConfirm"
+  );
 
 
-function formatDate(timestamp) {
-  if (!timestamp) {
-    return "Unknown";
+const moderatorModal =
+  document.getElementById(
+    "moderatorModal"
+  );
+
+const moderatorTargetName =
+  document.getElementById(
+    "moderatorTargetName"
+  );
+
+const newModeratorPin =
+  document.getElementById(
+    "newModeratorPin"
+  );
+
+const moderatorAmount =
+  document.getElementById(
+    "moderatorAmount"
+  );
+
+const moderatorUnit =
+  document.getElementById(
+    "moderatorUnit"
+  );
+
+const moderatorPermanent =
+  document.getElementById(
+    "moderatorPermanent"
+  );
+
+const moderatorCancel =
+  document.getElementById(
+    "moderatorCancel"
+  );
+
+const moderatorConfirm =
+  document.getElementById(
+    "moderatorConfirm"
+  );
+
+
+function getModeratorId() {
+
+  let id =
+    localStorage.getItem(
+      "blueberryModeratorId"
+    );
+
+  if (!id) {
+
+    id =
+      crypto.randomUUID();
+
+    localStorage.setItem(
+      "blueberryModeratorId",
+      id
+    );
   }
 
-  return new Date(timestamp)
-    .toLocaleString();
-}
-
-
-function formatRemaining(expiresAt) {
-  if (!expiresAt) {
-    return "Permanent";
-  }
-
-  const remaining =
-    expiresAt - Date.now();
-
-  if (remaining <= 0) {
-    return "Expired";
-  }
-
-  const seconds =
-    Math.floor(remaining / 1000);
-
-  if (seconds < 60) {
-    return `${seconds}s remaining`;
-  }
-
-  const minutes =
-    Math.floor(seconds / 60);
-
-  if (minutes < 60) {
-    return `${minutes}m remaining`;
-  }
-
-  const hours =
-    Math.floor(minutes / 60);
-
-  if (hours < 24) {
-    return `${hours}h remaining`;
-  }
-
-  const days =
-    Math.floor(hours / 24);
-
-  return `${days}d remaining`;
+  return id;
 }
 
 
 function connectModerator() {
-  loginStatus.textContent =
-    "Connecting...";
 
-  ws = new WebSocket(
-    socketUrl
-  );
+  return new Promise(
+    (resolve, reject) => {
 
-  ws.addEventListener(
-    "open",
-    () => {
-      ws.send(
-        JSON.stringify({
-          type: "moderatorAuth",
-          pin: pinInput.value,
-          name:
-            nameInput.value.trim() ||
-            "Moderator",
-          id:
-            localStorage.getItem(
-              "blueberryModeratorId"
-            ) || undefined
-        })
-      );
-    }
-  );
+      ws =
+        new WebSocket(
+          socketUrl
+        );
 
+      let finished = false;
 
-  ws.addEventListener(
-    "message",
-    event => {
-      let message;
+      ws.addEventListener(
+        "open",
+        () => {
 
-      try {
-        message =
-          JSON.parse(
-            event.data
+          ws.send(
+            JSON.stringify({
+              type:
+                "moderatorAuth",
+              id:
+                getModeratorId(),
+              name:
+                moderatorName,
+              pin:
+                moderatorPinInput.value
+            })
           );
-      }
-
-      catch {
-        return;
-      }
-
-      handleMessage(message);
-    }
-  );
+        }
+      );
 
 
-  ws.addEventListener(
-    "close",
-    () => {
-      if (
-        dashboard.style.display !==
-        "none"
-      ) {
-        login.style.display =
-          "flex";
+      ws.addEventListener(
+        "message",
+        event => {
 
-        dashboard.style.display =
-          "none";
+          let message;
 
-        loginStatus.textContent =
-          "Disconnected from the server.";
-      }
-    }
-  );
+          try {
+            message =
+              JSON.parse(
+                event.data
+              );
+          }
+
+          catch {
+            return;
+          }
+
+          if (
+            message.type ===
+            "moderatorAuthSuccess"
+          ) {
+
+            moderatorId =
+              message.userId;
+
+            moderatorLevel =
+              message.level;
+
+            rooms =
+              message.rooms ||
+              [];
+
+            bans =
+              message.bans ||
+              [];
+
+            moderatorAccess =
+              message.moderatorAccess ||
+              [];
+
+            logs =
+              message.logs ||
+              [];
+
+            if (!finished) {
+
+              finished = true;
+              resolve();
+            }
+          }
+
+          handleMessage(
+            message
+          );
+        }
+      );
 
 
-  ws.addEventListener(
-    "error",
-    () => {
-      loginStatus.textContent =
-        "Could not connect to the server.";
+      ws.addEventListener(
+        "error",
+        () => {
+
+          if (!finished) {
+
+            finished = true;
+
+            reject(
+              new Error(
+                "Could not connect."
+              )
+            );
+          }
+        }
+      );
+
+
+      ws.addEventListener(
+        "close",
+        () => {
+
+          if (!finished) {
+
+            finished = true;
+
+            reject(
+              new Error(
+                "Connection closed."
+              )
+            );
+          }
+        }
+      );
+
     }
   );
 }
@@ -1017,55 +1254,9 @@ function handleMessage(message) {
 
     case "moderatorAuthSuccess":
 
-      myId =
-        message.moderator.id;
+      showDashboard();
 
-      myName =
-        message.moderator.name;
-
-      moderatorLevel =
-        message.moderator.level;
-
-      if (myId) {
-        localStorage.setItem(
-          "blueberryModeratorId",
-          myId
-        );
-      }
-
-      rooms =
-        message.rooms || [];
-
-      bans =
-        message.bans || [];
-
-      moderatorAccess =
-        message.moderatorAccess || [];
-
-      logs =
-        message.logs || [];
-
-      login.style.display =
-        "none";
-
-      dashboard.style.display =
-        "block";
-
-      levelBadge.textContent =
-        moderatorLevel === "master"
-          ? "MASTER MODERATOR"
-          : "DELEGATED MODERATOR";
-
-      renderEverything();
-
-      break;
-
-
-    case "moderatorAuthFailed":
-
-      loginStatus.textContent =
-        message.message ||
-        "Invalid moderator PIN.";
+      renderAll();
 
       break;
 
@@ -1073,29 +1264,131 @@ function handleMessage(message) {
     case "moderatorData":
 
       rooms =
-        message.rooms || [];
+        message.rooms ||
+        [];
 
       bans =
-        message.bans || [];
+        message.bans ||
+        [];
 
       moderatorAccess =
-        message.moderatorAccess || [];
+        message.moderatorAccess ||
+        [];
 
       logs =
-        message.logs || [];
+        message.logs ||
+        [];
 
-      renderEverything();
+      renderAll();
 
       break;
 
 
-    case "roomsUpdated":
+    case "roomList":
 
       rooms =
-        message.rooms || [];
+        message.rooms ||
+        [];
 
       renderRooms();
-      renderParticipants();
+
+      break;
+
+
+    case "moderatorRoomCreated":
+
+      renderAll();
+
+      break;
+
+
+    case "moderatorRoomJoined":
+
+      startWatchingRoom(
+        message
+      );
+
+      break;
+
+
+    case "userJoined":
+
+      if (
+        watchingRoom &&
+        message.user
+      ) {
+
+        watchParticipants.set(
+          message.user.id,
+          message.user
+        );
+
+        createWatchPeer(
+          message.user.id,
+          true
+        );
+
+        renderWatchThumbs();
+      }
+
+      break;
+
+
+    case "userLeft":
+
+      removeWatchUser(
+        message.userId
+      );
+
+      break;
+
+
+    case "userNameChanged":
+
+      if (
+        watchParticipants.has(
+          message.userId
+        )
+      ) {
+
+        const user =
+          watchParticipants.get(
+            message.userId
+          );
+
+        user.name =
+          message.name;
+
+        renderWatchThumbs();
+      }
+
+      break;
+
+
+    case "signal":
+
+      handleWatchSignal(
+        message
+      );
+
+      break;
+
+
+    case "chatMessage":
+
+      addWatchChatMessage(
+        message.message
+      );
+
+      break;
+
+
+    case "moderatorChatMessage":
+
+      addWatchChatMessage(
+        message.message,
+        true
+      );
 
       break;
 
@@ -1103,10 +1396,10 @@ function handleMessage(message) {
     case "moderatorAccessCreated":
 
       alert(
-        `Moderator access created for ${message.name}.\n\nDuration: ${message.durationText}\n\nMake sure you gave them the PIN you entered.`
+        `Moderator access created.\n\nPIN: ${message.access.pin}\nDuration: ${message.access.durationText}`
       );
 
-      closeModeratorModal();
+      renderAll();
 
       break;
 
@@ -1114,7 +1407,7 @@ function handleMessage(message) {
     case "moderatorAccessGranted":
 
       alert(
-        message.message
+        `You have been granted moderator access.\n\nPIN: ${message.pin}\nDuration: ${message.durationText}`
       );
 
       break;
@@ -1123,10 +1416,18 @@ function handleMessage(message) {
     case "moderatorAccessRevoked":
 
       alert(
-        message.message
+        message.message ||
+        "Moderator access revoked."
       );
 
-      ws.close();
+      location.reload();
+
+      break;
+
+
+    case "moderatorRoomClosed":
+
+      stopWatching();
 
       break;
 
@@ -1139,15 +1440,31 @@ function handleMessage(message) {
       );
 
       break;
-
-
-    default:
-      break;
   }
 }
 
 
-function renderEverything() {
+/* DASHBOARD */
+
+function showDashboard() {
+
+  loginScreen.style.display =
+    "none";
+
+  dashboard.style.display =
+    "block";
+
+  headerSub.textContent =
+    `${moderatorName} • ${
+      moderatorLevel === "master"
+        ? "Master Moderator"
+        : "Delegated Moderator"
+    }`;
+}
+
+
+function renderAll() {
+
   renderRooms();
   renderParticipants();
   renderBans();
@@ -1156,437 +1473,1022 @@ function renderEverything() {
 }
 
 
+/* ROOMS */
+
 function renderRooms() {
 
+  roomsList.innerHTML =
+    "";
+
   if (!rooms.length) {
-    roomsElement.innerHTML =
-      `<div class="empty">
-        No open rooms.
-      </div>`;
 
-    selectedRoomCode = null;
-
-    renderParticipants();
+    roomsList.innerHTML =
+      "<div class='small'>No open rooms.</div>";
 
     return;
   }
 
-  if (
-    !selectedRoomCode ||
-    !rooms.some(
-      room =>
-        room.code ===
-        selectedRoomCode
-    )
+  for (
+    const room of rooms
   ) {
-    selectedRoomCode =
-      rooms[0].code;
+
+    const element =
+      document.createElement(
+        "div"
+      );
+
+    element.className =
+      "room";
+
+    const title =
+      document.createElement(
+        "div"
+      );
+
+    title.className =
+      "roomName";
+
+    title.textContent =
+      room.name;
+
+    const code =
+      document.createElement(
+        "div"
+      );
+
+    code.className =
+      "roomCode";
+
+    code.textContent =
+      room.code;
+
+    const count =
+      document.createElement(
+        "div"
+      );
+
+    count.className =
+      "small";
+
+    count.textContent =
+      `${room.participants.length} participant${
+        room.participants.length === 1
+          ? ""
+          : "s"
+      }`;
+
+    const actions =
+      document.createElement(
+        "div"
+      );
+
+    actions.className =
+      "roomActions";
+
+    const watchButton =
+      document.createElement(
+        "button"
+      );
+
+    watchButton.textContent =
+      "👁 Join Anonymously";
+
+    watchButton.addEventListener(
+      "click",
+      () => {
+
+        joinRoomAnonymously(
+          room.code
+        );
+      }
+    );
+
+    actions.appendChild(
+      watchButton
+    );
+
+    element.appendChild(title);
+    element.appendChild(code);
+    element.appendChild(count);
+    element.appendChild(actions);
+
+    roomsList.appendChild(
+      element
+    );
   }
-
-  roomsElement.innerHTML =
-    rooms.map(room => {
-
-      const selected =
-        room.code ===
-        selectedRoomCode;
-
-      return `
-        <div class="room">
-
-          <div class="roomTitle">
-            ${escapeHtml(room.name)}
-          </div>
-
-          <div class="roomCode">
-            Code: ${escapeHtml(room.code)}
-            · ${room.userCount}
-            participant${room.userCount === 1 ? "" : "s"}
-          </div>
-
-          <div class="roomButtons">
-
-            <button
-              onclick="selectRoom('${escapeHtml(room.code)}')"
-              ${selected ? "disabled" : ""}
-            >
-              ${selected ? "Selected" : "Manage"}
-            </button>
-
-            <button
-              class="success"
-              onclick="joinRoom('${escapeHtml(room.code)}', false)"
-            >
-              Join
-            </button>
-
-            <button
-              class="secondary"
-              onclick="joinRoom('${escapeHtml(room.code)}', true)"
-            >
-              Join Anonymous
-            </button>
-
-          </div>
-
-        </div>
-      `;
-    }).join("");
 }
 
 
-function selectRoom(code) {
-  selectedRoomCode =
-    code;
-
-  renderRooms();
-  renderParticipants();
-}
-
+/* PARTICIPANTS */
 
 function renderParticipants() {
 
-  const room =
-    rooms.find(
-      item =>
-        item.code ===
-        selectedRoomCode
+  participantsList.innerHTML =
+    "";
+
+  const allUsers = [];
+
+  for (
+    const room of rooms
+  ) {
+
+    for (
+      const participant of
+      room.participants
+    ) {
+
+      allUsers.push({
+        ...participant,
+        roomCode:
+          room.code,
+        roomName:
+          room.name
+      });
+    }
+  }
+
+  if (!allUsers.length) {
+
+    participantsList.innerHTML =
+      "<div class='small'>No participants.</div>";
+
+    return;
+  }
+
+  for (
+    const user of
+    allUsers
+  ) {
+
+    const item =
+      document.createElement(
+        "div"
+      );
+
+    item.className =
+      "participant";
+
+    const name =
+      document.createElement(
+        "div"
+      );
+
+    name.className =
+      "participantName";
+
+    name.textContent =
+      user.name;
+
+    const room =
+      document.createElement(
+        "div"
+      );
+
+    room.className =
+      "small";
+
+    room.textContent =
+      `${user.roomName} (${user.roomCode})`;
+
+    const actions =
+      document.createElement(
+        "div"
+      );
+
+    actions.className =
+      "participantActions";
+
+
+    const watchButton =
+      document.createElement(
+        "button"
+      );
+
+    watchButton.textContent =
+      "👁 Watch";
+
+    watchButton.addEventListener(
+      "click",
+      () => {
+
+        joinRoomAnonymously(
+          user.roomCode
+        );
+      }
     );
 
-  if (!room) {
-    participantsElement.innerHTML =
-      `<div class="empty">
-        Select a room.
-      </div>`;
+    actions.appendChild(
+      watchButton
+    );
 
-    return;
-  }
 
-  if (!room.participants.length) {
-    participantsElement.innerHTML =
-      `<div class="empty">
-        No participants.
-      </div>`;
+    const kickButton =
+      document.createElement(
+        "button"
+      );
 
-    return;
-  }
+    kickButton.textContent =
+      "Kick";
 
-  participantsElement.innerHTML =
-    room.participants
-      .map(user => {
+    kickButton.className =
+      "secondary";
 
-        const isSelf =
-          user.id === myId;
+    kickButton.addEventListener(
+      "click",
+      () => {
 
-        const isModerator =
-          user.role === "moderator";
+        kickUser(
+          user.id
+        );
+      }
+    );
 
-        const canControl =
-          !isSelf &&
-          (
-            moderatorLevel ===
-              "master" ||
-            !isModerator
+    actions.appendChild(
+      kickButton
+    );
+
+
+    const banButton =
+      document.createElement(
+        "button"
+      );
+
+    banButton.textContent =
+      "Ban";
+
+    banButton.className =
+      "danger";
+
+    banButton.addEventListener(
+      "click",
+      () => {
+
+        openBanModal(
+          user
+        );
+      }
+    );
+
+    actions.appendChild(
+      banButton
+    );
+
+
+    if (
+      moderatorLevel ===
+      "master"
+    ) {
+
+      const modButton =
+        document.createElement(
+          "button"
+        );
+
+      modButton.textContent =
+        "Give Moderator";
+
+      modButton.className =
+        "green";
+
+      modButton.addEventListener(
+        "click",
+        () => {
+
+          openModeratorModal(
+            user
           );
+        }
+      );
 
-        return `
-          <div class="participant">
+      actions.appendChild(
+        modButton
+      );
+    }
 
-            <div class="participantTop">
 
-              <div class="participantName">
-                ${escapeHtml(user.name)}
-              </div>
+    item.appendChild(
+      name
+    );
 
-              <div class="roleBadge">
-                ${
-                  isModerator
-                    ? "Moderator"
-                    : "User"
-                }
-              </div>
+    item.appendChild(
+      room
+    );
 
-            </div>
+    item.appendChild(
+      actions
+    );
 
-            <div class="participantButtons">
-
-              ${
-                canControl
-                  ? `
-                    <button
-                      class="secondary"
-                      onclick="kickUser('${escapeHtml(user.id)}')"
-                    >
-                      Kick
-                    </button>
-
-                    <button
-                      class="danger"
-                      onclick="openBanModal('${escapeHtml(user.id)}','${escapeHtml(user.name)}')"
-                    >
-                      Ban
-                    </button>
-                  `
-                  : ""
-              }
-
-              ${
-                moderatorLevel === "master" &&
-                !isSelf &&
-                !isModerator
-                  ? `
-                    <button
-                      class="success"
-                      onclick="openModeratorModal('${escapeHtml(user.id)}','${escapeHtml(user.name)}')"
-                    >
-                      Give Moderator
-                    </button>
-                  `
-                  : ""
-              }
-
-            </div>
-
-          </div>
-        `;
-      })
-      .join("");
+    participantsList.appendChild(
+      item
+    );
+  }
 }
 
+
+/* BANS */
 
 function renderBans() {
 
+  bansList.innerHTML =
+    "";
+
   if (!bans.length) {
-    bansElement.innerHTML =
-      `<div class="empty">
-        No active bans.
-      </div>`;
+
+    bansList.innerHTML =
+      "<div class='small'>No active bans.</div>";
 
     return;
   }
 
-  bansElement.innerHTML =
-    bans.map(ban => {
+  for (
+    const ban of
+    bans
+  ) {
 
-      return `
-        <div class="item">
+    const item =
+      document.createElement(
+        "div"
+      );
 
-          <div class="itemTitle">
-            ${escapeHtml(ban.name)}
-          </div>
+    item.className =
+      "listItem";
 
-          <div class="itemDetails">
-            Banned by:
-            ${escapeHtml(ban.moderatorName)}
-            <br>
+    const name =
+      document.createElement(
+        "div"
+      );
 
-            Duration:
-            ${escapeHtml(ban.durationText)}
-            <br>
+    name.textContent =
+      ban.name;
 
-            ${
-              ban.expiresAt
-                ? `Expires:
-                   ${formatDate(ban.expiresAt)}
-                   (${formatRemaining(ban.expiresAt)})`
-                : "Permanent ban"
-            }
+    name.style.fontWeight =
+      "bold";
 
-            <br>
+    const details =
+      document.createElement(
+        "div"
+      );
 
-            Created:
-            ${formatDate(ban.createdAt)}
-          </div>
+    details.className =
+      "small";
 
-          <div class="itemButtons">
+    details.textContent =
+      `${ban.durationText} • by ${ban.moderatorName}`;
 
-            <button
-              class="success"
-              onclick="unbanUser('${escapeHtml(ban.id)}')"
-            >
-              Unban
-            </button>
+    const actions =
+      document.createElement(
+        "div"
+      );
 
-          </div>
+    actions.className =
+      "listActions";
 
-        </div>
-      `;
-    }).join("");
+    const unban =
+      document.createElement(
+        "button"
+      );
+
+    unban.textContent =
+      "Unban";
+
+    unban.addEventListener(
+      "click",
+      () => {
+
+        ws.send(
+          JSON.stringify({
+            type:
+              "unban",
+            banId:
+              ban.id
+          })
+        );
+      }
+    );
+
+    actions.appendChild(
+      unban
+    );
+
+    item.appendChild(name);
+    item.appendChild(details);
+    item.appendChild(actions);
+
+    bansList.appendChild(
+      item
+    );
+  }
 }
 
 
+/* MODERATOR ACCESS */
+
 function renderModeratorAccess() {
+
+  moderatorAccessList.innerHTML =
+    "";
 
   if (
     moderatorLevel !==
     "master"
   ) {
-    moderatorAccessElement.innerHTML =
-      `<div class="notice">
-        Only the master moderator can
-        manage moderator access.
-      </div>`;
+
+    moderatorAccessList.innerHTML =
+      "<div class='small'>Only the master moderator can manage moderator access.</div>";
 
     return;
   }
 
-  if (!moderatorAccess.length) {
-    moderatorAccessElement.innerHTML =
-      `<div class="empty">
-        No temporary moderator access
-        has been created.
-      </div>`;
+  if (
+    !moderatorAccess.length
+  ) {
+
+    moderatorAccessList.innerHTML =
+      "<div class='small'>No delegated moderators.</div>";
 
     return;
   }
 
-  moderatorAccessElement.innerHTML =
-    moderatorAccess.map(access => {
+  for (
+    const access of
+    moderatorAccess
+  ) {
 
-      return `
-        <div class="item">
+    const item =
+      document.createElement(
+        "div"
+      );
 
-          <div class="itemTitle">
-            ${escapeHtml(access.name)}
-          </div>
+    item.className =
+      "listItem";
 
-          <div class="itemDetails">
-            Created by:
-            ${escapeHtml(access.createdBy)}
-            <br>
+    const name =
+      document.createElement(
+        "div"
+      );
 
-            Duration:
-            ${escapeHtml(access.durationText)}
-            <br>
+    name.style.fontWeight =
+      "bold";
 
-            ${
-              access.expiresAt
-                ? `Expires:
-                   ${formatDate(access.expiresAt)}
-                   (${formatRemaining(access.expiresAt)})`
-                : "Permanent access"
-            }
+    name.textContent =
+      access.name;
 
-            <br>
+    const details =
+      document.createElement(
+        "div"
+      );
 
-            Created:
-            ${formatDate(access.createdAt)}
-          </div>
+    details.className =
+      "small";
 
-          <div class="itemButtons">
+    details.textContent =
+      `${access.durationText} • created by ${access.createdBy}`;
 
-            <button
-              class="danger"
-              onclick="revokeModerator('${escapeHtml(access.id)}')"
-            >
-              Revoke
-            </button>
+    const revoke =
+      document.createElement(
+        "button"
+      );
 
-          </div>
+    revoke.textContent =
+      "Revoke";
 
-        </div>
-      `;
-    }).join("");
+    revoke.className =
+      "danger";
+
+    revoke.addEventListener(
+      "click",
+      () => {
+
+        if (
+          confirm(
+            `Revoke moderator access for ${access.name}?`
+          )
+        ) {
+
+          ws.send(
+            JSON.stringify({
+              type:
+                "revokeModerator",
+              accessId:
+                access.id
+            })
+          );
+        }
+      }
+    );
+
+    item.appendChild(name);
+    item.appendChild(details);
+    item.appendChild(revoke);
+
+    moderatorAccessList.appendChild(
+      item
+    );
+  }
 }
 
+
+/* LOGS */
 
 function renderLogs() {
 
+  logsList.innerHTML =
+    "";
+
   if (!logs.length) {
-    logsElement.innerHTML =
-      `<div class="empty">
-        No moderation actions yet.
-      </div>`;
+
+    logsList.innerHTML =
+      "<div class='small'>No moderation history.</div>";
 
     return;
   }
 
-  logsElement.innerHTML =
-    logs.map(log => {
+  for (
+    const log of logs
+  ) {
 
-      let actionText =
-        log.action;
+    const item =
+      document.createElement(
+        "div"
+      );
 
-      if (
-        log.action ===
-        "ban"
-      ) {
-        actionText =
-          "Banned user";
-      }
+    item.className =
+      "listItem";
 
-      else if (
-        log.action ===
-        "kick"
-      ) {
-        actionText =
-          "Kicked user";
-      }
+    const action =
+      document.createElement(
+        "div"
+      );
 
-      else if (
-        log.action ===
-        "unban"
-      ) {
-        actionText =
-          "Unbanned user";
-      }
+    action.style.fontWeight =
+      "bold";
 
-      else if (
-        log.action ===
-        "moderator_granted"
-      ) {
-        actionText =
-          "Gave moderator access";
-      }
+    action.textContent =
+      `${log.action}: ${log.target}`;
 
-      else if (
-        log.action ===
-        "moderator_revoked"
-      ) {
-        actionText =
-          "Revoked moderator access";
-      }
+    const details =
+      document.createElement(
+        "div"
+      );
 
-      return `
-        <div class="log">
+    details.className =
+      "small";
 
-          <div class="logAction">
-            ${escapeHtml(actionText)}
-          </div>
+    details.textContent =
+      `By ${log.moderator}${
+        log.durationText
+          ? ` • ${log.durationText}`
+          : ""
+      } • ${new Date(
+        log.createdAt
+      ).toLocaleString()}`;
 
-          <div class="logDetails">
+    item.appendChild(
+      action
+    );
 
-            Moderator:
-            ${escapeHtml(log.moderatorName)}
+    item.appendChild(
+      details
+    );
 
-            <br>
-
-            Person:
-            ${escapeHtml(log.targetName)}
-
-            ${
-              log.durationText
-                ? `
-                  <br>
-                  Duration:
-                  ${escapeHtml(log.durationText)}
-                `
-                : ""
-            }
-
-            <br>
-
-            Time:
-            ${formatDate(log.createdAt)}
-
-          </div>
-
-        </div>
-      `;
-    }).join("");
+    logsList.appendChild(
+      item
+    );
+  }
 }
 
 
-function joinRoom(code, anonymous) {
+/* KICK */
+
+function kickUser(
+  userId
+) {
+
+  if (
+    !confirm(
+      "Kick this user?"
+    )
+  ) {
+    return;
+  }
+
+  ws.send(
+    JSON.stringify({
+      type:
+        "kick",
+      userId
+    })
+  );
+}
+
+
+/* BAN MODAL */
+
+function openBanModal(
+  user
+) {
+
+  selectedBanUser =
+    user;
+
+  banTargetName.textContent =
+    `Ban ${user.name}?`;
+
+  banModal.style.display =
+    "flex";
+}
+
+
+banCancel.addEventListener(
+  "click",
+  () => {
+
+    banModal.style.display =
+      "none";
+
+    selectedBanUser =
+      null;
+  }
+);
+
+
+banConfirm.addEventListener(
+  "click",
+  () => {
+
+    if (!selectedBanUser) {
+      return;
+    }
+
+    ws.send(
+      JSON.stringify({
+        type:
+          "ban",
+        userId:
+          selectedBanUser.id,
+        amount:
+          Number(
+            banAmount.value
+          ),
+        unit:
+          banUnit.value,
+        permanent:
+          banPermanent.checked
+      })
+    );
+
+    banModal.style.display =
+      "none";
+
+    selectedBanUser =
+      null;
+  }
+);
+
+
+/* GIVE MODERATOR */
+
+function openModeratorModal(
+  user
+) {
+
+  selectedModeratorUser =
+    user;
+
+  moderatorTargetName.textContent =
+    `Give moderator access to ${user.name}?`;
+
+  newModeratorPin.value =
+    "";
+
+  moderatorModal.style.display =
+    "flex";
+}
+
+
+moderatorCancel.addEventListener(
+  "click",
+  () => {
+
+    moderatorModal.style.display =
+      "none";
+
+    selectedModeratorUser =
+      null;
+  }
+);
+
+
+moderatorConfirm.addEventListener(
+  "click",
+  () => {
+
+    if (
+      !selectedModeratorUser
+    ) {
+      return;
+    }
+
+    const pin =
+      newModeratorPin.value.trim();
+
+    if (
+      pin.length < 4
+    ) {
+
+      alert(
+        "The PIN must be at least 4 characters."
+      );
+
+      return;
+    }
+
+    ws.send(
+      JSON.stringify({
+        type:
+          "giveModerator",
+        userId:
+          selectedModeratorUser.id,
+        pin,
+        amount:
+          Number(
+            moderatorAmount.value
+          ),
+        unit:
+          moderatorUnit.value,
+        permanent:
+          moderatorPermanent.checked
+      })
+    );
+
+    moderatorModal.style.display =
+      "none";
+
+    selectedModeratorUser =
+      null;
+  }
+);
+
+
+/* WATCH ROOM */
+
+function joinRoomAnonymously(
+  code
+) {
+
+  if (
+    !ws ||
+    ws.readyState !==
+      WebSocket.OPEN
+  ) {
+    return;
+  }
+
+  stopWatching();
+
+  ws.send(
+    JSON.stringify({
+      type:
+        "moderatorJoinRoom",
+      code
+    })
+  );
+}
+
+
+function startWatchingRoom(
+  message
+) {
+
+  watchingRoom =
+    message.room;
+
+  watchParticipants.clear();
+  watchPeers.clear();
+  watchStreams.clear();
+  watchPendingCandidates.clear();
+  watchThumbs.clear();
+
+  watchThumbs.innerHTML =
+    "";
+
+  watchChatMessages.innerHTML =
+    "";
+
+  for (
+    const user of
+    message.users || []
+  ) {
+
+    watchParticipants.set(
+      user.id,
+      user
+    );
+  }
+
+  for (
+    const messageItem of
+    message.messages || []
+  ) {
+
+    addWatchChatMessage(
+      messageItem
+    );
+  }
+
+  watchArea.style.display =
+    "block";
+
+  /*
+   * Create an incoming WebRTC
+   * connection to EVERY user.
+   *
+   * We pass false so the moderator
+   * does NOT publish any media.
+   */
+  for (
+    const user of
+    message.users || []
+  ) {
+
+    createWatchPeer(
+      user.id,
+      false
+    );
+  }
+
+  renderWatchThumbs();
+
+  watchLargeVideo.srcObject =
+    null;
+
+  watchLargeName.textContent =
+    "Select a participant";
+
+  watchArea.scrollIntoView({
+    behavior: "smooth"
+  });
+}
+
+
+function createWatchPeer(
+  userId,
+  createOffer
+) {
+
+  if (
+    watchPeers.has(userId)
+  ) {
+
+    return watchPeers.get(
+      userId
+    );
+  }
+
+  const peer =
+    new RTCPeerConnection({
+      iceServers: [
+        {
+          urls:
+            "stun:stun.l.google.com:19302"
+        }
+      ]
+    });
+
+  watchPeers.set(
+    userId,
+    peer
+  );
+
+  /*
+   * IMPORTANT:
+   *
+   * There is NO addTrack() here.
+   *
+   * The anonymous moderator therefore
+   * sends no microphone or camera.
+   */
+
+
+  peer.addEventListener(
+    "icecandidate",
+    event => {
+
+      if (!event.candidate) {
+        return;
+      }
+
+      sendWatchSignal(
+        userId,
+        {
+          type:
+            "candidate",
+          candidate:
+            event.candidate
+        }
+      );
+    }
+  );
+
+
+  peer.addEventListener(
+    "track",
+    event => {
+
+      let stream =
+        watchStreams.get(
+          userId
+        );
+
+      if (!stream) {
+
+        stream =
+          new MediaStream();
+
+        watchStreams.set(
+          userId,
+          stream
+        );
+      }
+
+      if (
+        !stream
+          .getTracks()
+          .some(
+            track =>
+              track.id ===
+              event.track.id
+          )
+      ) {
+
+        stream.addTrack(
+          event.track
+        );
+      }
+
+      updateWatchStream(
+        userId,
+        stream
+      );
+    }
+  );
+
+
+  peer.addEventListener(
+    "connectionstatechange",
+    () => {
+
+      if (
+        peer.connectionState ===
+          "failed" ||
+        peer.connectionState ===
+          "closed"
+      ) {
+
+        watchPeers.delete(
+          userId
+        );
+      }
+    }
+  );
+
+
+  if (createOffer) {
+
+    peer.createOffer()
+      .then(
+        offer =>
+          peer.setLocalDescription(
+            offer
+          )
+      )
+      .then(
+        () => {
+
+          sendWatchSignal(
+            userId,
+            {
+              type:
+                "offer",
+              offer:
+                peer.localDescription
+            }
+          );
+        }
+      )
+      .catch(
+        console.error
+      );
+  }
+
+  return peer;
+}
+
+
+function sendWatchSignal(
+  target,
+  data
+) {
 
   if (
     !ws ||
@@ -1599,358 +2501,726 @@ function joinRoom(code, anonymous) {
   ws.send(
     JSON.stringify({
       type:
-        "moderatorJoinRoom",
-      code,
-      anonymous
+        "signal",
+      target,
+      data
     })
   );
 }
 
 
-function kickUser(userId) {
-
-  if (!confirm(
-    "Kick this person from the room?"
-  )) {
-    return;
-  }
-
-  if (!ws) {
-    return;
-  }
-
-  ws.send(
-    JSON.stringify({
-      type: "kick",
-      userId
-    })
-  );
-}
-
-
-function openBanModal(
-  userId,
-  name
+async function handleWatchSignal(
+  message
 ) {
 
-  banTargetId =
-    userId;
-
-  document.getElementById(
-    "banTargetName"
-  ).textContent =
-    name;
-
-  clearBanInputs();
-
-  document.getElementById(
-    "banModal"
-  ).style.display =
-    "flex";
-}
-
-
-function closeBanModal() {
-
-  banTargetId =
-    null;
-
-  document.getElementById(
-    "banModal"
-  ).style.display =
-    "none";
-}
-
-
-function clearBanInputs() {
-
-  [
-    "banSeconds",
-    "banMinutes",
-    "banHours",
-    "banDays",
-    "banWeeks",
-    "banMonths",
-    "banYears"
-  ].forEach(id => {
-    document.getElementById(
-      id
-    ).value = "";
-  });
-
-  document.getElementById(
-    "banPermanent"
-  ).checked = false;
-}
-
-
-function confirmBan() {
-
-  if (!banTargetId) {
-    return;
-  }
-
-  const permanent =
-    document.getElementById(
-      "banPermanent"
-    ).checked;
-
-  const data = {
-    type: "ban",
-    userId: banTargetId,
-
-    seconds:
-      document.getElementById(
-        "banSeconds"
-      ).value,
-
-    minutes:
-      document.getElementById(
-        "banMinutes"
-      ).value,
-
-    hours:
-      document.getElementById(
-        "banHours"
-      ).value,
-
-    days:
-      document.getElementById(
-        "banDays"
-      ).value,
-
-    weeks:
-      document.getElementById(
-        "banWeeks"
-      ).value,
-
-    months:
-      document.getElementById(
-        "banMonths"
-      ).value,
-
-    years:
-      document.getElementById(
-        "banYears"
-      ).value,
-
-    permanent
-  };
-
-  ws.send(
-    JSON.stringify(data)
-  );
-
-  closeBanModal();
-}
-
-
-function unbanUser(banId) {
-
-  if (!confirm(
-    "Unban this person?"
-  )) {
-    return;
-  }
-
-  ws.send(
-    JSON.stringify({
-      type: "unban",
-      banId
-    })
-  );
-}
-
-
-function openModeratorModal(
-  userId,
-  name
-) {
-
+  /*
+   * Ignore WebRTC signals from people
+   * who aren't in the room we're watching.
+   */
   if (
-    moderatorLevel !==
-    "master"
+    !watchParticipants.has(
+      message.from
+    )
   ) {
     return;
   }
 
-  moderatorTargetId =
-    userId;
+  const userId =
+    message.from;
 
-  document.getElementById(
-    "moderatorTargetName"
-  ).textContent =
-    name;
+  const data =
+    message.data;
 
-  clearModeratorInputs();
+  let peer =
+    watchPeers.get(
+      userId
+    );
 
-  document.getElementById(
-    "moderatorModal"
-  ).style.display =
-    "flex";
+  if (!peer) {
+
+    peer =
+      createWatchPeer(
+        userId,
+        false
+      );
+  }
+
+  try {
+
+    if (
+      data.type ===
+      "offer"
+    ) {
+
+      await peer.setRemoteDescription(
+        new RTCSessionDescription(
+          data.offer
+        )
+      );
+
+      await flushWatchCandidates(
+        userId,
+        peer
+      );
+
+      const answer =
+        await peer.createAnswer();
+
+      await peer.setLocalDescription(
+        answer
+      );
+
+      sendWatchSignal(
+        userId,
+        {
+          type:
+            "answer",
+          answer:
+            peer.localDescription
+        }
+      );
+    }
+
+
+    else if (
+      data.type ===
+      "answer"
+    ) {
+
+      await peer.setRemoteDescription(
+        new RTCSessionDescription(
+          data.answer
+        )
+      );
+
+      await flushWatchCandidates(
+        userId,
+        peer
+      );
+    }
+
+
+    else if (
+      data.type ===
+      "candidate"
+    ) {
+
+      if (
+        peer.remoteDescription
+      ) {
+
+        await peer.addIceCandidate(
+          data.candidate
+        );
+
+      }
+
+      else {
+
+        if (
+          !watchPendingCandidates.has(
+            userId
+          )
+        ) {
+
+          watchPendingCandidates.set(
+            userId,
+            []
+          );
+        }
+
+        watchPendingCandidates
+          .get(userId)
+          .push(
+            data.candidate
+          );
+      }
+    }
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "Moderator WebRTC error:",
+      error
+    );
+  }
 }
 
 
-function closeModeratorModal() {
+async function flushWatchCandidates(
+  userId,
+  peer
+) {
 
-  moderatorTargetId =
+  const candidates =
+    watchPendingCandidates.get(
+      userId
+    );
+
+  if (!candidates) {
+    return;
+  }
+
+  watchPendingCandidates.delete(
+    userId
+  );
+
+  for (
+    const candidate of
+    candidates
+  ) {
+
+    try {
+
+      await peer.addIceCandidate(
+        candidate
+      );
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+    }
+  }
+}
+
+
+/* WATCH VIDEO */
+
+function updateWatchStream(
+  userId,
+  stream
+) {
+
+  let thumb =
+    watchThumbs.get(
+      userId
+    );
+
+  if (!thumb) {
+
+    thumb =
+      createWatchThumb(
+        userId
+      );
+  }
+
+  const video =
+    thumb.querySelector(
+      "video"
+    );
+
+  video.srcObject =
+    stream;
+
+  video.play()
+    .catch(() => {});
+
+  /*
+   * Select first received video
+   * automatically.
+   */
+  if (
+    !selectedWatchUser
+  ) {
+
+    selectWatchUser(
+      userId
+    );
+  }
+}
+
+
+function createWatchThumb(
+  userId
+) {
+
+  const thumb =
+    document.createElement(
+      "div"
+    );
+
+  thumb.className =
+    "watchThumb";
+
+  const video =
+    document.createElement(
+      "video"
+    );
+
+  video.autoplay =
+    true;
+
+  video.playsInline =
+    true;
+
+  const name =
+    document.createElement(
+      "div"
+    );
+
+  name.className =
+    "watchThumbName";
+
+  name.textContent =
+    watchParticipants.get(
+      userId
+    )?.name ||
+    "User";
+
+  thumb.appendChild(
+    video
+  );
+
+  thumb.appendChild(
+    name
+  );
+
+  thumb.addEventListener(
+    "click",
+    () => {
+
+      selectWatchUser(
+        userId
+      );
+    }
+  );
+
+  watchThumbs.appendChild(
+    thumb
+  );
+
+  watchThumbs.set(
+    userId,
+    thumb
+  );
+
+  return thumb;
+}
+
+
+function renderWatchThumbs() {
+
+  for (
+    const [
+      userId,
+      user
+    ] of watchParticipants
+  ) {
+
+    const thumb =
+      watchThumbs.get(
+        userId
+      ) ||
+      createWatchThumb(
+        userId
+      );
+
+    thumb.querySelector(
+      ".watchThumbName"
+    ).textContent =
+      user.name;
+
+    thumb.style.display =
+      userId ===
+      selectedWatchUser
+        ? "none"
+        : "";
+  }
+}
+
+
+function selectWatchUser(
+  userId
+) {
+
+  const user =
+    watchParticipants.get(
+      userId
+    );
+
+  const stream =
+    watchStreams.get(
+      userId
+    );
+
+  if (!user || !stream) {
+    return;
+  }
+
+  selectedWatchUser =
+    userId;
+
+  watchLargeVideo.srcObject =
+    stream;
+
+  watchLargeVideo.muted =
+    false;
+
+  watchLargeName.textContent =
+    user.name;
+
+  renderWatchThumbs();
+}
+
+
+function removeWatchUser(
+  userId
+) {
+
+  watchParticipants.delete(
+    userId
+  );
+
+  watchStreams.delete(
+    userId
+  );
+
+  watchPendingCandidates.delete(
+    userId
+  );
+
+  const peer =
+    watchPeers.get(
+      userId
+    );
+
+  if (peer) {
+
+    try {
+      peer.close();
+    }
+
+    catch {}
+
+    watchPeers.delete(
+      userId
+    );
+  }
+
+  const thumb =
+    watchThumbs.get(
+      userId
+    );
+
+  if (thumb) {
+
+    thumb.remove();
+
+    watchThumbs.delete(
+      userId
+    );
+  }
+
+  if (
+    selectedWatchUser ===
+    userId
+  ) {
+
+    selectedWatchUser =
+      null;
+
+    watchLargeVideo.srcObject =
+      null;
+
+    watchLargeName.textContent =
+      "Select a participant";
+
+    for (
+      const [
+        id
+      ] of watchStreams
+    ) {
+
+      selectWatchUser(
+        id
+      );
+
+      break;
+    }
+  }
+}
+
+
+function stopWatching() {
+
+  for (
+    const peer of
+    watchPeers.values()
+  ) {
+
+    try {
+      peer.close();
+    }
+
+    catch {}
+  }
+
+  watchPeers.clear();
+  watchStreams.clear();
+  watchParticipants.clear();
+  watchPendingCandidates.clear();
+  watchThumbs.clear();
+
+  watchThumbs.innerHTML =
+    "";
+
+  watchLargeVideo.srcObject =
     null;
 
-  document.getElementById(
-    "moderatorModal"
-  ).style.display =
+  watchLargeName.textContent =
+    "Select a participant";
+
+  selectedWatchUser =
+    null;
+
+  watchingRoom =
+    null;
+
+  watchArea.style.display =
     "none";
 }
 
 
-function clearModeratorInputs() {
+/* WATCH CHAT */
 
-  document.getElementById(
-    "newModeratorPin"
-  ).value = "";
+function addWatchChatMessage(
+  message,
+  moderatorMessage = false
+) {
 
-  [
-    "modSeconds",
-    "modMinutes",
-    "modHours",
-    "modDays",
-    "modWeeks",
-    "modMonths",
-    "modYears"
-  ].forEach(id => {
-    document.getElementById(
-      id
-    ).value = "";
-  });
-
-  document.getElementById(
-    "modPermanent"
-  ).checked = false;
-}
-
-
-function confirmModeratorAccess() {
-
-  if (!moderatorTargetId) {
+  if (!message) {
     return;
   }
 
-  const pin =
-    document.getElementById(
-      "newModeratorPin"
-    ).value.trim();
-
-  if (pin.length < 4) {
-    alert(
-      "The moderator PIN must be at least 4 characters."
+  const item =
+    document.createElement(
+      "div"
     );
 
-    return;
-  }
+  item.className =
+    "chatMessage";
 
-  const permanent =
-    document.getElementById(
-      "modPermanent"
-    ).checked;
+  const name =
+    document.createElement(
+      "div"
+    );
 
-  ws.send(
-    JSON.stringify({
-      type:
-        "giveModerator",
+  name.className =
+    "chatName";
 
-      userId:
-        moderatorTargetId,
+  name.textContent =
+    moderatorMessage
+      ? `${message.name} (Moderator)`
+      : message.name ||
+        "User";
 
-      pin,
+  const bubble =
+    document.createElement(
+      "div"
+    );
 
-      seconds:
-        document.getElementById(
-          "modSeconds"
-        ).value,
+  bubble.className =
+    "chatBubble";
 
-      minutes:
-        document.getElementById(
-          "modMinutes"
-        ).value,
+  bubble.textContent =
+    message.message ||
+    "";
 
-      hours:
-        document.getElementById(
-          "modHours"
-        ).value,
-
-      days:
-        document.getElementById(
-          "modDays"
-        ).value,
-
-      weeks:
-        document.getElementById(
-          "modWeeks"
-        ).value,
-
-      months:
-        document.getElementById(
-          "modMonths"
-        ).value,
-
-      years:
-        document.getElementById(
-          "modYears"
-        ).value,
-
-      permanent
-    })
+  item.appendChild(
+    name
   );
+
+  item.appendChild(
+    bubble
+  );
+
+  watchChatMessages.appendChild(
+    item
+  );
+
+  watchChatMessages.scrollTop =
+    watchChatMessages.scrollHeight;
 }
 
 
-function revokeModerator(accessId) {
+function sendModeratorChat() {
 
-  if (!confirm(
-    "Revoke this person's moderator access?"
-  )) {
+  const text =
+    moderatorChatInput.value.trim();
+
+  if (!text) {
     return;
   }
 
+  if (
+    !watchingRoom ||
+    !ws ||
+    ws.readyState !==
+      WebSocket.OPEN
+  ) {
+    return;
+  }
+
+  /*
+   * Moderator messages are kept
+   * moderator-only in this version.
+   */
   ws.send(
     JSON.stringify({
       type:
-        "revokeModerator",
-      accessId
+        "moderatorChat",
+      message:
+        text
     })
   );
+
+  /*
+   * Show our own message immediately.
+   */
+  addWatchChatMessage(
+    {
+      name:
+        moderatorName,
+      message:
+        text
+    },
+    true
+  );
+
+  moderatorChatInput.value =
+    "";
+
+  moderatorChatInput.focus();
 }
 
 
-document.getElementById(
-  "loginButton"
-).addEventListener(
+/* FULLSCREEN WATCH VIDEO */
+
+watchLargeBox.addEventListener(
   "click",
-  connectModerator
-);
+  () => {
 
-
-pinInput.addEventListener(
-  "keydown",
-  event => {
     if (
-      event.key ===
-      "Enter"
+      document.fullscreenElement
     ) {
-      connectModerator();
+
+      document.exitFullscreen()
+        .catch(() => {});
+
+    }
+
+    else {
+
+      watchLargeBox
+        .requestFullscreen()
+        .catch(() => {});
     }
   }
 );
 
 
-document.getElementById(
-  "disconnectButton"
-).addEventListener(
+moderatorChatButton.addEventListener(
+  "click",
+  sendModeratorChat
+);
+
+
+moderatorChatInput.addEventListener(
+  "keydown",
+  event => {
+
+    if (
+      event.key ===
+      "Enter"
+    ) {
+
+      event.preventDefault();
+
+      sendModeratorChat();
+    }
+  }
+);
+
+
+/* LOGIN */
+
+loginButton.addEventListener(
+  "click",
+  async () => {
+
+    const name =
+      moderatorNameInput.value.trim();
+
+    const pin =
+      moderatorPinInput.value.trim();
+
+    if (!name) {
+
+      loginStatus.textContent =
+        "Enter a moderator name.";
+
+      return;
+    }
+
+    if (!pin) {
+
+      loginStatus.textContent =
+        "Enter the moderator PIN.";
+
+      return;
+    }
+
+    moderatorName =
+      name;
+
+    loginButton.disabled =
+      true;
+
+    loginStatus.textContent =
+      "Connecting...";
+
+    try {
+
+      await connectModerator();
+
+      loginStatus.textContent =
+        "";
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      loginStatus.textContent =
+        error.message;
+
+      loginButton.disabled =
+        false;
+    }
+  }
+);
+
+
+/* LOGOUT */
+
+logoutButton.addEventListener(
   "click",
   () => {
 
+    stopWatching();
+
     if (ws) {
-      ws.close();
+
+      try {
+        ws.close();
+      }
+
+      catch {}
     }
 
     location.reload();
@@ -1958,104 +3228,20 @@ document.getElementById(
 );
 
 
-document.getElementById(
-  "banCancel"
-).addEventListener(
-  "click",
-  closeBanModal
-);
+/* ENTER KEY LOGIN */
 
-
-document.getElementById(
-  "banConfirm"
-).addEventListener(
-  "click",
-  confirmBan
-);
-
-
-document.getElementById(
-  "modCancel"
-).addEventListener(
-  "click",
-  closeModeratorModal
-);
-
-
-document.getElementById(
-  "modConfirm"
-).addEventListener(
-  "click",
-  confirmModeratorAccess
-);
-
-
-document.getElementById(
-  "banPermanent"
-).addEventListener(
-  "change",
+moderatorPinInput.addEventListener(
+  "keydown",
   event => {
 
-    const disabled =
-      event.target.checked;
-
-    [
-      "banSeconds",
-      "banMinutes",
-      "banHours",
-      "banDays",
-      "banWeeks",
-      "banMonths",
-      "banYears"
-    ].forEach(id => {
-      document.getElementById(
-        id
-      ).disabled = disabled;
-    });
-  }
-);
-
-
-document.getElementById(
-  "modPermanent"
-).addEventListener(
-  "change",
-  event => {
-
-    const disabled =
-      event.target.checked;
-
-    [
-      "modSeconds",
-      "modMinutes",
-      "modHours",
-      "modDays",
-      "modWeeks",
-      "modMonths",
-      "modYears"
-    ].forEach(id => {
-      document.getElementById(
-        id
-      ).disabled = disabled;
-    });
-  }
-);
-
-
-/*
- * Update countdown displays every second.
- */
-setInterval(
-  () => {
     if (
-      dashboard.style.display !==
-      "none"
+      event.key ===
+      "Enter"
     ) {
-      renderBans();
-      renderModeratorAccess();
+
+      loginButton.click();
     }
-  },
-  1000
+  }
 );
 </script>
 

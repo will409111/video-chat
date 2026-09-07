@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>Moderator Dashboard</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #101010;
+    color: white;
+}
+
+header {
+    padding: 20px;
+    background: #181818;
+    text-align: center;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+
+.panel {
+    background: #1d1d1d;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+button {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 4px;
+    color: white;
+    background: #333;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #444;
+}
+
+.primary {
+    background: #2563eb;
+}
+
+.danger {
+    background: #dc2626;
+}
+
+.warning {
+    background: #b45309;
+}
+
+#rooms {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(300px, 1fr));
+
+    gap: 15px;
+
+    margin-top: 20px;
+}
+
+.room {
+    background: #292929;
+    padding: 18px;
+    border-radius: 14px;
+}
+
+.roomCode {
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.roomInfo {
+    color: #aaa;
+    margin: 8px 0 15px;
+}
+
+.user {
+    background: #1b1b1b;
+    border-radius: 9px;
+    padding: 10px;
+    margin-top: 8px;
+}
+
+.userId {
+    font-family: monospace;
+    font-size: 12px;
+    color: #aaa;
+    word-break: break-all;
+}
+
+#roomArea {
+    display: none;
+}
+
+#videos {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(280px, 1fr));
+
+    gap: 15px;
+
+    margin-top: 20px;
+}
+
+.videoBox {
+    background: #000;
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+    min-height: 220px;
+}
+
+video {
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    object-fit: cover;
+    background: #000;
+}
+
+.label {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    background: rgba(0,0,0,.7);
+    padding: 7px 10px;
+    border-radius: 8px;
+}
+
+#status {
+    color: #aaa;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+    🛡️ Moderator Dashboard
+</header>
+
+
+<div class="container">
+
+    <div class="panel">
+
+        <div id="status">
+            Connecting...
+        </div>
+
+    </div>
+
+
+    <div class="panel">
+
+        <h2>
+            Active Rooms
+        </h2>
+
+
+        <button
+            class="primary"
+            onclick="createRoom()"
+        >
+            + Create Room
+        </button>
+
+
+        <div id="rooms"></div>
+
+    </div>
+
+
+    <div
+        id="roomArea"
+        class="panel"
+    >
+
+        <h2>
+
+            Room:
+            <span id="currentRoom">
+                None
+            </span>
+
+        </h2>
+
+
+        <button
+            onclick="leaveRoom()"
+        >
+            Leave Room
+        </button>
+
+
+        <button
+            onclick="enableModeratorMedia()"
+        >
+            📷 Join With Camera/Mic
+        </button>
+
+
+        <button
+            onclick="disableModeratorMedia()"
+        >
+            👁 Anonymous Mode
+        </button>
+
+
+        <div id="videos"></div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+
+// =====================================================
+// SERVER ADDRESS
+// =====================================================
+
+const SERVER =
+    (
+        location.protocol === "https:"
+            ? "wss://"
+            : "ws://"
+    ) +
+    location.host +
+    "/ws";
+
+
+// =====================================================
+// MODERATOR ID
+// =====================================================
+
+let moderatorId =
+    localStorage.getItem(
+        "videoChatModeratorId"
+    );
+
+
+if (!moderatorId) {
+
+    moderatorId =
+        "moderator-" +
+        crypto.randomUUID();
+
+    localStorage.setItem(
+        "videoChatModeratorId",
+        moderatorId
+    );
+}
+
+
+// =====================================================
+// VARIABLES
+// =====================================================
+
+let socket = null;
+
+let currentRoom = null;
+
+let currentAnonymous =
+    true;
+
+let localStream = null;
+
+let peers = {};
+
+
+// =====================================================
+// CONNECT
+// =====================================================
+
+function connect() {
+
+    socket =
+        new WebSocket(
+            SERVER
+        );
+
+
+    socket.onopen = () => {
+
+        document
+            .getElementById(
+                "status"
+            )
+            .textContent =
+            "Connected as moderator.";
+
+        send({
+
+            type:
+                "register",
+
+            role:
+                "moderator",
+
+            id:
+                moderatorId
+        });
+    };
+
+
+    socket.onclose = () => {
+
+        document
+            .getElementById(
+                "status"
+            )
+            .textContent =
+            "Disconnected. Reconnecting...";
+
+        setTimeout(
+            connect,
+            3000
+        );
+    };
+
+
+    socket.onerror = () => {
+
+        document
+            .getElementById(
+                "status"
+            )
+            .textContent =
+            "Server connection error.";
+    };
+
+
+    socket.onmessage =
+        async event => {
+
+            const msg =
+                JSON.parse(
+                    event.data
+                );
+
+            await handleMessage(
+                msg
+            );
+        };
+}
+
+
+// =====================================================
+// SEND
+// =====================================================
+
+function send(data) {
+
+    if (
+        socket &&
+        socket.readyState ===
+            WebSocket.OPEN
+    ) {
+
+        socket.send(
+            JSON.stringify(
+                data
+            )
+        );
+    }
+}
+
+
+// =====================================================
+// CREATE ROOM
+// =====================================================
+
+function createRoom() {
+
+    send({
+
+        type:
+            "moderatorCreateRoom"
+
+    });
+}
+
+
+// =====================================================
+// JOIN NORMAL
+// =====================================================
+
+function joinRoom(
+    room
+) {
+
+    currentAnonymous =
+        false;
+
+
+    joinRoomInternal(
+        room,
+        false
+    );
+}
+
+
+// =====================================================
+// ANONYMOUS JOIN
+// =====================================================
+
+function anonymousJoin(
+    room
+) {
+
+    currentAnonymous =
+        true;
+
+
+    joinRoomInternal(
+        room,
+        true
+    );
+}
+
+
+// =====================================================
+// JOIN INTERNAL
+// =====================================================
+
+async function joinRoomInternal(
+    room,
+    anonymous
+) {
+
+    // Close any previous room.
+    if (currentRoom) {
+
+        leaveRoom();
+    }
+
+
+    currentRoom =
+        room;
+
+
+    /*
+        Anonymous mode:
+
+        Do NOT ask for camera/mic.
+
+        The moderator can therefore
+        receive participants without
+        publishing their own media.
+    */
+
+    if (!anonymous) {
+
+        await enableModeratorMedia(
+            false
+        );
+
+    } else {
+
+        await disableModeratorMedia(
+            false
+        );
+    }
+
+
+    send({
+
+        type:
+            "moderatorJoinRoom",
+
+        room:
+            room,
+
+        id:
+            moderatorId,
+
+        anonymous:
+            anonymous
+    });
+
+
+    document
+        .getElementById(
+            "currentRoom"
+        )
+        .textContent =
+        room;
+
+
+    document
+        .getElementById(
+            "roomArea"
+        )
+        .style.display =
+        "block";
+}
+
+
+// =====================================================
+// ENABLE CAMERA/MIC
+// =====================================================
+
+async function enableModeratorMedia(
+    reconnect = true
+) {
+
+    currentAnonymous =
+        false;
+
+
+    if (!localStream) {
+
+        try {
+
+            localStream =
+                await navigator
+                    .mediaDevices
+                    .getUserMedia({
+
+                        video: true,
+
+                        audio: true
+
+                    });
+
+        } catch (error) {
+
+            alert(
+                "Camera/microphone permission was denied."
+            );
+
+            return;
+        }
+    }
+
+
+    /*
+        Add moderator tracks to existing
+        peer connections.
+
+        This makes the moderator visible
+        and audible.
+    */
+
+    for (
+        const id in peers
+    ) {
+
+        const pc =
+            peers[id];
+
+
+        const senders =
+            pc.getSenders();
+
+
+        for (
+            const track
+            of localStream.getTracks()
+        ) {
+
+            const alreadyAdded =
+                senders.some(
+                    sender =>
+                        sender.track ===
+                        track
+                );
+
+
+            if (
+                !alreadyAdded
+            ) {
+
+                pc.addTrack(
+                    track,
+                    localStream
+                );
+            }
+        }
+
+
+        try {
+
+            const offer =
+                await pc.createOffer();
+
+
+            await pc.setLocalDescription(
+                offer
+            );
+
+
+            send({
+
+                type:
+                    "signal",
+
+                room:
+                    currentRoom,
+
+                to:
+                    id,
+
+                from:
+                    moderatorId,
+
+                signal: {
+
+                    offer:
+                        pc.localDescription
+
+                }
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+        }
+    }
+
+
+    if (reconnect) {
+
+        send({
+
+            type:
+                "moderatorJoinRoom",
+
+            room:
+                currentRoom,
+
+            id:
+                moderatorId,
+
+            anonymous:
+                false
+        });
+    }
+
+
+    if (localStream) {
+
+        addVideo(
+            moderatorId,
+            localStream,
+            "Moderator"
+        );
+    }
+}
+
+
+// =====================================================
+// DISABLE CAMERA/MIC
+// =====================================================
+
+async function disableModeratorMedia(
+    reconnect = true
+) {
+
+    currentAnonymous =
+        true;
+
+
+    /*
+        Stop publishing our tracks.
+    */
+
+    if (localStream) {
+
+        localStream
+            .getTracks()
+            .forEach(
+                track =>
+                    track.stop()
+            );
+
+        localStream =
+            null;
+    }
+
+
+    removeVideo(
+        moderatorId
+    );
+
+
+    /*
+        Remove moderator tracks from
+        every existing peer connection.
+    */
+
+    for (
+        const id in peers
+    ) {
+
+        const pc =
+            peers[id];
+
+
+        const senders =
+            pc.getSenders();
+
+
+        for (
+            const sender
+            of senders
+        ) {
+
+            if (
+                sender.track
+            ) {
+
+                try {
+
+                    await sender.replaceTrack(
+                        null
+                    );
+
+                } catch {}
+            }
+        }
+    }
+
+
+    if (
+        reconnect &&
+        currentRoom
+    ) {
+
+        send({
+
+            type:
+                "moderatorJoinRoom",
+
+            room:
+                currentRoom,
+
+            id:
+                moderatorId,
+
+            anonymous:
+                true
+        });
+    }
+}
+
+
+// =====================================================
+// LEAVE
+// =====================================================
+
+function leaveRoom() {
+
+    if (!currentRoom) {
+        return;
+    }
+
+
+    send({
+
+        type:
+            "leaveRoom",
+
+        room:
+            currentRoom,
+
+        id:
+            moderatorId
+    });
+
+
+    for (
+        const id in peers
+    ) {
+
+        peers[id].close();
+    }
+
+
+    peers = {};
+
+
+    if (localStream) {
+
+        localStream
+            .getTracks()
+            .forEach(
+                track =>
+                    track.stop()
+            );
+    }
+
+
+    localStream =
+        null;
+
+
+    document
+        .getElementById(
+            "videos"
+        )
+        .innerHTML =
+        "";
+
+
+    document
+        .getElementById(
+            "roomArea"
+        )
+        .style.display =
+        "none";
+
+
+    currentRoom =
+        null;
+
+
+    document
+        .getElementById(
+            "currentRoom"
+        )
+        .textContent =
+        "None";
+}
+
+
+// =====================================================
+// KICK
+// =====================================================
+
+function kickUser(
+    userId
+) {
+
+    if (
+        !currentRoom
+    ) {
+
+        alert(
+            "Join the room first."
+        );
+
+        return;
+    }
+
+
+    send({
+
+        type:
+            "kick",
+
+        room:
+            currentRoom,
+
+        userId:
+            userId
+    });
+}
+
+
+// =====================================================
+// BAN
+// =====================================================
+
+function banUser(
+    userId
+) {
+
+    if (
+        !currentRoom
+    ) {
+
+        alert(
+            "Join the room first."
+        );
+
+        return;
+    }
+
+
+    if (
+        !confirm(
+            "Ban this user?"
+        )
+    ) {
+
+        return;
+    }
+
+
+    send({
+
+        type:
+            "ban",
+
+        room:
+            currentRoom,
+
+        userId:
+            userId
+    });
+}
+
+
+// =====================================================
+// CREATE PEER
+// =====================================================
+
+async function createPeer(
+    remoteId,
+    initiator
+) {
+
+    if (
+        peers[remoteId]
+    ) {
+
+        return peers[
+            remoteId
+        ];
+    }
+
+
+    const pc =
+        new RTCPeerConnection({
+
+            iceServers: [
+
+                {
+                    urls:
+                        "stun:stun.l.google.com:19302"
+                }
+
+            ]
+
+        });
+
+
+    peers[
+        remoteId
+    ] = pc;
+
+
+    /*
+        Only add moderator media when
+        NOT anonymous.
+    */
+
+    if (
+        localStream &&
+        !currentAnonymous
+    ) {
+
+        localStream
+            .getTracks()
+            .forEach(
+                track => {
+
+                    pc.addTrack(
+                        track,
+                        localStream
+                    );
+                }
+            );
+    }
+
+
+    pc.onicecandidate =
+        event => {
+
+            if (
+                event.candidate
+            ) {
+
+                send({
+
+                    type:
+                        "signal",
+
+                    room:
+                        currentRoom,
+
+                    to:
+                        remoteId,
+
+                    from:
+                        moderatorId,
+
+                    signal: {
+
+                        candidate:
+                            event.candidate
+
+                    }
+
+                });
+            }
+        };
+
+
+    pc.ontrack =
+        event => {
+
+            if (
+                event.streams[0]
+            ) {
+
+                addVideo(
+
+                    remoteId,
+
+                    event.streams[0],
+
+                    "Participant"
+
+                );
+            }
+        };
+
+
+    pc.onconnectionstatechange =
+        () => {
+
+            if (
+
+                pc.connectionState ===
+                    "failed" ||
+
+                pc.connectionState ===
+                    "closed"
+
+            ) {
+
+                removeVideo(
+                    remoteId
+                );
+
+                delete peers[
+                    remoteId
+                ];
+            }
+        };
+
+
+    if (initiator) {
+
+        const offer =
+            await pc.createOffer();
+
+
+        await pc.setLocalDescription(
+            offer
+        );
+
+
+        send({
+
+            type:
+                "signal",
+
+            room:
+                currentRoom,
+
+            to:
+                remoteId,
+
+            from:
+                moderatorId,
+
+            signal: {
+
+                offer:
+                    pc.localDescription
+
+            }
+
+        });
+    }
+
+
+    return pc;
+}
+
+
+// =====================================================
+// SIGNAL
+// =====================================================
+
+async function handleSignal(
+    msg
+) {
+
+    let pc =
+        peers[
+            msg.from
+        ];
+
+
+    if (!pc) {
+
+        pc =
+            await createPeer(
+
+                msg.from,
+
+                false
+
+            );
+    }
+
+
+    if (
+        msg.signal.offer
+    ) {
+
+        await pc.setRemoteDescription(
+            msg.signal.offer
+        );
+
+
+        const answer =
+            await pc.createAnswer();
+
+
+        await pc.setLocalDescription(
+            answer
+        );
+
+
+        send({
+
+            type:
+                "signal",
+
+            room:
+                currentRoom,
+
+            to:
+                msg.from,
+
+            from:
+                moderatorId,
+
+            signal: {
+
+                answer:
+                    pc.localDescription
+
+            }
+
+        });
+    }
+
+
+    if (
+        msg.signal.answer
+    ) {
+
+        await pc.setRemoteDescription(
+            msg.signal.answer
+        );
+    }
+
+
+    if (
+        msg.signal.candidate
+    ) {
+
+        try {
+
+            await pc.addIceCandidate(
+                msg.signal.candidate
+            );
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+        }
+    }
+}
+
+
+// =====================================================
+// SERVER MESSAGE HANDLER
+// =====================================================
+
+async function handleMessage(
+    msg
+) {
+
+    switch (
+        msg.type
+    ) {
+
+
+        // =============================================
+        // INITIAL ROOM LIST
+        // =============================================
+
+        case "roomList":
+
+            displayRooms(
+                msg.rooms
+            );
+
+            break;
+
+
+        // =============================================
+        // LIVE ROOM UPDATES
+        // =============================================
+
+        case "roomsUpdated":
+
+            displayRooms(
+                msg.rooms
+            );
+
+            break;
+
+
+        // =============================================
+        // ROOM CREATED
+        // =============================================
+
+        case "roomCreated":
+
+            await joinRoomInternal(
+                msg.room,
+                true
+            );
+
+            break;
+
+
+        // =============================================
+        // ROOM JOINED
+        // =============================================
+
+        case "roomJoined":
+
+            for (
+                const user
+                of msg.users
+            ) {
+
+                if (
+                    user !==
+                    moderatorId
+                ) {
+
+                    await createPeer(
+
+                        user,
+
+                        moderatorId <
+                            user
+
+                    );
+                }
+            }
+
+            break;
+
+
+        // =============================================
+        // NEW USER
+        // =============================================
+
+        case "userJoined":
+
+            if (
+                msg.id !==
+                moderatorId
+            ) {
+
+                await createPeer(
+
+                    msg.id,
+
+                    moderatorId <
+                        msg.id
+
+                );
+            }
+
+            break;
+
+
+        // =============================================
+        // WEBRTC SIGNAL
+        // =============================================
+
+        case "signal":
+
+            if (
+                msg.to ===
+                moderatorId
+            ) {
+
+                await handleSignal(
+                    msg
+                );
+            }
+
+            break;
+
+
+        // =============================================
+        // USER LEFT
+        // =============================================
+
+        case "userLeft":
+
+            removeVideo(
+                msg.id
+            );
+
+
+            if (
+                peers[
+                    msg.id
+                ]
+            ) {
+
+                peers[
+                    msg.id
+                ].close();
+
+
+                delete peers[
+                    msg.id
+                ];
+            }
+
+            break;
+
+
+        // =============================================
+        // KICKED
+        // =============================================
+
+        case "kicked":
+
+            alert(
+                "You were kicked from the room."
+            );
+
+            leaveRoom();
+
+            break;
+
+
+        // =============================================
+        // BANNED
+        // =============================================
+
+        case "banned":
+
+            alert(
+                "You have been banned."
+            );
+
+            leaveRoom();
+
+            break;
+
+
+        // =============================================
+        // ERROR
+        // =============================================
+
+        case "error":
+
+            alert(
+                msg.message
+            );
+
+            break;
+    }
+}
+
+
+// =====================================================
+// DISPLAY ROOMS
+// =====================================================
+
+function displayRooms(
+    rooms
+) {
+
+    const container =
+        document.getElementById(
+            "rooms"
+        );
+
+
+    container.innerHTML =
+        "";
+
+
+    if (
+        !rooms ||
+        rooms.length === 0
+    ) {
+
+        container.innerHTML =
+            "<p>No active rooms.</p>";
+
+        return;
+    }
+
+
+    for (
+        const room
+        of rooms
+    ) {
+
+        const div =
+            document.createElement(
+                "div"
+            );
+
+
+        div.className =
+            "room";
+
+
+        let usersHTML =
+            "";
+
+
+        for (
+            const user
+            of room.users
+        ) {
+
+            const shortId =
+                user.id.length > 18
+                    ? user.id.substring(
+                        0,
+                        18
+                    ) + "..."
+                    : user.id;
+
+
+            usersHTML += `
+
+                <div class="user">
+
+                    <div>
+                        👤
+                        ${escapeHTML(shortId)}
+                    </div>
+
+                    <div class="userId">
+                        ${escapeHTML(user.id)}
+                    </div>
+
+                    <button
+                        class="danger"
+                        onclick="
+                            kickUser(
+                                '${escapeJS(user.id)}'
+                            )
+                        "
+                    >
+                        Kick
+                    </button>
+
+                    <button
+                        class="warning"
+                        onclick="
+                            banUser(
+                                '${escapeJS(user.id)}'
+                            )
+                        "
+                    >
+                        Ban
+                    </button>
+
+                </div>
+            `;
+        }
+
+
+        div.innerHTML = `
+
+            <div class="roomCode">
+                ${escapeHTML(room.code)}
+            </div>
+
+            <div class="roomInfo">
+                ${room.userCount}
+                participant(s)
+            </div>
+
+            <button
+                class="primary"
+                onclick="
+                    joinRoom(
+                        '${escapeJS(room.code)}'
+                    )
+                "
+            >
+                Join Normally
+            </button>
+
+            <button
+                onclick="
+                    anonymousJoin(
+                        '${escapeJS(room.code)}'
+                    )
+                "
+            >
+                👁 Anonymous Join
+            </button>
+
+            <hr>
+
+            ${usersHTML}
+
+        `;
+
+
+        container.appendChild(
+            div
+        );
+    }
+}
+
+
+// =====================================================
+// VIDEO
+// =====================================================
+
+function addVideo(
+    id,
+    stream,
+    label
+) {
+
+    let existing =
+        document.getElementById(
+            "video-" + id
+        );
+
+
+    if (existing) {
+
+        existing.srcObject =
+            stream;
+
+        return;
+    }
+
+
+    const box =
+        document.createElement(
+            "div"
+        );
+
+
+    box.className =
+        "videoBox";
+
+
+    box.id =
+        "box-" + id;
+
+
+    const video =
+        document.createElement(
+            "video"
+        );
+
+
+    video.id =
+        "video-" + id;
+
+
+    video.autoplay =
+        true;
+
+
+    video.playsInline =
+        true;
+
+
+    video.srcObject =
+        stream;
+
+
+    if (
+        id === moderatorId
+    ) {
+
+        video.muted =
+            true;
+    }
+
+
+    const labelElement =
+        document.createElement(
+            "div"
+        );
+
+
+    labelElement.className =
+        "label";
+
+
+    labelElement.textContent =
+        label;
+
+
+    box.appendChild(
+        video
+    );
+
+
+    box.appendChild(
+        labelElement
+    );
+
+
+    document
+        .getElementById(
+            "videos"
+        )
+        .appendChild(
+            box
+        );
+}
+
+
+// =====================================================
+// REMOVE VIDEO
+// =====================================================
+
+function removeVideo(
+    id
+) {
+
+    const box =
+        document.getElementById(
+            "box-" + id
+        );
+
+
+    if (box) {
+
+        box.remove();
+    }
+}
+
+
+// =====================================================
+// HTML ESCAPING
+// =====================================================
+
+function escapeHTML(
+    text
+) {
+
+    return String(text)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+}
+
+
+function escapeJS(
+    text
+) {
+
+    return String(text)
+        .replace(
+            /\\/g,
+            "\\\\"
+        )
+        .replace(
+            /'/g,
+            "\\'"
+        );
+}
+
+
+// =====================================================
+// START
+// =====================================================
+
+connect();
+
+</script>
+
+</body>
+</html>

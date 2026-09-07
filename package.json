@@ -1,13 +1,10 @@
 {
   "name": "video-chat",
   "version": "1.0.0",
-  "description": "Peer-to-peer video chat with moderator controls",
+  "description": "Temporary peer-to-peer video chat with moderator dashboard",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=20"
   },
   "dependencies": {
     "ws": "^8.18.0"

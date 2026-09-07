@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Video Chat</title>
 
 <style>
@@ -10,12 +11,15 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
   background: #111;
   color: white;
-  min-height: 100vh;
+  font-family: Arial, sans-serif;
 }
 
 button,
@@ -30,18 +34,17 @@ button {
 #joinScreen {
   min-height: 100vh;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   padding: 20px;
 }
 
 .joinBox {
   width: 100%;
-  max-width: 500px;
+  max-width: 480px;
   background: #1c1c1c;
   padding: 30px;
   border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0,0,0,.4);
 }
 
 .joinBox h1 {
@@ -51,18 +54,18 @@ button {
 .joinBox input {
   width: 100%;
   padding: 14px;
-  margin: 7px 0;
-  border: 1px solid #444;
-  border-radius: 10px;
+  margin-top: 10px;
   background: #111;
   color: white;
+  border: 1px solid #444;
+  border-radius: 10px;
   outline: none;
 }
 
 .joinBox button {
   width: 100%;
-  padding: 14px;
   margin-top: 10px;
+  padding: 14px;
   border: 0;
   border-radius: 10px;
   background: #2563eb;
@@ -74,6 +77,11 @@ button {
   background: #1d4ed8;
 }
 
+#joinStatus {
+  min-height: 20px;
+  color: #aaa;
+}
+
 #app {
   display: none;
   min-height: 100vh;
@@ -82,16 +90,9 @@ button {
 
 .topBar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.roomInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .roomName {
@@ -102,14 +103,15 @@ button {
 .roomCode {
   color: #aaa;
   font-size: 14px;
+  margin-top: 3px;
 }
 
 #leaveButton {
   background: #dc2626;
-  color: white;
   border: 0;
-  padding: 11px 18px;
   border-radius: 10px;
+  padding: 11px 18px;
+  color: white;
   font-weight: bold;
 }
 
@@ -117,37 +119,37 @@ button {
   background: #b91c1c;
 }
 
-#mainVideoArea {
+#largeArea {
   width: 100%;
-  height: calc(100vh - 170px);
-  min-height: 400px;
+  height: calc(100vh - 165px);
+  min-height: 350px;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 }
 
-#largeVideoContainer {
+#largeContainer {
   position: relative;
-  width: min(900px, 100%);
+  width: min(1000px, 100%);
   height: 100%;
-  max-height: 700px;
-  background: #000;
+  background: black;
   border: 3px solid #333;
   border-radius: 18px;
   overflow: hidden;
-  transition: border-color .2s, box-shadow .2s;
+  transition: .2s;
 }
 
-#largeVideoContainer.speaking {
+#largeContainer.speaking {
   border-color: #22c55e;
-  box-shadow: 0 0 18px rgba(34,197,94,.7);
+  box-shadow:
+    0 0 18px rgba(34,197,94,.7);
 }
 
 #largeVideo {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #000;
+  background: black;
   cursor: pointer;
 }
 
@@ -155,20 +157,19 @@ button {
   position: absolute;
   left: 12px;
   bottom: 12px;
+  padding: 7px 10px;
   background: rgba(0,0,0,.7);
-  padding: 7px 11px;
   border-radius: 8px;
-  font-size: 14px;
   pointer-events: none;
 }
 
 #thumbnails {
   width: 100%;
+  min-height: 100px;
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 10px 2px;
-  min-height: 110px;
+  padding: 10px 0;
 }
 
 .videoTile {
@@ -176,58 +177,44 @@ button {
   flex: 0 0 140px;
   width: 140px;
   height: 90px;
+  background: black;
   border: 3px solid #333;
   border-radius: 12px;
   overflow: hidden;
-  background: #000;
-  transition: border-color .2s, box-shadow .2s;
   cursor: pointer;
+  transition: .2s;
 }
 
 .videoTile.speaking {
   border-color: #22c55e;
-  box-shadow: 0 0 15px rgba(34,197,94,.7);
+  box-shadow:
+    0 0 15px rgba(34,197,94,.7);
 }
 
 .videoTile video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background: #000;
+  background: black;
 }
 
-.videoTile .name {
+.videoTileName {
   position: absolute;
   left: 5px;
   right: 5px;
   bottom: 5px;
   padding: 4px 6px;
-  border-radius: 5px;
   background: rgba(0,0,0,.7);
+  border-radius: 5px;
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.hidden {
-  display: none !important;
-}
-
-.emptyMessage {
-  color: #777;
-  text-align: center;
-  width: 100%;
-  padding: 30px;
-}
-
 @media (max-width: 700px) {
-  #mainVideoArea {
-    height: calc(100vh - 220px);
-  }
-
-  #largeVideoContainer {
-    border-radius: 12px;
+  #largeArea {
+    height: calc(100vh - 210px);
   }
 
   .videoTile {
@@ -242,7 +229,9 @@ button {
 <body>
 
 <div id="joinScreen">
+
   <div class="joinBox">
+
     <h1>Video Chat</h1>
 
     <input
@@ -275,25 +264,38 @@ button {
     </button>
 
     <p id="joinStatus"></p>
+
   </div>
+
 </div>
 
 
 <div id="app">
 
   <div class="topBar">
-    <div class="roomInfo">
-      <div class="roomName" id="roomName"></div>
-      <div class="roomCode" id="roomCode"></div>
+
+    <div>
+      <div
+        id="roomName"
+        class="roomName"
+      ></div>
+
+      <div
+        id="roomCode"
+        class="roomCode"
+      ></div>
     </div>
 
     <button id="leaveButton">
       Leave
     </button>
+
   </div>
 
-  <div id="mainVideoArea">
-    <div id="largeVideoContainer">
+
+  <div id="largeArea">
+
+    <div id="largeContainer">
 
       <video
         id="largeVideo"
@@ -305,7 +307,9 @@ button {
       <div id="largeName"></div>
 
     </div>
+
   </div>
+
 
   <div id="thumbnails"></div>
 
@@ -313,40 +317,67 @@ button {
 
 
 <script>
-const SERVER =
-  (location.protocol === "https:" ? "wss://" : "ws://") +
+
+const WS_URL =
+  (location.protocol === "https:"
+    ? "wss://"
+    : "ws://") +
   location.host +
   "/ws";
 
 
 let socket = null;
 let localStream = null;
-let roomCode = null;
 let myId = null;
-
-let selectedUserId = null;
-
-const peers = new Map();
-const streams = new Map();
-const users = new Map();
-const tiles = new Map();
-
-const pendingCandidates = new Map();
-const speakingTimers = new Map();
-const audioContexts = new Map();
+let currentRoom = null;
+let selectedId = null;
 
 let joining = false;
 let leaving = false;
 
 
-/* --------------------------------------------------
-   STORAGE
--------------------------------------------------- */
+/*
+ * One entry per participant.
+ */
+
+const participants = new Map();
+
+/*
+ * One RTCPeerConnection per participant.
+ */
+
+const peers = new Map();
+
+/*
+ * One remote MediaStream per participant.
+ */
+
+const remoteStreams = new Map();
+
+/*
+ * ICE candidates waiting for remote description.
+ */
+
+const pendingCandidates = new Map();
+
+/*
+ * One video tile per participant.
+ */
+
+const tiles = new Map();
+
+
+/*
+ * Persistent user ID.
+ */
 
 myId =
-  localStorage.getItem("videoChatUserId");
+  localStorage.getItem(
+    "videoChatUserId"
+  );
 
 if (!myId) {
+
   myId =
     crypto.randomUUID();
 
@@ -356,163 +387,369 @@ if (!myId) {
   );
 }
 
+
+/*
+ * Elements.
+ */
+
+const joinScreen =
+  document.getElementById(
+    "joinScreen"
+  );
+
+const app =
+  document.getElementById(
+    "app"
+  );
+
+const nameInput =
+  document.getElementById(
+    "nameInput"
+  );
+
+const roomNameInput =
+  document.getElementById(
+    "roomNameInput"
+  );
+
+const roomCodeInput =
+  document.getElementById(
+    "roomCodeInput"
+  );
+
+const createButton =
+  document.getElementById(
+    "createButton"
+  );
+
+const joinButton =
+  document.getElementById(
+    "joinButton"
+  );
+
+const leaveButton =
+  document.getElementById(
+    "leaveButton"
+  );
+
+const joinStatus =
+  document.getElementById(
+    "joinStatus"
+  );
+
+const roomName =
+  document.getElementById(
+    "roomName"
+  );
+
+const roomCode =
+  document.getElementById(
+    "roomCode"
+  );
+
+const largeVideo =
+  document.getElementById(
+    "largeVideo"
+  );
+
+const largeName =
+  document.getElementById(
+    "largeName"
+  );
+
+const largeContainer =
+  document.getElementById(
+    "largeContainer"
+  );
+
+const thumbnails =
+  document.getElementById(
+    "thumbnails"
+  );
+
+
+/*
+ * Restore saved name.
+ */
+
 const savedName =
-  localStorage.getItem("videoChatName");
+  localStorage.getItem(
+    "videoChatName"
+  );
 
 if (savedName) {
-  document.getElementById("nameInput").value =
+  nameInput.value =
     savedName;
 }
 
 
-/* --------------------------------------------------
-   ELEMENTS
--------------------------------------------------- */
-
-const joinScreen =
-  document.getElementById("joinScreen");
-
-const app =
-  document.getElementById("app");
-
-const nameInput =
-  document.getElementById("nameInput");
-
-const roomNameInput =
-  document.getElementById("roomNameInput");
-
-const roomCodeInput =
-  document.getElementById("roomCodeInput");
-
-const createButton =
-  document.getElementById("createButton");
-
-const joinButton =
-  document.getElementById("joinButton");
-
-const leaveButton =
-  document.getElementById("leaveButton");
-
-const joinStatus =
-  document.getElementById("joinStatus");
-
-const roomName =
-  document.getElementById("roomName");
-
-const roomCode =
-  document.getElementById("roomCode");
-
-const largeVideo =
-  document.getElementById("largeVideo");
-
-const largeName =
-  document.getElementById("largeName");
-
-const largeVideoContainer =
-  document.getElementById(
-    "largeVideoContainer"
-  );
-
-const thumbnails =
-  document.getElementById("thumbnails");
-
-
-/* --------------------------------------------------
-   SOCKET
--------------------------------------------------- */
-
-function connectSocket() {
-  return new Promise((resolve, reject) => {
-
-    socket = new WebSocket(SERVER);
-
-    socket.onopen = () => {
-
-      socket.send(JSON.stringify({
-        type: "register",
-        id: myId,
-        name: getName(),
-        role: "user"
-      }));
-
-      resolve();
-    };
-
-    socket.onerror = error => {
-      reject(error);
-    };
-
-    socket.onclose = () => {
-
-      if (!leaving) {
-        console.log(
-          "WebSocket disconnected"
-        );
-      }
-    };
-
-    socket.onmessage = event => {
-
-      let message;
-
-      try {
-        message =
-          JSON.parse(event.data);
-      } catch {
-        return;
-      }
-
-      handleMessage(message);
-    };
-  });
-}
-
-
-/* --------------------------------------------------
-   NAME
--------------------------------------------------- */
+/*
+ * Get current name.
+ */
 
 function getName() {
 
-  const name =
+  const value =
     nameInput.value
       .trim()
       .replace(/\s+/g, " ")
       .slice(0, 30);
 
-  return name || "Guest";
+  return value || "Guest";
 }
 
 
-/* --------------------------------------------------
-   MESSAGES
--------------------------------------------------- */
+/*
+ * Connect WebSocket.
+ */
 
-async function handleMessage(message) {
+function connectSocket() {
 
-  switch (message.type) {
+  return new Promise(
+    (resolve, reject) => {
 
-    case "roomCreated":
+      socket =
+        new WebSocket(
+          WS_URL
+        );
 
-      roomCodeInput.value =
-        message.room.code;
+      let settled =
+        false;
 
-      roomNameInput.value =
-        message.room.name;
+
+      socket.onopen =
+        () => {
+
+          socket.send(
+            JSON.stringify({
+              type: "register",
+              id: myId,
+              name: getName(),
+              role: "user"
+            })
+          );
+
+          if (!settled) {
+            settled = true;
+            resolve();
+          }
+        };
+
+
+      socket.onerror =
+        error => {
+
+          if (!settled) {
+            settled = true;
+            reject(error);
+          }
+        };
+
+
+      socket.onclose =
+        () => {
+
+          if (!leaving) {
+            console.log(
+              "WebSocket closed"
+            );
+          }
+        };
+
+
+      socket.onmessage =
+        event => {
+
+          let message;
+
+          try {
+            message =
+              JSON.parse(
+                event.data
+              );
+          }
+
+          catch {
+            return;
+          }
+
+          handleMessage(
+            message
+          );
+        };
+    }
+  );
+}
+
+
+/*
+ * Camera/microphone.
+ */
+
+async function getCamera() {
+
+  if (localStream) {
+    return localStream;
+  }
+
+  localStream =
+    await navigator.mediaDevices
+      .getUserMedia({
+        video: true,
+        audio: true
+      });
+
+  return localStream;
+}
+
+
+/*
+ * CREATE ROOM
+ */
+
+createButton.onclick =
+  async () => {
+
+    if (joining) {
+      return;
+    }
+
+    joining = true;
+
+    const name =
+      getName();
+
+    localStorage.setItem(
+      "videoChatName",
+      name
+    );
+
+    joinStatus.textContent =
+      "Starting camera...";
+
+    try {
+
+      await getCamera();
 
       joinStatus.textContent =
-        "Room created. Joining...";
+        "Connecting...";
 
-      await joinRoom(
-        message.room.code
+      await connectSocket();
+
+      const requestedCode =
+        roomCodeInput.value
+          .trim()
+          .toUpperCase();
+
+      socket.send(
+        JSON.stringify({
+          type: "createRoom",
+          name:
+            roomNameInput.value.trim(),
+          code:
+            requestedCode
+        })
       );
 
-      break;
+    }
 
+    catch (error) {
+
+      console.error(error);
+
+      joinStatus.textContent =
+        "Could not access camera or connect.";
+
+      joining = false;
+
+      stopLocalStream();
+    }
+  };
+
+
+/*
+ * JOIN ROOM
+ */
+
+joinButton.onclick =
+  async () => {
+
+    if (joining) {
+      return;
+    }
+
+    const code =
+      roomCodeInput.value
+        .trim()
+        .toUpperCase();
+
+    if (!code) {
+
+      joinStatus.textContent =
+        "Enter a room code.";
+
+      return;
+    }
+
+    joining = true;
+
+    localStorage.setItem(
+      "videoChatName",
+      getName()
+    );
+
+    joinStatus.textContent =
+      "Starting camera...";
+
+    try {
+
+      await getCamera();
+
+      joinStatus.textContent =
+        "Connecting...";
+
+      await connectSocket();
+
+      socket.send(
+        JSON.stringify({
+          type: "joinRoom",
+          code: code
+        })
+      );
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      joinStatus.textContent =
+        "Could not access camera or connect.";
+
+      joining = false;
+
+      stopLocalStream();
+    }
+  };
+
+
+/*
+ * Server messages.
+ */
+
+async function handleMessage(
+  message
+) {
+
+  switch (
+    message.type
+  ) {
 
     case "roomJoined":
 
-      await roomJoined(message);
+      await handleRoomJoined(
+        message
+      );
 
       break;
 
@@ -524,11 +761,11 @@ async function handleMessage(message) {
         message.user.id !== myId
       ) {
 
-        addUser(
+        addParticipant(
           message.user
         );
 
-        maybeCreatePeer(
+        createPeerIfNeeded(
           message.user.id
         );
       }
@@ -538,7 +775,7 @@ async function handleMessage(message) {
 
     case "userLeft":
 
-      removeUser(
+      removeParticipant(
         message.userId
       );
 
@@ -547,7 +784,7 @@ async function handleMessage(message) {
 
     case "userNameChanged":
 
-      updateUserName(
+      updateParticipantName(
         message.userId,
         message.name
       );
@@ -565,6 +802,17 @@ async function handleMessage(message) {
       break;
 
 
+    case "error":
+
+      joinStatus.textContent =
+        message.message ||
+        "Something went wrong.";
+
+      joining = false;
+
+      break;
+
+
     case "kicked":
 
       alert(
@@ -572,7 +820,7 @@ async function handleMessage(message) {
         "You were kicked."
       );
 
-      leaveRoom(false);
+      await leaveRoom();
 
       break;
 
@@ -584,198 +832,61 @@ async function handleMessage(message) {
         "You are banned."
       );
 
-      leaveRoom(false);
-
-      break;
-
-
-    case "error":
-
-      joinStatus.textContent =
-        message.message;
-
-      joining = false;
+      await leaveRoom();
 
       break;
   }
 }
 
 
-/* --------------------------------------------------
-   CREATE ROOM
--------------------------------------------------- */
+/*
+ * ROOM JOINED
+ */
 
-createButton.onclick = async () => {
-
-  if (joining) {
-    return;
-  }
-
-  const name =
-    getName();
-
-  const roomNameValue =
-    roomNameInput.value.trim();
-
-  const customCode =
-    roomCodeInput.value.trim();
-
-  localStorage.setItem(
-    "videoChatName",
-    name
-  );
-
-  joining = true;
-
-  joinStatus.textContent =
-    "Connecting...";
-
-  try {
-
-    await getCamera();
-
-    await connectSocket();
-
-    socket.send(JSON.stringify({
-      type: "createRoom",
-      name: roomNameValue,
-      code: customCode
-    }));
-
-  } catch (error) {
-
-    console.error(error);
-
-    joinStatus.textContent =
-      "Could not access camera or connect.";
-
-    joining = false;
-  }
-};
-
-
-/* --------------------------------------------------
-   JOIN ROOM
--------------------------------------------------- */
-
-joinButton.onclick = async () => {
-
-  if (joining) {
-    return;
-  }
-
-  const code =
-    roomCodeInput.value
-      .trim()
-      .toUpperCase();
-
-  if (!code) {
-
-    joinStatus.textContent =
-      "Enter a room code.";
-
-    return;
-  }
-
-  localStorage.setItem(
-    "videoChatName",
-    getName()
-  );
-
-  joining = true;
-
-  joinStatus.textContent =
-    "Starting camera...";
-
-  try {
-
-    await getCamera();
-
-    joinStatus.textContent =
-      "Connecting...";
-
-    await connectSocket();
-
-    socket.send(JSON.stringify({
-      type: "joinRoom",
-      code: code
-    }));
-
-  } catch (error) {
-
-    console.error(error);
-
-    joinStatus.textContent =
-      "Could not access camera or microphone.";
-
-    joining = false;
-  }
-};
-
-
-/* --------------------------------------------------
-   CAMERA
--------------------------------------------------- */
-
-async function getCamera() {
-
-  if (localStream) {
-    return localStream;
-  }
-
-  localStream =
-    await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
-    });
-
-  return localStream;
-}
-
-
-/* --------------------------------------------------
-   ROOM JOINED
--------------------------------------------------- */
-
-async function roomJoined(message) {
+async function handleRoomJoined(
+  message
+) {
 
   /*
-   * IMPORTANT:
-   * Completely clear any old UI before
-   * building the new room.
+   * Completely destroy anything
+   * left from an earlier room.
    */
 
-  clearVideoUI();
+  clearRoomState();
 
-  roomCode =
-    message.room.code;
+  currentRoom =
+    message.room;
 
   roomName.textContent =
     message.room.name;
 
   roomCode.textContent =
-    "Code: " + message.room.code;
+    "Code: " +
+    message.room.code;
 
-  users.clear();
-
-  selectedUserId = myId;
 
   /*
    * Add ourselves exactly once.
    */
 
-  users.set(myId, {
-    id: myId,
-    name: message.self.name,
-    local: true
-  });
+  participants.set(
+    myId,
+    {
+      id: myId,
+      name:
+        message.self.name,
+      local: true
+    }
+  );
+
 
   /*
-   * Add every other participant exactly once.
+   * Add existing users.
    */
 
   for (
-    const user of message.users || []
+    const user
+    of message.users || []
   ) {
 
     if (
@@ -786,11 +897,12 @@ async function roomJoined(message) {
       continue;
     }
 
-    users.set(
+    participants.set(
       user.id,
       user
     );
   }
+
 
   joinScreen.style.display =
     "none";
@@ -800,19 +912,22 @@ async function roomJoined(message) {
 
   joining = false;
 
+
   /*
-   * Show our own camera.
+   * Create our ONE local tile.
    */
 
-  addLocalVideo();
+  addLocalParticipant();
+
 
   /*
-   * Create exactly one peer connection
-   * for each other participant.
+   * Connect to each existing
+   * participant exactly once.
    */
 
   for (
-    const user of users.values()
+    const user
+    of participants.values()
   ) {
 
     if (
@@ -821,69 +936,64 @@ async function roomJoined(message) {
       continue;
     }
 
-    maybeCreatePeer(
+    createPeerIfNeeded(
       user.id
     );
   }
-
-  renderThumbnails();
 }
 
 
-/* --------------------------------------------------
-   LOCAL VIDEO
--------------------------------------------------- */
+/*
+ * Add local participant.
+ */
 
-function addLocalVideo() {
+function addLocalParticipant() {
 
   if (!localStream) {
     return;
   }
 
   /*
-   * Never create another local tile if one
-   * already exists.
+   * Never make another tile
+   * for our own ID.
    */
 
-  if (
-    tiles.has(myId)
-  ) {
+  if (tiles.has(myId)) {
+
+    const tile =
+      tiles.get(myId);
+
+    const video =
+      tile.querySelector(
+        "video"
+      );
+
+    video.srcObject =
+      localStream;
+
     return;
   }
 
-  const tile =
-    createTile(
-      myId,
-      getName(),
-      localStream,
-      true
-    );
-
-  tiles.set(
+  createParticipantTile(
     myId,
-    tile
+    getName(),
+    localStream,
+    true
   );
 
-  streams.set(
-    myId,
-    localStream
-  );
-
-  /*
-   * Start with our own camera selected.
-   */
-
-  selectUser(
+  selectParticipant(
     myId
   );
 }
 
 
-/* --------------------------------------------------
-   ADD USER
--------------------------------------------------- */
+/*
+ * Add participant.
+ */
 
-function addUser(user) {
+function addParticipant(
+  user
+) {
 
   if (
     !user ||
@@ -894,38 +1004,43 @@ function addUser(user) {
   }
 
   /*
-   * If this user already exists, update
-   * their information instead of creating
-   * another tile.
+   * Update existing participant
+   * instead of making another one.
    */
 
   if (
-    users.has(user.id)
+    participants.has(
+      user.id
+    )
   ) {
 
-    const existing =
-      users.get(user.id);
-
-    Object.assign(
-      existing,
-      user
+    participants.set(
+      user.id,
+      {
+        ...participants.get(
+          user.id
+        ),
+        ...user
+      }
     );
 
     return;
   }
 
-  users.set(
+  participants.set(
     user.id,
     user
   );
 }
 
 
-/* --------------------------------------------------
-   PEER CONNECTION
--------------------------------------------------- */
+/*
+ * Create peer only once.
+ */
 
-function maybeCreatePeer(remoteId) {
+function createPeerIfNeeded(
+  remoteId
+) {
 
   if (
     !remoteId ||
@@ -934,23 +1049,25 @@ function maybeCreatePeer(remoteId) {
     return;
   }
 
-  /*
-   * NEVER create two PeerConnections
-   * for the same participant.
-   */
-
   if (
     peers.has(remoteId)
   ) {
     return;
   }
 
+  const initiator =
+    myId < remoteId;
+
   createPeer(
     remoteId,
-    myId < remoteId
+    initiator
   );
 }
 
+
+/*
+ * Create WebRTC peer.
+ */
 
 function createPeer(
   remoteId,
@@ -960,7 +1077,9 @@ function createPeer(
   if (
     peers.has(remoteId)
   ) {
-    return peers.get(remoteId);
+    return peers.get(
+      remoteId
+    );
   }
 
   const peer =
@@ -973,25 +1092,28 @@ function createPeer(
       ]
     });
 
+
   peers.set(
     remoteId,
     peer
   );
+
 
   pendingCandidates.set(
     remoteId,
     []
   );
 
+
   /*
-   * Add our camera/microphone exactly once.
+   * Add our camera/microphone.
    */
 
   if (localStream) {
 
     for (
-      const track of
-      localStream.getTracks()
+      const track
+      of localStream.getTracks()
     ) {
 
       peer.addTrack(
@@ -1001,61 +1123,104 @@ function createPeer(
     }
   }
 
+
+  /*
+   * ICE.
+   */
+
   peer.onicecandidate =
     event => {
 
       if (
-        event.candidate &&
-        socket &&
-        socket.readyState === WebSocket.OPEN
+        !event.candidate ||
+        !socket ||
+        socket.readyState !==
+          WebSocket.OPEN
       ) {
-
-        socket.send(
-          JSON.stringify({
-            type: "signal",
-            target: remoteId,
-            data: {
-              type: "candidate",
-              candidate:
-                event.candidate
-            }
-          })
-        );
+        return;
       }
+
+      socket.send(
+        JSON.stringify({
+          type: "signal",
+          target: remoteId,
+
+          data: {
+            type: "candidate",
+            candidate:
+              event.candidate
+          }
+        })
+      );
     };
 
+
+  /*
+   * REMOTE TRACK.
+   *
+   * IMPORTANT:
+   * Both audio and video tracks are
+   * placed into ONE MediaStream.
+   */
 
   peer.ontrack =
     event => {
 
-      const stream =
-        event.streams[0];
-
-      if (!stream) {
+      if (!event.track) {
         return;
       }
 
-      /*
-       * Ignore duplicate track events
-       * for the same participant.
-       */
-
-      if (
-        streams.get(remoteId) !== stream
-      ) {
-
-        streams.set(
-          remoteId,
-          stream
+      let stream =
+        remoteStreams.get(
+          remoteId
         );
 
-        addRemoteVideo(
+      if (!stream) {
+
+        stream =
+          new MediaStream();
+
+        remoteStreams.set(
           remoteId,
           stream
         );
       }
+
+
+      /*
+       * Don't add the same track twice.
+       */
+
+      const alreadyAdded =
+        stream.getTracks()
+          .some(
+            track =>
+              track.id ===
+              event.track.id
+          );
+
+      if (!alreadyAdded) {
+
+        stream.addTrack(
+          event.track
+        );
+      }
+
+
+      /*
+       * Create/update ONE tile.
+       */
+
+      upsertRemoteTile(
+        remoteId,
+        stream
+      );
     };
 
+
+  /*
+   * Connection state.
+   */
 
   peer.onconnectionstatechange =
     () => {
@@ -1074,39 +1239,57 @@ function createPeer(
     };
 
 
+  /*
+   * Negotiation.
+   */
+
   if (initiator) {
 
     peer.createOffer()
-      .then(offer =>
-        peer.setLocalDescription(
-          offer
-        )
+      .then(
+        offer =>
+          peer.setLocalDescription(
+            offer
+          )
       )
-      .then(() => {
+      .then(
+        () => {
 
-        socket.send(
-          JSON.stringify({
-            type: "signal",
-            target: remoteId,
-            data: {
-              type: "offer",
-              offer:
-                peer.localDescription
-            }
-          })
-        );
+          if (
+            !socket ||
+            socket.readyState !==
+              WebSocket.OPEN
+          ) {
+            return;
+          }
 
-      })
-      .catch(console.error);
+          socket.send(
+            JSON.stringify({
+              type: "signal",
+              target: remoteId,
+
+              data: {
+                type: "offer",
+                offer:
+                  peer.localDescription
+              }
+            })
+          );
+        }
+      )
+      .catch(
+        console.error
+      );
   }
+
 
   return peer;
 }
 
 
-/* --------------------------------------------------
-   SIGNALING
--------------------------------------------------- */
+/*
+ * SIGNALING.
+ */
 
 async function handleSignal(
   remoteId,
@@ -1121,7 +1304,9 @@ async function handleSignal(
   }
 
   let peer =
-    peers.get(remoteId);
+    peers.get(
+      remoteId
+    );
 
   if (!peer) {
 
@@ -1132,10 +1317,12 @@ async function handleSignal(
       );
   }
 
+
   try {
 
     if (
-      data.type === "offer"
+      data.type ===
+      "offer"
     ) {
 
       await peer.setRemoteDescription(
@@ -1159,6 +1346,7 @@ async function handleSignal(
         JSON.stringify({
           type: "signal",
           target: remoteId,
+
           data: {
             type: "answer",
             answer:
@@ -1166,9 +1354,12 @@ async function handleSignal(
           }
         })
       );
+    }
 
-    } else if (
-      data.type === "answer"
+
+    else if (
+      data.type ===
+      "answer"
     ) {
 
       await peer.setRemoteDescription(
@@ -1180,15 +1371,13 @@ async function handleSignal(
       await flushCandidates(
         remoteId
       );
+    }
 
-    } else if (
-      data.type === "candidate"
+
+    else if (
+      data.type ===
+      "candidate"
     ) {
-
-      /*
-       * ICE candidates can arrive before the
-       * remote description. Queue them.
-       */
 
       if (
         peer.remoteDescription
@@ -1200,7 +1389,9 @@ async function handleSignal(
           )
         );
 
-      } else {
+      }
+
+      else {
 
         if (
           !pendingCandidates.has(
@@ -1222,34 +1413,39 @@ async function handleSignal(
       }
     }
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.error(
-      "WebRTC signaling error:",
+      "WebRTC error:",
       error
     );
   }
 }
 
 
+/*
+ * Flush queued ICE.
+ */
+
 async function flushCandidates(
   remoteId
 ) {
 
   const peer =
-    peers.get(remoteId);
-
-  if (!peer) {
-    return;
-  }
+    peers.get(
+      remoteId
+    );
 
   if (
+    !peer ||
     !peer.remoteDescription
   ) {
     return;
   }
 
-  const candidates =
+  const list =
     pendingCandidates.get(
       remoteId
     ) || [];
@@ -1260,7 +1456,8 @@ async function flushCandidates(
   );
 
   for (
-    const candidate of candidates
+    const candidate
+    of list
   ) {
 
     try {
@@ -1271,10 +1468,12 @@ async function flushCandidates(
         )
       );
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
       console.error(
-        "ICE candidate error:",
+        "ICE error:",
         error
       );
     }
@@ -1282,11 +1481,11 @@ async function flushCandidates(
 }
 
 
-/* --------------------------------------------------
-   REMOTE VIDEO
--------------------------------------------------- */
+/*
+ * Create/update ONE remote tile.
+ */
 
-function addRemoteVideo(
+function upsertRemoteTile(
   userId,
   stream
 ) {
@@ -1297,81 +1496,74 @@ function addRemoteVideo(
     return;
   }
 
-  /*
-   * If the participant already has a tile,
-   * simply update the stream.
-   */
+  remoteStreams.set(
+    userId,
+    stream
+  );
 
-  if (
-    tiles.has(userId)
-  ) {
 
-    const tile =
-      tiles.get(userId);
+  const existing =
+    tiles.get(
+      userId
+    );
+
+
+  if (existing) {
 
     const video =
-      tile.querySelector(
+      existing.querySelector(
         "video"
       );
 
     if (
-      video.srcObject !== stream
+      video.srcObject !==
+      stream
     ) {
 
       video.srcObject =
         stream;
     }
 
-    streams.set(
-      userId,
-      stream
-    );
-
     return;
   }
 
-  const user =
-    users.get(userId);
 
-  const name =
-    user?.name ||
-    "Guest";
-
-  const tile =
-    createTile(
-      userId,
-      name,
-      stream,
-      false
+  const participant =
+    participants.get(
+      userId
     );
 
-  tiles.set(
+  createParticipantTile(
     userId,
-    tile
+    participant?.name ||
+      "Guest",
+    stream,
+    false
   );
 
-  streams.set(
-    userId,
-    stream
-  );
+
+  /*
+   * If we're currently showing
+   * ourselves, automatically switch
+   * to the first remote participant.
+   */
 
   if (
-    !selectedUserId ||
-    selectedUserId === myId
+    selectedId === myId
   ) {
 
-    selectUser(
+    selectParticipant(
       userId
     );
   }
 }
 
 
-/* --------------------------------------------------
-   CREATE TILE
--------------------------------------------------- */
+/*
+ * Create exactly ONE tile.
+ */
 
-function createTile(
+function createParticipantTile(
   userId,
   name,
   stream,
@@ -1382,27 +1574,30 @@ function createTile(
    * Absolute duplicate protection.
    */
 
-  const old =
-    tiles.get(userId);
+  if (
+    tiles.has(userId)
+  ) {
 
-  if (old) {
+    const oldTile =
+      tiles.get(userId);
 
     const video =
-      old.querySelector(
+      oldTile.querySelector(
         "video"
       );
 
     if (
-      video &&
-      video.srcObject !== stream
+      video.srcObject !==
+      stream
     ) {
 
       video.srcObject =
         stream;
     }
 
-    return old;
+    return oldTile;
   }
+
 
   const tile =
     document.createElement(
@@ -1414,6 +1609,7 @@ function createTile(
 
   tile.dataset.userId =
     userId;
+
 
   const video =
     document.createElement(
@@ -1427,315 +1623,144 @@ function createTile(
     true;
 
   video.muted =
-    !!local;
+    local;
 
   video.srcObject =
     stream;
 
-  const nameLabel =
+
+  const label =
     document.createElement(
       "div"
     );
 
-  nameLabel.className =
-    "name";
+  label.className =
+    "videoTileName";
 
-  nameLabel.textContent =
+  label.textContent =
     local
       ? name + " (You)"
       : name;
+
 
   tile.appendChild(
     video
   );
 
   tile.appendChild(
-    nameLabel
+    label
   );
+
 
   tile.onclick =
     () => {
 
-      selectUser(
+      selectParticipant(
         userId
       );
     };
+
 
   thumbnails.appendChild(
     tile
   );
 
-  startSpeakingDetection(
+
+  tiles.set(
     userId,
-    stream,
     tile
   );
+
 
   return tile;
 }
 
 
-/* --------------------------------------------------
-   SELECT VIDEO
--------------------------------------------------- */
+/*
+ * Select large video.
+ */
 
-function selectUser(userId) {
+function selectParticipant(
+  userId
+) {
 
-  if (!users.has(userId)) {
-    return;
+  let stream = null;
+
+  if (
+    userId === myId
+  ) {
+
+    stream =
+      localStream;
+
+  } else {
+
+    stream =
+      remoteStreams.get(
+        userId
+      );
   }
 
-  selectedUserId =
-    userId;
-
-  const stream =
-    streams.get(userId);
 
   if (!stream) {
     return;
   }
 
+
+  selectedId =
+    userId;
+
+
   largeVideo.srcObject =
     stream;
 
-  const user =
-    users.get(userId);
+
+  const participant =
+    participants.get(
+      userId
+    );
+
 
   largeName.textContent =
     userId === myId
       ? getName() + " (You)"
-      : user?.name || "Guest";
-
-  /*
-   * Update speaking border for selected video.
-   */
-
-  for (
-    const [id, tile] of tiles
-  ) {
-
-    if (
-      id === userId
-    ) {
-
-      if (
-        tile.classList.contains(
-          "speaking"
-        )
-      ) {
-
-        largeVideoContainer.classList.add(
-          "speaking"
-        );
-
-      }
-
-    }
-  }
+      : participant?.name ||
+        "Guest";
 }
 
 
-/* --------------------------------------------------
-   THUMBNAILS
--------------------------------------------------- */
+/*
+ * Update participant name.
+ */
 
-function renderThumbnails() {
-
-  /*
-   * Remove every tile that no longer
-   * belongs to a participant.
-   */
-
-  for (
-    const [id, tile] of tiles
-  ) {
-
-    if (
-      !users.has(id)
-    ) {
-
-      tile.remove();
-
-      tiles.delete(id);
-    }
-  }
-
-  /*
-   * Make sure every participant with a stream
-   * has exactly one tile.
-   */
-
-  for (
-    const [id, stream] of streams
-  ) {
-
-    if (
-      !tiles.has(id) &&
-      users.has(id)
-    ) {
-
-      const user =
-        users.get(id);
-
-      const tile =
-        createTile(
-          id,
-          user?.name || "Guest",
-          stream,
-          id === myId
-        );
-
-      tiles.set(
-        id,
-        tile
-      );
-    }
-  }
-}
-
-
-/* --------------------------------------------------
-   REMOVE USER
--------------------------------------------------- */
-
-function removeUser(userId) {
-
-  if (
-    !userId ||
-    userId === myId
-  ) {
-    return;
-  }
-
-  removePeer(
-    userId
-  );
-
-  const tile =
-    tiles.get(userId);
-
-  if (tile) {
-
-    tile.remove();
-
-    tiles.delete(
-      userId
-    );
-  }
-
-  streams.delete(
-    userId
-  );
-
-  users.delete(
-    userId
-  );
-
-  pendingCandidates.delete(
-    userId
-  );
-
-  if (
-    selectedUserId === userId
-  ) {
-
-    selectedUserId =
-      myId;
-
-    selectUser(
-      myId
-    );
-  }
-}
-
-
-/* --------------------------------------------------
-   REMOVE PEER
--------------------------------------------------- */
-
-function removePeer(
-  userId
-) {
-
-  const peer =
-    peers.get(userId);
-
-  if (peer) {
-
-    try {
-      peer.close();
-    } catch {}
-  }
-
-  peers.delete(
-    userId
-  );
-
-  pendingCandidates.delete(
-    userId
-  );
-
-  const timer =
-    speakingTimers.get(
-      userId
-    );
-
-  if (timer) {
-
-    clearTimeout(
-      timer
-    );
-
-    speakingTimers.delete(
-      userId
-    );
-  }
-
-  const audio =
-    audioContexts.get(
-      userId
-    );
-
-  if (audio) {
-
-    try {
-      audio.close();
-    } catch {}
-
-    audioContexts.delete(
-      userId
-    );
-  }
-}
-
-
-/* --------------------------------------------------
-   NAME UPDATE
--------------------------------------------------- */
-
-function updateUserName(
+function updateParticipantName(
   userId,
   name
 ) {
 
-  const user =
-    users.get(userId);
+  const participant =
+    participants.get(
+      userId
+    );
 
-  if (!user) {
+  if (!participant) {
     return;
   }
 
-  user.name =
+  participant.name =
     name;
 
+
   const tile =
-    tiles.get(userId);
+    tiles.get(
+      userId
+    );
 
   if (tile) {
 
     const label =
       tile.querySelector(
-        ".name"
+        ".videoTileName"
       );
 
     if (label) {
@@ -1747,8 +1772,9 @@ function updateUserName(
     }
   }
 
+
   if (
-    selectedUserId === userId
+    selectedId === userId
   ) {
 
     largeName.textContent =
@@ -1759,173 +1785,147 @@ function updateUserName(
 }
 
 
-/* --------------------------------------------------
-   SPEAKING DETECTION
--------------------------------------------------- */
+/*
+ * Remove participant.
+ */
 
-async function startSpeakingDetection(
-  userId,
-  stream,
-  tile
+function removeParticipant(
+  userId
 ) {
 
   if (
-    !stream ||
-    !stream.getAudioTracks().length
+    userId === myId
   ) {
     return;
   }
+
+
+  removePeer(
+    userId
+  );
+
+
+  const tile =
+    tiles.get(
+      userId
+    );
+
+  if (tile) {
+
+    tile.remove();
+
+    tiles.delete(
+      userId
+    );
+  }
+
+
+  remoteStreams.delete(
+    userId
+  );
+
+  participants.delete(
+    userId
+  );
+
 
   if (
-    audioContexts.has(userId)
+    selectedId === userId
   ) {
-    return;
-  }
 
-  try {
+    if (
+      localStream
+    ) {
 
-    const AudioContext =
-      window.AudioContext ||
-      window.webkitAudioContext;
+      selectParticipant(
+        myId
+      );
 
-    if (!AudioContext) {
-      return;
     }
 
-    const context =
-      new AudioContext();
+    else {
 
-    const source =
-      context.createMediaStreamSource(
-        stream
-      );
+      largeVideo.srcObject =
+        null;
 
-    const analyser =
-      context.createAnalyser();
-
-    analyser.fftSize =
-      512;
-
-    source.connect(
-      analyser
-    );
-
-    const data =
-      new Uint8Array(
-        analyser.frequencyBinCount
-      );
-
-    audioContexts.set(
-      userId,
-      context
-    );
-
-    function check() {
-
-      if (
-        !tiles.has(userId)
-      ) {
-        return;
-      }
-
-      analyser.getByteFrequencyData(
-        data
-      );
-
-      let total = 0;
-
-      for (
-        let i = 0;
-        i < data.length;
-        i++
-      ) {
-
-        total +=
-          data[i];
-      }
-
-      const average =
-        total /
-        data.length;
-
-      if (
-        average > 10
-      ) {
-
-        tile.classList.add(
-          "speaking"
-        );
-
-        if (
-          selectedUserId === userId
-        ) {
-
-          largeVideoContainer.classList.add(
-            "speaking"
-          );
-        }
-
-        const oldTimer =
-          speakingTimers.get(
-            userId
-          );
-
-        if (oldTimer) {
-          clearTimeout(
-            oldTimer
-          );
-        }
-
-        const timer =
-          setTimeout(() => {
-
-            tile.classList.remove(
-              "speaking"
-            );
-
-            if (
-              selectedUserId ===
-              userId
-            ) {
-
-              largeVideoContainer.classList.remove(
-                "speaking"
-              );
-            }
-
-          }, 500);
-
-        speakingTimers.set(
-          userId,
-          timer
-        );
-      }
-
-      requestAnimationFrame(
-        check
-      );
+      largeName.textContent =
+        "";
     }
-
-    check();
-
-  } catch (error) {
-
-    console.error(
-      "Speaking detection error:",
-      error
-    );
   }
 }
 
 
-/* --------------------------------------------------
-   CLEAR EVERYTHING
--------------------------------------------------- */
+/*
+ * Remove peer.
+ */
 
-function clearVideoUI() {
+function removePeer(
+  userId
+) {
+
+  const peer =
+    peers.get(
+      userId
+    );
+
+  if (peer) {
+
+    try {
+      peer.close();
+    }
+
+    catch {}
+  }
+
+  peers.delete(
+    userId
+  );
+
+  pendingCandidates.delete(
+    userId
+  );
+
+  remoteStreams.delete(
+    userId
+  );
+}
+
+
+/*
+ * Completely clear current room.
+ */
+
+function clearRoomState() {
+
+  /*
+   * Close peers.
+   */
 
   for (
-    const tile of tiles.values()
+    const peer
+    of peers.values()
+  ) {
+
+    try {
+      peer.close();
+    }
+
+    catch {}
+  }
+
+  peers.clear();
+
+
+  pendingCandidates.clear();
+
+
+  /*
+   * Remove every tile.
+   */
+
+  for (
+    const tile
+    of tiles.values()
   ) {
 
     tile.remove();
@@ -1933,8 +1933,15 @@ function clearVideoUI() {
 
   tiles.clear();
 
-  thumbnails.innerHTML =
-    "";
+
+  /*
+   * Clear participant data.
+   */
+
+  participants.clear();
+
+  remoteStreams.clear();
+
 
   largeVideo.srcObject =
     null;
@@ -1942,15 +1949,132 @@ function clearVideoUI() {
   largeName.textContent =
     "";
 
-  largeVideoContainer.classList.remove(
-    "speaking"
-  );
+  selectedId =
+    null;
 }
 
 
-/* --------------------------------------------------
-   FULLSCREEN
--------------------------------------------------- */
+/*
+ * Stop local camera.
+ */
+
+function stopLocalStream() {
+
+  if (!localStream) {
+    return;
+  }
+
+  for (
+    const track
+    of localStream.getTracks()
+  ) {
+
+    track.stop();
+  }
+
+  localStream =
+    null;
+}
+
+
+/*
+ * LEAVE.
+ */
+
+async function leaveRoom() {
+
+  if (leaving) {
+    return;
+  }
+
+  leaving = true;
+  joining = false;
+
+
+  /*
+   * Tell server.
+   */
+
+  if (
+    socket &&
+    socket.readyState ===
+      WebSocket.OPEN
+  ) {
+
+    try {
+
+      socket.send(
+        JSON.stringify({
+          type:
+            "leaveRoom"
+        })
+      );
+
+    }
+
+    catch {}
+  }
+
+
+  /*
+   * Clear everything.
+   */
+
+  clearRoomState();
+
+
+  stopLocalStream();
+
+
+  /*
+   * Close socket.
+   */
+
+  if (socket) {
+
+    try {
+      socket.close();
+    }
+
+    catch {}
+
+    socket =
+      null;
+  }
+
+
+  currentRoom =
+    null;
+
+
+  app.style.display =
+    "none";
+
+  joinScreen.style.display =
+    "flex";
+
+  joinStatus.textContent =
+    "";
+
+
+  leaving = false;
+}
+
+
+/*
+ * Leave button.
+ */
+
+leaveButton.onclick =
+  () => {
+
+    leaveRoom();
+  };
+
+
+/*
+ * Fullscreen.
+ */
 
 largeVideo.onclick =
   async () => {
@@ -1963,13 +2087,17 @@ largeVideo.onclick =
 
         await document.exitFullscreen();
 
-      } else {
+      }
 
-        await largeVideoContainer.requestFullscreen();
+      else {
+
+        await largeContainer.requestFullscreen();
 
       }
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
       console.error(
         "Fullscreen error:",
@@ -1979,170 +2107,32 @@ largeVideo.onclick =
   };
 
 
-/* --------------------------------------------------
-   LEAVE ROOM
--------------------------------------------------- */
+/*
+ * Room code formatting.
+ */
 
-async function leaveRoom(
-  reconnect = true
-) {
-
-  if (leaving) {
-    return;
-  }
-
-  leaving = true;
-  joining = false;
-
-  /*
-   * Tell server first.
-   */
-
-  if (
-    socket &&
-    socket.readyState === WebSocket.OPEN
-  ) {
-
-    try {
-
-      socket.send(
-        JSON.stringify({
-          type: "leaveRoom"
-        })
-      );
-
-    } catch {}
-  }
-
-  /*
-   * Close every WebRTC connection.
-   */
-
-  for (
-    const peer of peers.values()
-  ) {
-
-    try {
-      peer.close();
-    } catch {}
-  }
-
-  peers.clear();
-
-  /*
-   * Clear ICE queues.
-   */
-
-  pendingCandidates.clear();
-
-  /*
-   * Stop audio analysis.
-   */
-
-  for (
-    const timer of speakingTimers.values()
-  ) {
-
-    clearTimeout(
-      timer
-    );
-  }
-
-  speakingTimers.clear();
-
-  for (
-    const context of audioContexts.values()
-  ) {
-
-    try {
-      context.close();
-    } catch {}
-  }
-
-  audioContexts.clear();
-
-  /*
-   * Remove every video element.
-   */
-
-  clearVideoUI();
-
-  /*
-   * Clear participant state.
-   */
-
-  users.clear();
-  streams.clear();
-
-  selectedUserId =
-    null;
-
-  roomCode =
-    null;
-
-  /*
-   * Stop camera and microphone.
-   */
-
-  if (localStream) {
-
-    for (
-      const track of
-      localStream.getTracks()
-    ) {
-
-      track.stop();
-    }
-
-    localStream =
-      null;
-  }
-
-  /*
-   * Close WebSocket.
-   */
-
-  if (socket) {
-
-    try {
-      socket.close();
-    } catch {}
-
-    socket =
-      null;
-  }
-
-  app.style.display =
-    "none";
-
-  joinScreen.style.display =
-    "flex";
-
-  joinStatus.textContent =
-    "";
-
-  leaving = false;
-
-  if (reconnect) {
-    roomCodeInput.focus();
-  }
-}
-
-
-/* --------------------------------------------------
-   LEAVE BUTTON
--------------------------------------------------- */
-
-leaveButton.onclick =
+roomCodeInput.addEventListener(
+  "input",
   () => {
 
-    leaveRoom(true);
-  };
+    roomCodeInput.value =
+      roomCodeInput.value
+        .toUpperCase()
+        .replace(
+          /[^A-Z0-9_-]/g,
+          ""
+        )
+        .slice(
+          0,
+          12
+        );
+  }
+);
 
 
-/* --------------------------------------------------
-   PAGE CLOSE
--------------------------------------------------- */
+/*
+ * Clean up when browser closes.
+ */
 
 window.addEventListener(
   "beforeunload",
@@ -2158,51 +2148,35 @@ window.addEventListener(
 
         socket.send(
           JSON.stringify({
-            type: "leaveRoom"
+            type:
+              "leaveRoom"
           })
         );
 
-      } catch {}
+      }
+
+      catch {}
     }
 
+
     for (
-      const peer of peers.values()
+      const peer
+      of peers.values()
     ) {
 
       try {
         peer.close();
-      } catch {}
-    }
-
-    if (localStream) {
-
-      for (
-        const track of
-        localStream.getTracks()
-      ) {
-
-        track.stop();
       }
+
+      catch {}
     }
+
+
+    stopLocalStream();
   }
 );
 
+</script>
 
-/* --------------------------------------------------
-   INITIAL UI
--------------------------------------------------- */
-
-roomCodeInput.addEventListener(
-  "input",
-  () => {
-
-    roomCodeInput.value =
-      roomCodeInput.value
-        .toUpperCase()
-        .replace(
-          /[^A-Z0-9_-]/g,
-          ""
-        )
-        .slice(0, 12);
-  }
-);
+</body>
+</html>

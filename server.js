@@ -3,6 +3,8 @@ const WebSocket = require("ws");
 const crypto = require("crypto");
 
 const PORT = process.env.PORT || 3000;
+
+// Master moderator PIN
 const MASTER_PIN = "230323038227";
 
 const rooms = new Map();
@@ -11,82 +13,63 @@ const bannedUsers = new Map();
 const moderatorAccess = new Map();
 const moderationLog = [];
 
-function makeId(prefix = "id") {
-  return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
-}
-
-function cleanName(value) {
-  return String(value || "")
-    .trim()
-    .replace(/[<>]/g, "")
-    .slice(0, 30) || "Anonymous";
-}
-
-function cleanRoomName(value) {
-  return String(value || "")
-    .trim()
-    .replace(/[<>]/g, "")
-    .slice(0, 50) || "Untitled Room";
-}
-
-function cleanRoomCode(value) {
-  return String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9_-]/g, "")
-    .slice(0, 20);
-}
-
-function cleanPin(value) {
-  return String(value || "")
-    .trim()
-    .slice(0, 100);
+function makeId(prefix = "") {
+  return prefix + crypto.randomBytes(8).toString("hex");
 }
 
 function hashPin(pin) {
-  return crypto
-    .createHash("sha256")
-    .update(pin)
-    .digest("hex");
+  return crypto.createHash("sha256").update(String(pin)).digest("hex");
 }
 
-function send(ws, data) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(data));
+function cleanName(value) {
+  let name = String(value || "").trim();
+  name = name.replace(/\s+/g, " ");
+  if (!name) name = "Anonymous";
+  return name.slice(0, 40);
+}
+
+function cleanRoomName(value) {
+  let name = String(value || "").trim();
+  name = name.replace(/\s+/g, " ");
+  if (!name) name = "Room";
+  return name.slice(0, 60);
+}
+
+function cleanRoomCode(value) {
+  let code = String(value || "").trim().toUpperCase();
+  code = code.replace(/[^A-Z0-9_-]/g, "");
+  return code.slice(0, 20);
+}
+
+function cleanPin(value) {
+  return String(value || "").trim().slice(0, 100);
+}
+
+function send(client, data) {
+  if (
+    client &&
+    client.ws &&
+    client.ws.readyState === WebSocket.OPEN
+  ) {
+    client.ws.send(JSON.stringify(data));
   }
 }
 
-function broadcastRoom(room, data, excludeId = null) {
-  for (const id of room.participants) {
-    if (id === excludeId) continue;
-
-    const client = clients.get(id);
-    if (client) {
-      send(client.ws, data);
-    }
-  }
-}
-
-function addLog(action, moderator, target, roomCode, details = "") {
+function addLog(action, details) {
   moderationLog.unshift({
-    id: makeId("log"),
+    id: makeId("log_"),
     action,
-    moderator: moderator || "System",
-    target: target || "",
-    roomCode: roomCode || "",
     details,
-    createdAt: Date.now()
+    time: Date.now()
   });
 
-  if (moderationLog.length > 200) {
-    moderationLog.length = 200;
+  if (moderationLog.length > 300) {
+    moderationLog.length = 300;
   }
-
-  broadcastModeratorData();
 }
 
 function formatDuration(ms) {
-  if (ms === null) return "Permanent";
+  if (ms == null) return "Permanent";
 
   let seconds = Math.floor(ms / 1000);
 
@@ -110,50 +93,45 @@ function formatDuration(ms) {
 
   const parts = [];
 
-  if (years) parts.push(`${years}y`);
-  if (months) parts.push(`${months}mo`);
-  if (weeks) parts.push(`${weeks}w`);
-  if (days) parts.push(`${days}d`);
-  if (hours) parts.push(`${hours}h`);
-  if (minutes) parts.push(`${minutes}m`);
-  if (seconds) parts.push(`${seconds}s`);
+  if (years) parts.push(years + " year" + (years === 1 ? "" : "s"));
+  if (months) parts.push(months + " month" + (months === 1 ? "" : "s"));
+  if (weeks) parts.push(weeks + " week" + (weeks === 1 ? "" : "s"));
+  if (days) parts.push(days + " day" + (days === 1 ? "" : "s"));
+  if (hours) parts.push(hours + " hour" + (hours === 1 ? "" : "s"));
+  if (minutes) parts.push(minutes + " minute" + (minutes === 1 ? "" : "s"));
+  if (seconds) parts.push(seconds + " second" + (seconds === 1 ? "" : "s"));
 
-  return parts.join(" ") || "0 seconds";
+  return parts.length ? parts.join(", ") : "0 seconds";
 }
 
 function calculateDuration(data) {
   if (data.permanent) {
-    return null;
+    return {
+      expiresAt: null,
+      durationText: "Permanent"
+    };
   }
 
-  const seconds = Number(data.seconds || 0);
-  const minutes = Number(data.minutes || 0);
-  const hours = Number(data.hours || 0);
-  const days = Number(data.days || 0);
-  const weeks = Number(data.weeks || 0);
-  const months = Number(data.months || 0);
-  const years = Number(data.years || 0);
+  const seconds =
+    Math.max(0, Number(data.seconds) || 0) +
+    Math.max(0, Number(data.minutes) || 0) * 60 +
+    Math.max(0, Number(data.hours) || 0) * 60 * 60 +
+    Math.max(0, Number(data.days) || 0) * 24 * 60 * 60 +
+    Math.max(0, Number(data.weeks) || 0) * 7 * 24 * 60 * 60 +
+    Math.max(0, Number(data.months) || 0) * 30 * 24 * 60 * 60 +
+    Math.max(0, Number(data.years) || 0) * 365 * 24 * 60 * 60;
 
-  const total =
-    seconds * 1000 +
-    minutes * 60 * 1000 +
-    hours * 60 * 60 * 1000 +
-    days * 24 * 60 * 60 * 1000 +
-    weeks * 7 * 24 * 60 * 60 * 1000 +
-    months * 30 * 24 * 60 * 60 * 1000 +
-    years * 365 * 24 * 60 * 60 * 1000;
-
-  return total > 0 ? total : 0;
-}
-
-function cleanExpiredBans() {
-  const now = Date.now();
-
-  for (const [id, ban] of bannedUsers) {
-    if (ban.expiresAt !== null && ban.expiresAt <= now) {
-      bannedUsers.delete(id);
-    }
+  if (seconds <= 0) {
+    return {
+      expiresAt: Date.now(),
+      durationText: "0 seconds"
+    };
   }
+
+  return {
+    expiresAt: Date.now() + seconds * 1000,
+    durationText: formatDuration(seconds * 1000)
+  };
 }
 
 function cleanExpiredModeratorAccess() {
@@ -162,6 +140,29 @@ function cleanExpiredModeratorAccess() {
   for (const [id, access] of moderatorAccess) {
     if (access.expiresAt !== null && access.expiresAt <= now) {
       moderatorAccess.delete(id);
+
+      for (const client of clients.values()) {
+        if (
+          client.role === "moderator" &&
+          client.moderatorAccessId === id
+        ) {
+          send(client, {
+            type: "moderatorAccessExpired"
+          });
+
+          client.ws.close();
+        }
+      }
+    }
+  }
+}
+
+function cleanExpiredBans() {
+  const now = Date.now();
+
+  for (const [id, ban] of bannedUsers) {
+    if (ban.expiresAt !== null && ban.expiresAt <= now) {
+      bannedUsers.delete(id);
     }
   }
 }
@@ -192,54 +193,79 @@ function getModeratorAccessByPin(pin) {
   return null;
 }
 
-function isMasterModerator(client) {
-  return client &&
-    client.role === "moderator" &&
-    client.moderatorLevel === "master";
-}
+function getRoomInfo(room) {
+  const participants = [];
 
-function canModerate(client) {
-  return client && client.role === "moderator";
-}
+  for (const id of room.participants) {
+    const client = clients.get(id);
 
-function canControlTarget(moderator, target) {
-  if (!moderator || !target) return false;
+    if (!client) continue;
 
-  if (target.role === "moderator") {
-    return false;
+    if (client.role === "user") {
+      participants.push({
+        id: client.id,
+        userId: client.userId,
+        name: client.name
+      });
+    }
   }
 
-  return true;
+  return {
+    code: room.code,
+    name: room.name,
+    participants,
+    participantCount: participants.length,
+    messages: room.messages.slice(-100)
+  };
 }
 
 function getRoomList() {
-  return [...rooms.values()].map(room => ({
-    name: room.name,
-    code: room.code,
-    participants: [...room.participants]
-      .map(id => clients.get(id))
-      .filter(Boolean)
-      .filter(c => c.role === "user")
-      .map(c => ({
-        id: c.id,
-        userId: c.userId,
-        name: c.name
-      }))
-  }));
+  const list = [];
+
+  for (const room of rooms.values()) {
+    let userCount = 0;
+    let moderatorCount = 0;
+
+    for (const id of room.participants) {
+      const client = clients.get(id);
+      if (!client) continue;
+
+      if (client.role === "user") {
+        userCount++;
+      } else {
+        moderatorCount++;
+      }
+    }
+
+    list.push({
+      code: room.code,
+      name: room.name,
+      participantCount: userCount,
+      moderatorCount
+    });
+  }
+
+  return list;
 }
 
 function getBanList() {
   cleanExpiredBans();
 
-  return [...bannedUsers.values()].map(ban => ({
-    ...ban
+  return Array.from(bannedUsers.values()).map((ban) => ({
+    id: ban.id,
+    userId: ban.userId,
+    name: ban.name,
+    moderatorName: ban.moderatorName,
+    createdAt: ban.createdAt,
+    expiresAt: ban.expiresAt,
+    durationText: ban.durationText
   }));
 }
 
 function getModeratorAccessList() {
   cleanExpiredModeratorAccess();
 
-  return [...moderatorAccess.values()].map(access => ({
+  return Array.from(moderatorAccess.values()).map((access) => ({
     id: access.id,
     name: access.name,
     targetUserId: access.targetUserId,
@@ -251,10 +277,10 @@ function getModeratorAccessList() {
 }
 
 function getModeratorLog() {
-  return moderationLog;
+  return moderationLog.slice(0, 300);
 }
 
-function broadcastModeratorData() {
+function broadcastRoomList() {
   const data = {
     type: "moderatorData",
     rooms: getRoomList(),
@@ -265,49 +291,82 @@ function broadcastModeratorData() {
 
   for (const client of clients.values()) {
     if (client.role === "moderator") {
-      send(client.ws, data);
+      send(client, data);
     }
   }
 }
 
-function makeRoomCode() {
-  let code;
+function broadcastRoom(room, data, options = {}) {
+  const includeUsers = options.includeUsers !== false;
+  const includeModerators = options.includeModerators !== false;
 
-  do {
-    code = crypto
-      .randomBytes(3)
-      .toString("hex")
-      .toUpperCase();
-  } while (rooms.has(code));
+  for (const id of room.participants) {
+    const client = clients.get(id);
 
-  return code;
+    if (!client) continue;
+
+    if (client.role === "user" && includeUsers) {
+      send(client, data);
+    }
+
+    if (client.role === "moderator" && includeModerators) {
+      send(client, data);
+    }
+  }
 }
 
-function createRoom(name, requestedCode) {
-  const roomName = cleanRoomName(name);
+function createRoom(client, roomName, requestedCode) {
+  const name = cleanRoomName(roomName);
   let code = cleanRoomCode(requestedCode);
 
   if (!code) {
     code = makeRoomCode();
   }
 
+  if (!/^[A-Z0-9_-]{3,20}$/.test(code)) {
+    send(client, {
+      type: "error",
+      message: "Room code must be 3-20 letters, numbers, _ or -."
+    });
+    return null;
+  }
+
   if (rooms.has(code)) {
+    send(client, {
+      type: "error",
+      message: "That room code is already being used."
+    });
     return null;
   }
 
   const room = {
-    name: roomName,
     code,
+    name,
     participants: new Set(),
     messages: []
   };
 
   rooms.set(code, room);
 
+  addLog(
+    "Room created",
+    client.name + " created room " + name + " (" + code + ")"
+  );
+
   return room;
 }
 
-function removeFromRoom(client) {
+function makeRoomCode() {
+  let code;
+
+  do {
+    code = crypto.randomBytes(3).toString("hex").toUpperCase();
+  } while (rooms.has(code));
+
+  return code;
+}
+
+function removeFromRoom(client, reason = "left") {
   if (!client.roomCode) return;
 
   const room = rooms.get(client.roomCode);
@@ -317,163 +376,172 @@ function removeFromRoom(client) {
     return;
   }
 
+  const oldRoomCode = room.code;
+
   room.participants.delete(client.id);
-
-  if (client.role === "user") {
-    broadcastRoom(room, {
-      type: "userLeft",
-      id: client.id
-    }, client.id);
-  } else {
-    for (const id of room.participants) {
-      const other = clients.get(id);
-
-      if (other && other.role === "moderator") {
-        send(other.ws, {
-          type: "moderatorLeft",
-          id: client.id
-        });
-      }
-    }
-  }
-
   client.roomCode = null;
 
-  if (room.participants.size === 0) {
-    rooms.delete(room.code);
+  if (client.role === "user") {
+    broadcastRoom(
+      room,
+      {
+        type: "userLeft",
+        id: client.id,
+        reason
+      },
+      {
+        includeUsers: true,
+        includeModerators: true
+      }
+    );
+  } else {
+    // Moderators remain hidden from normal users.
+    broadcastRoom(
+      room,
+      {
+        type: "moderatorLeft",
+        id: client.id
+      },
+      {
+        includeUsers: false,
+        includeModerators: true
+      }
+    );
   }
 
-  broadcastModeratorData();
+  if (room.participants.size === 0) {
+    rooms.delete(oldRoomCode);
+  }
+
+  broadcastRoomList();
 }
 
-function joinRoom(client, roomCode, moderatorJoin = false) {
+function joinRoom(client, roomCode, isModerator = false) {
   const code = cleanRoomCode(roomCode);
   const room = rooms.get(code);
 
   if (!room) {
-    send(client.ws, {
+    send(client, {
       type: "error",
       message: "Room not found."
     });
-    return;
+    return false;
   }
 
-  removeFromRoom(client);
+  if (client.roomCode) {
+    removeFromRoom(client, "switching rooms");
+  }
 
-  client.roomCode = room.code;
   room.participants.add(client.id);
+  client.roomCode = room.code;
 
-  const participants = [...room.participants]
-    .map(id => clients.get(id))
-    .filter(Boolean)
-    .filter(c => c.role === "user")
-    .map(c => ({
-      id: c.id,
-      userId: c.userId,
-      name: c.name
-    }));
-
-  send(client.ws, {
-    type: "roomJoined",
-    roomName: room.name,
-    roomCode: room.code,
-    anonymous: moderatorJoin,
-    participants,
-    messages: room.messages
-  });
+  const participantData = getRoomInfo(room);
 
   if (client.role === "user") {
-    for (const id of room.participants) {
-      if (id === client.id) continue;
+    send(client, {
+      type: "roomJoined",
+      room: {
+        code: room.code,
+        name: room.name
+      },
+      participants: participantData.participants,
+      messages: participantData.messages
+    });
 
+    // Tell the user about moderators already in the room.
+    for (const id of room.participants) {
       const other = clients.get(id);
 
-      if (!other) continue;
-
-      if (other.role === "user") {
-        send(other.ws, {
-          type: "userJoined",
-          participant: {
-            id: client.id,
-            userId: client.userId,
-            name: client.name
-          }
-        });
-      }
-
-      if (other.role === "moderator") {
-        send(client.ws, {
+      if (
+        other &&
+        other.role === "moderator" &&
+        other.id !== client.id
+      ) {
+        send(client, {
           type: "moderatorReady",
           id: other.id
         });
       }
     }
 
-    for (const id of room.participants) {
-      const other = clients.get(id);
-
-      if (
-        other &&
-        other.role === "moderator" &&
-        other.id !== client.id
-      ) {
-        send(other.ws, {
-          type: "userJoined",
-          participant: {
-            id: client.id,
-            userId: client.userId,
-            name: client.name
-          }
-        });
+    // Tell existing normal users about the new normal user.
+    broadcastRoom(
+      room,
+      {
+        type: "userJoined",
+        participant: {
+          id: client.id,
+          userId: client.userId,
+          name: client.name
+        }
+      },
+      {
+        includeUsers: true,
+        includeModerators: true
       }
-    }
-  }
+    );
+  } else {
+    send(client, {
+      type: "roomJoined",
+      room: {
+        code: room.code,
+        name: room.name
+      },
+      participants: participantData.participants,
+      messages: participantData.messages
+    });
 
-  if (client.role === "moderator") {
+    // Notify existing moderators only.
+    broadcastRoom(
+      room,
+      {
+        type: "moderatorJoined",
+        id: client.id
+      },
+      {
+        includeUsers: false,
+        includeModerators: true
+      }
+    );
+
+    // Make every normal participant initiate a WebRTC connection
+    // toward this receive-only moderator.
     for (const id of room.participants) {
-      if (id === client.id) continue;
-
       const other = clients.get(id);
 
-      if (!other) continue;
-
-      if (other.role === "user") {
-        send(other.ws, {
+      if (other && other.role === "user") {
+        send(other, {
           type: "moderatorReady",
           id: client.id
         });
       }
     }
-
-    for (const id of room.participants) {
-      const other = clients.get(id);
-
-      if (
-        other &&
-        other.role === "moderator" &&
-        other.id !== client.id
-      ) {
-        send(other.ws, {
-          type: "moderatorJoined",
-          id: client.id
-        });
-      }
-    }
   }
 
-  broadcastModeratorData();
+  broadcastRoomList();
+
+  return true;
 }
 
-function removeClient(client) {
-  removeFromRoom(client);
-  clients.delete(client.id);
+function isMasterModerator(client) {
+  return (
+    client.role === "moderator" &&
+    client.moderatorLevel === "master"
+  );
 }
 
-function sendError(ws, message) {
-  send(ws, {
-    type: "error",
-    message
-  });
+function canModerate(client) {
+  return client.role === "moderator";
+}
+
+function canControlTarget(moderator, target) {
+  if (!target) return false;
+
+  if (target.role === "moderator") {
+    return false;
+  }
+
+  return true;
 }
 
 const INDEX_HTML = `<!DOCTYPE html>
@@ -482,171 +550,260 @@ const INDEX_HTML = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Video Chat</title>
+
 <style>
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#111;
-  color:white;
+* {
+  box-sizing: border-box;
 }
-.container{
-  max-width:900px;
-  margin:50px auto;
-  padding:20px;
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
 }
-.card{
-  background:#1d1d1d;
-  padding:25px;
-  border-radius:18px;
+
+.container {
+  width: min(900px, 94%);
+  margin: 30px auto;
 }
-input,button{
-  width:100%;
-  padding:14px;
-  margin:7px 0;
-  border-radius:10px;
-  border:0;
-  font-size:16px;
+
+.card {
+  background: #1d1d1d;
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 20px;
 }
-button{
-  cursor:pointer;
-  font-weight:bold;
+
+h1, h2 {
+  margin-top: 0;
 }
-.primary{background:#4caf50;color:white}
-.secondary{background:#444;color:white}
-#call{display:none}
-.video-area{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:12px;
+
+input,
+button {
+  font-size: 16px;
+  border-radius: 10px;
+  padding: 12px;
 }
-video{
-  width:100%;
-  background:#000;
-  border-radius:14px;
-  object-fit:cover;
+
+input {
+  width: 100%;
+  border: 1px solid #555;
+  background: #111;
+  color: white;
+  margin-bottom: 10px;
 }
-.local{
-  border:2px solid #4caf50;
+
+button {
+  border: 0;
+  cursor: pointer;
+  margin: 4px;
 }
-.remote-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-  gap:12px;
+
+.primary {
+  background: #4f8cff;
+  color: white;
 }
-.chat{
-  margin-top:15px;
-  background:#1d1d1d;
-  padding:15px;
-  border-radius:14px;
+
+.danger {
+  background: #e5484d;
+  color: white;
 }
-#messages{
-  height:180px;
-  overflow-y:auto;
-  background:#111;
-  padding:10px;
-  border-radius:10px;
+
+.secondary {
+  background: #444;
+  color: white;
 }
-.chat-row{
-  display:flex;
-  gap:8px;
+
+.hidden {
+  display: none !important;
 }
-.chat-row input{margin:0}
-.chat-row button{
-  width:120px;
+
+.error {
+  color: #ff6b6b;
+  margin-top: 10px;
 }
-#status{
-  margin:10px 0;
-  color:#aaa;
+
+.info {
+  color: #aaa;
 }
-@media(max-width:700px){
-  .container{
-    margin:10px auto;
-    padding:10px;
-  }
-  .remote-grid{
-    grid-template-columns:1fr;
-  }
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.video-tile {
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 180px;
+  position: relative;
+}
+
+.video-tile video {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.video-name {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,.65);
+  padding: 6px 9px;
+  border-radius: 8px;
+}
+
+.chat {
+  height: 260px;
+  overflow-y: auto;
+  background: #101010;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.chat-message {
+  margin-bottom: 8px;
+}
+
+.chat-name {
+  font-weight: bold;
+}
+
+.chat-row {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-row input {
+  margin: 0;
+  flex: 1;
+}
+
+.chat-row button {
+  margin: 0;
 }
 </style>
 </head>
+
 <body>
 
 <div class="container">
 
-<div id="lobby" class="card">
-<h1>Video Chat</h1>
+  <div id="home">
 
-<input id="name" placeholder="Name">
-<input id="roomName" placeholder="Room Name">
-<input id="roomCode" placeholder="Room Code">
+    <div class="card">
+      <h1>Video Chat</h1>
+      <p class="info">
+        Create a temporary room or join one using a room name and code.
+      </p>
 
-<button class="primary" onclick="createRoom()">Create Room</button>
-<button class="secondary" onclick="joinRoom()">Join Room</button>
+      <input id="name" placeholder="Your Name">
 
-<div id="lobbyStatus"></div>
-</div>
+      <input id="roomName" placeholder="Room Name">
 
-<div id="call">
+      <input id="roomCode" placeholder="Room Code">
 
-<h2 id="roomTitle"></h2>
+      <button class="primary" onclick="createRoom()">
+        Create Room
+      </button>
 
-<div id="status"></div>
+      <button class="secondary" onclick="joinRoom()">
+        Join Room
+      </button>
 
-<div class="video-area">
-  <video id="localVideo" class="local" autoplay muted playsinline></video>
+      <div id="homeError" class="error"></div>
+    </div>
 
-  <div id="remoteGrid" class="remote-grid"></div>
-</div>
+  </div>
 
-<div class="chat">
-<h3>Chat</h3>
+  <div id="call" class="hidden">
 
-<div id="messages"></div>
+    <div class="card">
+      <h2 id="roomTitle">Room</h2>
 
-<div class="chat-row">
-<input id="chatInput" placeholder="Message">
-<button onclick="sendChat()">Send</button>
-</div>
-</div>
+      <p id="roomCodeDisplay" class="info"></p>
 
-<button class="secondary" onclick="leaveRoom()">Leave Room</button>
+      <button class="danger" onclick="leaveRoom()">
+        Leave Room
+      </button>
+    </div>
 
-</div>
+    <div class="card">
+      <h2>People</h2>
+      <div id="videoGrid" class="video-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Chat</h2>
+
+      <div id="chat" class="chat"></div>
+
+      <div class="chat-row">
+        <input id="chatInput" placeholder="Type a message">
+        <button class="primary" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+
+  </div>
 
 </div>
 
 <script>
-let ws;
+let ws = null;
 let myId = null;
-let myUserId = null;
 let myName = "";
-let roomCode = "";
+let currentRoom = null;
 let localStream = null;
 
 const peers = new Map();
 const participants = new Map();
 
 function connect() {
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  return new Promise(function(resolve, reject) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      resolve();
+      return;
+    }
 
-  ws = new WebSocket(protocol + "//" + location.host + "/ws");
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify({
-      type:"register"
-    }));
-  };
+    ws = new WebSocket(
+      protocol + "//" + location.host + "/ws"
+    );
 
-  ws.onmessage = async event => {
-    const data = JSON.parse(event.data);
-    await handleMessage(data);
-  };
+    ws.onopen = function() {
+      resolve();
+    };
 
-  ws.onclose = () => {
-    document.getElementById("status").textContent =
-      "Disconnected from server.";
-  };
+    ws.onerror = function() {
+      reject(new Error("WebSocket connection failed."));
+    };
+
+    ws.onmessage = async function(event) {
+      let data;
+
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+
+      await handleMessage(data);
+    };
+
+    ws.onclose = function() {
+      if (currentRoom) {
+        showError("Connection closed.");
+      }
+    };
+  });
 }
 
 function send(data) {
@@ -655,317 +812,167 @@ function send(data) {
   }
 }
 
-async function createRoom() {
-  const name = document.getElementById("name").value.trim();
-  const roomName = document.getElementById("roomName").value.trim();
-  const code = document.getElementById("roomCode").value.trim();
+async function prepareMedia() {
+  if (localStream) return true;
 
-  if (!name) {
-    alert("Enter your name.");
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true
+    });
+
+    const videoGrid = document.getElementById("videoGrid");
+
+    let tile = document.getElementById("localTile");
+
+    if (!tile) {
+      tile = document.createElement("div");
+      tile.className = "video-tile";
+      tile.id = "localTile";
+
+      const video = document.createElement("video");
+      video.id = "localVideo";
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true;
+
+      const label = document.createElement("div");
+      label.className = "video-name";
+      label.textContent = myName + " (You)";
+
+      tile.appendChild(video);
+      tile.appendChild(label);
+
+      videoGrid.appendChild(tile);
+    }
+
+    document.getElementById("localVideo").srcObject = localStream;
+
+    return true;
+  } catch (err) {
+    showError(
+      "Camera/microphone permission is required to join a call."
+    );
+
+    return false;
+  }
+}
+
+async function createRoom() {
+  clearError();
+
+  myName = document.getElementById("name").value.trim();
+  const roomName =
+    document.getElementById("roomName").value.trim();
+  const roomCode =
+    document.getElementById("roomCode").value.trim();
+
+  if (!myName) {
+    showError("Enter your name.");
     return;
   }
 
-  await startCamera();
+  if (!roomName) {
+    showError("Enter a room name.");
+    return;
+  }
+
+  if (!roomCode) {
+    showError("Enter a room code.");
+    return;
+  }
+
+  const ready = await prepareMedia();
+
+  if (!ready) return;
+
+  await connect();
 
   send({
-    type:"setName",
-    name
+    type: "register",
+    name: myName
   });
 
   send({
-    type:"createRoom",
-    roomName,
-    roomCode:code
+    type: "createRoom",
+    roomName: roomName,
+    roomCode: roomCode
   });
 }
 
 async function joinRoom() {
-  const name = document.getElementById("name").value.trim();
-  const code = document.getElementById("roomCode").value.trim();
+  clearError();
 
-  if (!name) {
-    alert("Enter your name.");
+  myName = document.getElementById("name").value.trim();
+  const roomCode =
+    document.getElementById("roomCode").value.trim();
+
+  if (!myName) {
+    showError("Enter your name.");
     return;
   }
 
-  if (!code) {
-    alert("Enter a room code.");
+  if (!roomCode) {
+    showError("Enter a room code.");
     return;
   }
 
-  await startCamera();
+  const ready = await prepareMedia();
+
+  if (!ready) return;
+
+  await connect();
 
   send({
-    type:"setName",
-    name
+    type: "register",
+    name: myName
   });
 
   send({
-    type:"joinRoom",
-    roomCode:code
+    type: "joinRoom",
+    roomCode: roomCode
   });
-}
-
-async function startCamera() {
-  if (localStream) return;
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video:true,
-      audio:true
-    });
-
-    const video = document.getElementById("localVideo");
-
-    // IMPORTANT:
-    // There is exactly ONE local video element.
-    video.srcObject = localStream;
-    video.muted = true;
-    video.autoplay = true;
-    video.playsInline = true;
-
-    await video.play().catch(()=>{});
-  } catch(err) {
-    alert("Camera/microphone permission failed: " + err.message);
-    throw err;
-  }
-}
-
-function addParticipant(participant) {
-  if (!participant || participant.id === myId) return;
-
-  participants.set(participant.id, participant);
-  renderParticipants();
-}
-
-function removeParticipant(id) {
-  participants.delete(id);
-
-  const peer = peers.get(id);
-
-  if (peer) {
-    peer.pc.close();
-    peers.delete(id);
-  }
-
-  const tile = document.getElementById("remote-" + id);
-
-  if (tile) {
-    tile.remove();
-  }
-
-  renderParticipants();
-}
-
-function renderParticipants() {
-  // Do NOT create a video for ourselves.
-  // The local video is handled only by #localVideo.
-
-  for (const [id, participant] of participants) {
-    if (id === myId) continue;
-
-    let tile = document.getElementById("remote-" + id);
-
-    if (!tile) {
-      tile = document.createElement("div");
-      tile.id = "remote-" + id;
-
-      const title = document.createElement("div");
-      title.textContent = participant.name;
-      title.style.marginBottom = "4px";
-
-      const video = document.createElement("video");
-      video.id = "video-" + id;
-      video.autoplay = true;
-      video.playsInline = true;
-
-      tile.appendChild(title);
-      tile.appendChild(video);
-
-      document.getElementById("remoteGrid").appendChild(tile);
-    }
-  }
-}
-
-function getPeer(id) {
-  if (peers.has(id)) {
-    return peers.get(id);
-  }
-
-  const pc = new RTCPeerConnection({
-    iceServers:[
-      {
-        urls:"stun:stun.l.google.com:19302"
-      }
-    ]
-  });
-
-  const peer = {
-    pc,
-    iceQueue:[]
-  };
-
-  peers.set(id, peer);
-
-  if (localStream) {
-    for (const track of localStream.getTracks()) {
-      pc.addTrack(track, localStream);
-    }
-  }
-
-  pc.onicecandidate = event => {
-    if (event.candidate) {
-      send({
-        type:"signal",
-        target:id,
-        signalType:"ice",
-        data:event.candidate
-      });
-    }
-  };
-
-  pc.ontrack = event => {
-    const video = document.getElementById("video-" + id);
-
-    if (!video) return;
-
-    if (event.streams && event.streams[0]) {
-      video.srcObject = event.streams[0];
-    } else {
-      let stream = video.srcObject;
-
-      if (!stream) {
-        stream = new MediaStream();
-        video.srcObject = stream;
-      }
-
-      if (!stream.getTracks().some(t => t.id === event.track.id)) {
-        stream.addTrack(event.track);
-      }
-    }
-
-    video.autoplay = true;
-    video.playsInline = true;
-    video.play().catch(()=>{});
-  };
-
-  return peer;
-}
-
-async function makeOffer(id) {
-  if (id === myId) return;
-
-  const peer = getPeer(id);
-
-  const offer = await peer.pc.createOffer();
-
-  await peer.pc.setLocalDescription(offer);
-
-  send({
-    type:"signal",
-    target:id,
-    signalType:"offer",
-    data:peer.pc.localDescription
-  });
-}
-
-async function handleSignal(data) {
-  const id = data.from;
-
-  const peer = getPeer(id);
-  const pc = peer.pc;
-
-  if (data.signalType === "offer") {
-    await pc.setRemoteDescription(data.data);
-
-    const answer = await pc.createAnswer();
-
-    await pc.setLocalDescription(answer);
-
-    send({
-      type:"signal",
-      target:id,
-      signalType:"answer",
-      data:pc.localDescription
-    });
-
-    while (peer.iceQueue.length) {
-      const candidate = peer.iceQueue.shift();
-
-      try {
-        await pc.addIceCandidate(candidate);
-      } catch(e){}
-    }
-  }
-
-  else if (data.signalType === "answer") {
-    await pc.setRemoteDescription(data.data);
-
-    while (peer.iceQueue.length) {
-      const candidate = peer.iceQueue.shift();
-
-      try {
-        await pc.addIceCandidate(candidate);
-      } catch(e){}
-    }
-  }
-
-  else if (data.signalType === "ice") {
-    if (pc.remoteDescription) {
-      try {
-        await pc.addIceCandidate(data.data);
-      } catch(e){}
-    } else {
-      peer.iceQueue.push(data.data);
-    }
-  }
 }
 
 async function handleMessage(data) {
-
   if (data.type === "registered") {
     myId = data.id;
-    myUserId = data.userId;
-    connectDone = true;
     return;
   }
 
   if (data.type === "roomCreated") {
-    roomCode = data.roomCode;
+    currentRoom = {
+      code: data.roomCode,
+      name: data.roomName
+    };
 
-    document.getElementById("roomCode").value = roomCode;
-
+    showCall();
     return;
   }
 
   if (data.type === "roomJoined") {
-    roomCode = data.roomCode;
-
-    document.getElementById("lobby").style.display = "none";
-    document.getElementById("call").style.display = "block";
-
-    document.getElementById("roomTitle").textContent =
-      data.roomName + " — " + data.roomCode;
+    currentRoom = data.room;
 
     participants.clear();
 
     for (const participant of data.participants || []) {
-      if (participant.id !== myId) {
-        participants.set(participant.id, participant);
-      }
+      participants.set(participant.id, participant);
     }
 
+    showCall();
     renderParticipants();
 
+    clearChat();
+
     for (const message of data.messages || []) {
-      addMessage(message);
+      addChatMessage(message);
     }
 
-    // Only initiate user-to-user connections when our ID
-    // sorts before the other user's ID.
+    // Only one side creates a normal user-to-user offer.
     for (const participant of data.participants || []) {
       if (
         participant.id !== myId &&
+        myId &&
         myId < participant.id
       ) {
         await makeOffer(participant.id);
@@ -976,37 +983,37 @@ async function handleMessage(data) {
   }
 
   if (data.type === "userJoined") {
-    if (data.participant.id !== myId) {
-      addParticipant(data.participant);
+    if (!data.participant) return;
 
-      if (myId < data.participant.id) {
-        await makeOffer(data.participant.id);
-      }
+    participants.set(
+      data.participant.id,
+      data.participant
+    );
+
+    renderParticipants();
+
+    if (
+      data.participant.id !== myId &&
+      myId &&
+      myId < data.participant.id
+    ) {
+      await makeOffer(data.participant.id);
     }
 
     return;
   }
 
   if (data.type === "userLeft") {
-    removeParticipant(data.id);
+    participants.delete(data.id);
+    removePeer(data.id);
+    renderParticipants();
     return;
   }
 
   if (data.type === "moderatorReady") {
-    // Moderator is intentionally hidden from the participant list.
-    // We still create a WebRTC connection to them.
+    // Moderators are invisible in the participant list,
+    // but normal users create a WebRTC offer to them.
     await makeOffer(data.id);
-    return;
-  }
-
-  if (data.type === "moderatorLeft") {
-    const peer = peers.get(data.id);
-
-    if (peer) {
-      peer.pc.close();
-      peers.delete(data.id);
-    }
-
     return;
   }
 
@@ -1016,100 +1023,383 @@ async function handleMessage(data) {
   }
 
   if (data.type === "chatMessage") {
-    addMessage(data.message);
+    addChatMessage(data.message);
     return;
   }
 
   if (data.type === "kicked") {
     alert("You were kicked from the room.");
-
     cleanupCall();
-
-    document.getElementById("lobby").style.display = "block";
-    document.getElementById("call").style.display = "none";
-
     return;
   }
 
   if (data.type === "banned") {
     alert(
-      "You are banned from this service." +
-      (data.durationText ? "\\nDuration: " + data.durationText : "")
+      "You were banned from the room." +
+      (data.durationText
+        ? " Duration: " + data.durationText
+        : "")
     );
 
     cleanupCall();
-
-    document.getElementById("lobby").style.display = "block";
-    document.getElementById("call").style.display = "none";
-
     return;
   }
 
   if (data.type === "error") {
-    document.getElementById("lobbyStatus").textContent =
-      data.message;
-
-    document.getElementById("status").textContent =
-      data.message;
-
-    return;
+    showError(data.message || "Something went wrong.");
   }
 }
 
-function addMessage(message) {
-  const box = document.getElementById("messages");
+function showCall() {
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("call").classList.remove("hidden");
 
-  const div = document.createElement("div");
+  document.getElementById("roomTitle").textContent =
+    currentRoom.name;
 
-  const name = document.createElement("b");
-  name.textContent = message.name + ": ";
+  document.getElementById("roomCodeDisplay").textContent =
+    "Room Code: " + currentRoom.code;
+}
 
-  const text = document.createElement("span");
-  text.textContent = message.text;
+function getPeer(remoteId) {
+  if (peers.has(remoteId)) {
+    return peers.get(remoteId);
+  }
 
-  div.appendChild(name);
-  div.appendChild(text);
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: "stun:stun.l.google.com:19302"
+      }
+    ]
+  });
 
-  box.appendChild(div);
+  const peer = {
+    pc: pc,
+    remoteStream: new MediaStream(),
+    iceQueue: []
+  };
 
-  box.scrollTop = box.scrollHeight;
+  peers.set(remoteId, peer);
+
+  if (localStream) {
+    for (const track of localStream.getTracks()) {
+      pc.addTrack(track, localStream);
+    }
+  }
+
+  pc.onicecandidate = function(event) {
+    if (event.candidate) {
+      send({
+        type: "signal",
+        to: remoteId,
+        signalType: "ice",
+        candidate: event.candidate
+      });
+    }
+  };
+
+  pc.ontrack = function(event) {
+    const stream = event.streams && event.streams[0];
+
+    if (stream) {
+      peer.remoteStream = stream;
+    } else {
+      peer.remoteStream.addTrack(event.track);
+    }
+
+    const participant = participants.get(remoteId);
+
+    // Hidden moderators don't have a participant entry.
+    // Their video/audio still gets rendered.
+    const name = participant
+      ? participant.name
+      : "Moderator";
+
+    renderRemoteVideo(
+      remoteId,
+      peer.remoteStream,
+      name
+    );
+  };
+
+  pc.onconnectionstatechange = function() {
+    if (
+      pc.connectionState === "failed" ||
+      pc.connectionState === "closed"
+    ) {
+      removePeer(remoteId);
+    }
+  };
+
+  return peer;
+}
+
+async function makeOffer(remoteId) {
+  const peer = getPeer(remoteId);
+
+  if (peer.pc.signalingState !== "stable") {
+    return;
+  }
+
+  try {
+    const offer = await peer.pc.createOffer();
+
+    await peer.pc.setLocalDescription(offer);
+
+    send({
+      type: "signal",
+      to: remoteId,
+      signalType: "offer",
+      description: peer.pc.localDescription
+    });
+  } catch (err) {
+    console.error("Offer error:", err);
+  }
+}
+
+async function handleSignal(data) {
+  if (!data.from) return;
+
+  const peer = getPeer(data.from);
+  const pc = peer.pc;
+
+  try {
+    if (data.signalType === "offer") {
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(data.description)
+      );
+
+      while (peer.iceQueue.length) {
+        const candidate = peer.iceQueue.shift();
+
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch {}
+      }
+
+      const answer = await pc.createAnswer();
+
+      await pc.setLocalDescription(answer);
+
+      send({
+        type: "signal",
+        to: data.from,
+        signalType: "answer",
+        description: pc.localDescription
+      });
+
+      return;
+    }
+
+    if (data.signalType === "answer") {
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(data.description)
+      );
+
+      while (peer.iceQueue.length) {
+        const candidate = peer.iceQueue.shift();
+
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch {}
+      }
+
+      return;
+    }
+
+    if (data.signalType === "ice") {
+      const candidate =
+        new RTCIceCandidate(data.candidate);
+
+      if (pc.remoteDescription) {
+        await pc.addIceCandidate(candidate);
+      } else {
+        peer.iceQueue.push(candidate);
+      }
+    }
+  } catch (err) {
+    console.error("Signal error:", err);
+  }
+}
+
+function renderParticipants() {
+  const grid = document.getElementById("videoGrid");
+
+  if (!grid) return;
+
+  // Keep exactly one local tile.
+  const localTile =
+    document.getElementById("localTile");
+
+  grid.innerHTML = "";
+
+  if (localTile) {
+    grid.appendChild(localTile);
+  }
+
+  for (const participant of participants.values()) {
+    if (participant.id === myId) continue;
+
+    renderRemotePlaceholder(
+      participant.id,
+      participant.name
+    );
+  }
+
+  // Reattach already received remote streams.
+  for (const [id, peer] of peers) {
+    if (peer.remoteStream) {
+      const participant = participants.get(id);
+
+      const name = participant
+        ? participant.name
+        : "Moderator";
+
+      renderRemoteVideo(
+        id,
+        peer.remoteStream,
+        name
+      );
+    }
+  }
+}
+
+function renderRemotePlaceholder(id, name) {
+  const grid = document.getElementById("videoGrid");
+
+  if (document.getElementById("tile-" + id)) {
+    return;
+  }
+
+  const tile = document.createElement("div");
+  tile.className = "video-tile";
+  tile.id = "tile-" + id;
+
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.playsInline = true;
+
+  const label = document.createElement("div");
+  label.className = "video-name";
+  label.textContent = name;
+
+  tile.appendChild(video);
+  tile.appendChild(label);
+
+  grid.appendChild(tile);
+}
+
+function renderRemoteVideo(id, stream, name) {
+  const grid = document.getElementById("videoGrid");
+
+  let tile = document.getElementById("tile-" + id);
+
+  if (!tile) {
+    tile = document.createElement("div");
+    tile.className = "video-tile";
+    tile.id = "tile-" + id;
+
+    const video = document.createElement("video");
+    video.autoplay = true;
+    video.playsInline = true;
+
+    const label = document.createElement("div");
+    label.className = "video-name";
+
+    tile.appendChild(video);
+    tile.appendChild(label);
+
+    grid.appendChild(tile);
+  }
+
+  const video = tile.querySelector("video");
+  const label = tile.querySelector(".video-name");
+
+  video.srcObject = stream;
+  video.muted = false;
+
+  label.textContent = name;
+
+  video.play().catch(function() {});
+}
+
+function removePeer(id) {
+  const peer = peers.get(id);
+
+  if (peer) {
+    try {
+      peer.pc.close();
+    } catch {}
+  }
+
+  peers.delete(id);
+
+  const tile = document.getElementById("tile-" + id);
+
+  if (tile) {
+    tile.remove();
+  }
 }
 
 function sendChat() {
-  const input = document.getElementById("chatInput");
+  const input =
+    document.getElementById("chatInput");
+
   const text = input.value.trim();
 
-  if (!text) return;
+  if (!text || !currentRoom) return;
 
   send({
-    type:"chatMessage",
-    text
+    type: "chatMessage",
+    text: text
   });
 
   input.value = "";
 }
 
+function clearChat() {
+  document.getElementById("chat").innerHTML = "";
+}
+
+function addChatMessage(message) {
+  const chat = document.getElementById("chat");
+
+  const row = document.createElement("div");
+  row.className = "chat-message";
+
+  const name = document.createElement("span");
+  name.className = "chat-name";
+  name.textContent = message.name + ": ";
+
+  const text = document.createElement("span");
+  text.textContent = message.text;
+
+  row.appendChild(name);
+  row.appendChild(text);
+
+  chat.appendChild(row);
+
+  chat.scrollTop = chat.scrollHeight;
+}
+
 function leaveRoom() {
   send({
-    type:"leaveRoom"
+    type: "leaveRoom"
   });
 
   cleanupCall();
-
-  document.getElementById("call").style.display = "none";
-  document.getElementById("lobby").style.display = "block";
 }
 
 function cleanupCall() {
   for (const peer of peers.values()) {
-    peer.pc.close();
+    try {
+      peer.pc.close();
+    } catch {}
   }
 
   peers.clear();
   participants.clear();
-
-  document.getElementById("remoteGrid").innerHTML = "";
-  document.getElementById("messages").innerHTML = "";
 
   if (localStream) {
     for (const track of localStream.getTracks()) {
@@ -1119,11 +1409,31 @@ function cleanupCall() {
     localStream = null;
   }
 
-  document.getElementById("localVideo").srcObject = null;
+  currentRoom = null;
+
+  document.getElementById("videoGrid").innerHTML = "";
+  document.getElementById("chat").innerHTML = "";
+
+  document.getElementById("call").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
 }
 
-let connectDone = false;
-connect();
+function showError(message) {
+  document.getElementById("homeError").textContent = message;
+}
+
+function clearError() {
+  document.getElementById("homeError").textContent = "";
+}
+
+document.getElementById("chatInput").addEventListener(
+  "keydown",
+  function(event) {
+    if (event.key === "Enter") {
+      sendChat();
+    }
+  }
+);
 </script>
 
 </body>
@@ -1134,218 +1444,381 @@ const BLUEBERRY_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Moderator</title>
+<title>Moderator Dashboard</title>
+
 <style>
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#111;
-  color:white;
+* {
+  box-sizing: border-box;
 }
-.container{
-  max-width:1200px;
-  margin:auto;
-  padding:20px;
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0e0e0e;
+  color: white;
 }
-.card{
-  background:#1d1d1d;
-  border-radius:16px;
-  padding:20px;
-  margin-bottom:18px;
+
+.container {
+  width: min(1200px, 95%);
+  margin: 25px auto;
 }
-input,button{
-  padding:12px;
-  border-radius:9px;
-  border:0;
-  margin:4px;
-  font-size:15px;
+
+.card {
+  background: #1c1c1c;
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 18px;
 }
-input{
-  background:#333;
-  color:white;
+
+input,
+button {
+  font-size: 15px;
+  border-radius: 9px;
+  padding: 10px;
 }
-button{
-  cursor:pointer;
-  font-weight:bold;
+
+input {
+  background: #111;
+  color: white;
+  border: 1px solid #555;
 }
-.primary{background:#4caf50;color:white}
-.danger{background:#d32f2f;color:white}
-.warning{background:#f57c00;color:white}
-.secondary{background:#444;color:white}
-.hidden{display:none}
-.room{
-  background:#292929;
-  padding:15px;
-  border-radius:12px;
-  margin:10px 0;
+
+button {
+  border: 0;
+  cursor: pointer;
+  margin: 3px;
 }
-.people{
-  margin-top:10px;
-  padding:10px;
-  background:#171717;
-  border-radius:10px;
+
+.primary {
+  background: #4f8cff;
+  color: white;
 }
-.person{
-  padding:10px;
-  border-bottom:1px solid #333;
+
+.secondary {
+  background: #444;
+  color: white;
 }
-.person:last-child{
-  border-bottom:0;
+
+.danger {
+  background: #e5484d;
+  color: white;
 }
-.ban-controls{
-  margin-top:10px;
-  padding:12px;
-  background:#252525;
-  border-radius:10px;
+
+.success {
+  background: #30a46c;
+  color: white;
 }
-.duration-grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:6px;
+
+.hidden {
+  display: none !important;
 }
-.duration-grid input{
-  width:100%;
-  margin:0;
+
+.error {
+  color: #ff7070;
+  margin-top: 10px;
 }
-video{
-  width:100%;
-  max-height:500px;
-  background:#000;
-  border-radius:12px;
+
+.room {
+  border: 1px solid #444;
+  border-radius: 14px;
+  padding: 15px;
+  margin-bottom: 12px;
 }
-.video-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-  gap:10px;
+
+.room-title {
+  font-size: 19px;
+  font-weight: bold;
 }
-.chat{
-  background:#171717;
-  padding:12px;
-  border-radius:12px;
-  margin-top:12px;
+
+.people {
+  background: #111;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 12px;
 }
-#roomMessages{
-  height:180px;
-  overflow:auto;
+
+.person {
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 8px 0;
 }
-@media(max-width:700px){
-  .duration-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
+
+.person-name {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.ban-controls {
+  margin-top: 10px;
+  padding: 10px;
+  background: #222;
+  border-radius: 10px;
+}
+
+.duration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.duration-grid input {
+  width: 100%;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.video-tile {
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.video-tile video {
+  width: 100%;
+  min-height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.video-name {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,.7);
+  padding: 5px 8px;
+  border-radius: 7px;
+}
+
+.chat {
+  background: #101010;
+  border-radius: 10px;
+  height: 240px;
+  overflow-y: auto;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.chat-message {
+  margin-bottom: 7px;
+}
+
+.chat-name {
+  font-weight: bold;
+}
+
+.chat-row {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-row input {
+  flex: 1;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td,
+th {
+  border-bottom: 1px solid #444;
+  padding: 8px;
+  text-align: left;
+}
+
+.small {
+  color: #999;
+  font-size: 13px;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inline-form input {
+  flex: 1;
+  min-width: 150px;
 }
 </style>
 </head>
+
 <body>
 
 <div class="container">
 
-<div id="login" class="card">
-<h1>Moderator Login</h1>
+  <div id="login" class="card">
+    <h1>Moderator Dashboard</h1>
 
-<input id="pin" type="password" placeholder="Moderator PIN">
+    <input
+      id="moderatorName"
+      placeholder="Moderator Name"
+    >
 
-<button class="primary" onclick="login()">Enter</button>
+    <br><br>
 
-<div id="loginStatus"></div>
-</div>
+    <input
+      id="pin"
+      type="password"
+      placeholder="Moderator PIN"
+    >
 
-<div id="dashboard" class="hidden">
+    <br><br>
 
-<div class="card">
-<h1>Moderator Dashboard</h1>
+    <button class="primary" onclick="login()">
+      Enter
+    </button>
 
-<button class="secondary" onclick="refreshData()">Refresh</button>
+    <div id="loginError" class="error"></div>
+  </div>
 
-<button class="secondary" onclick="showCreateRoom()">
-Create Room
-</button>
+  <div id="dashboard" class="hidden">
 
-</div>
+    <div class="card">
+      <h1>Moderator Dashboard</h1>
 
-<div id="createRoomBox" class="card hidden">
+      <div>
+        Logged in as:
+        <strong id="loggedInName"></strong>
+      </div>
 
-<h2>Create Room</h2>
+      <p class="small">
+        Master moderators can give other connected users moderator access.
+      </p>
 
-<input id="newRoomName" placeholder="Room Name">
-<input id="newRoomCode" placeholder="Room Code">
+      <button class="secondary" onclick="refreshData()">
+        Refresh
+      </button>
 
-<button class="primary" onclick="createModeratorRoom()">
-Create
-</button>
+      <button class="danger" onclick="logout()">
+        Logout
+      </button>
+    </div>
 
-<button class="secondary" onclick="hideCreateRoom()">
-Cancel
-</button>
+    <div class="card">
+      <h2>Create Room</h2>
 
-</div>
+      <div class="inline-form">
+        <input id="newRoomName" placeholder="Room Name">
+        <input id="newRoomCode" placeholder="Room Code">
+        <button class="primary" onclick="createModeratorRoom()">
+          Create
+        </button>
+      </div>
+    </div>
 
-<div class="card">
-<h2>Open Calls</h2>
-<div id="rooms"></div>
-</div>
+    <div class="card">
+      <h2>Open Calls</h2>
 
-<div class="card">
-<h2>Current Room</h2>
+      <div id="rooms"></div>
+    </div>
 
-<div id="currentRoom"></div>
+    <div class="card">
+      <h2>Current Room</h2>
 
-<div class="video-grid" id="moderatorVideos"></div>
+      <div id="currentRoomInfo">
+        No room selected.
+      </div>
 
-<div class="chat">
-<h3>Room Chat</h3>
-<div id="roomMessages"></div>
-</div>
+      <div id="moderatorVideoGrid" class="video-grid"></div>
 
-<button class="secondary" onclick="leaveRoom()">
-Leave Room
-</button>
+      <h3>Room Chat</h3>
 
-</div>
+      <div id="moderatorChat" class="chat"></div>
 
-<div class="card">
-<h2>Bans</h2>
-<div id="bans"></div>
-</div>
+      <div class="chat-row">
+        <input
+          id="moderatorChatInput"
+          placeholder="Message the room as a moderator"
+        >
 
-<div class="card">
-<h2>Moderator Access</h2>
-<div id="moderatorAccess"></div>
-</div>
+        <button class="primary" onclick="sendModeratorChat()">
+          Send
+        </button>
+      </div>
 
-<div class="card">
-<h2>Moderation History</h2>
-<div id="log"></div>
-</div>
+      <button
+        id="leaveModeratorRoomButton"
+        class="danger hidden"
+        onclick="leaveModeratorRoom()"
+      >
+        Leave Room
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>Bans</h2>
+      <div id="bans"></div>
+    </div>
+
+    <div class="card">
+      <h2>Moderator Access</h2>
+      <div id="moderatorAccess"></div>
+    </div>
+
+    <div class="card">
+      <h2>Moderation History</h2>
+      <div id="log"></div>
+    </div>
+
+  </div>
 
 </div>
 
 <script>
-let ws;
-let moderator = null;
-let currentRoomCode = null;
-let currentRoomParticipants = new Map();
-let peers = new Map();
+let ws = null;
+let myId = null;
+let moderatorName = "";
+let moderatorLevel = "";
+let currentRoom = null;
+
+const peers = new Map();
+
+let openPeopleRooms = new Set();
 
 function connect() {
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  return new Promise(function(resolve, reject) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      resolve();
+      return;
+    }
 
-  ws = new WebSocket(protocol + "//" + location.host + "/ws");
+    const protocol =
+      location.protocol === "https:" ? "wss:" : "ws:";
 
-  ws.onopen = () => {
-    document.getElementById("loginStatus").textContent =
-      "Connected.";
-  };
+    ws = new WebSocket(
+      protocol + "//" + location.host + "/ws"
+    );
 
-  ws.onmessage = async event => {
-    const data = JSON.parse(event.data);
-    await handleMessage(data);
-  };
+    ws.onopen = function() {
+      resolve();
+    };
 
-  ws.onclose = () => {
-    document.getElementById("loginStatus").textContent =
-      "Disconnected.";
-  };
+    ws.onerror = function() {
+      reject(new Error("WebSocket connection failed."));
+    };
+
+    ws.onmessage = async function(event) {
+      let data;
+
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+
+      await handleMessage(data);
+    };
+  });
 }
 
 function send(data) {
@@ -1354,74 +1827,126 @@ function send(data) {
   }
 }
 
-function login() {
-  const pin = document.getElementById("pin").value;
+async function login() {
+  document.getElementById("loginError").textContent = "";
 
-  send({
-    type:"moderatorAuth",
-    pin
-  });
+  moderatorName =
+    document.getElementById("moderatorName").value.trim();
+
+  const pin =
+    document.getElementById("pin").value.trim();
+
+  if (!moderatorName) {
+    document.getElementById("loginError").textContent =
+      "Enter your moderator name.";
+    return;
+  }
+
+  if (!pin) {
+    document.getElementById("loginError").textContent =
+      "Enter the moderator PIN.";
+    return;
+  }
+
+  try {
+    await connect();
+
+    send({
+      type: "moderatorAuth",
+      name: moderatorName,
+      pin: pin
+    });
+  } catch (err) {
+    document.getElementById("loginError").textContent =
+      err.message;
+  }
 }
 
 async function handleMessage(data) {
-
   if (data.type === "moderatorAuthSuccess") {
-    moderator = data;
+    myId = data.id;
+    moderatorName = data.name;
+    moderatorLevel = data.level;
 
     document.getElementById("login").classList.add("hidden");
     document.getElementById("dashboard").classList.remove("hidden");
 
-    updateDashboard(data);
+    document.getElementById("loggedInName").textContent =
+      moderatorName +
+      " (" +
+      moderatorLevel +
+      ")";
+
+    renderAll(
+      data.rooms || [],
+      data.bans || [],
+      data.moderatorAccess || [],
+      data.log || []
+    );
 
     return;
   }
 
   if (data.type === "moderatorData") {
-    updateDashboard(data);
+    renderAll(
+      data.rooms || [],
+      data.bans || [],
+      data.moderatorAccess || [],
+      data.log || []
+    );
+
     return;
   }
 
   if (data.type === "roomJoined") {
-    currentRoomCode = data.roomCode;
+    currentRoom = data.room;
 
-    currentRoomParticipants.clear();
+    document.getElementById(
+      "currentRoomInfo"
+    ).textContent =
+      currentRoom.name +
+      " — " +
+      currentRoom.code;
 
-    for (const p of data.participants || []) {
-      currentRoomParticipants.set(p.id, p);
-    }
+    document
+      .getElementById("leaveModeratorRoomButton")
+      .classList.remove("hidden");
 
-    document.getElementById("currentRoom").textContent =
-      data.roomName + " — " + data.roomCode;
-
-    document.getElementById("roomMessages").innerHTML = "";
+    clearModeratorChat();
 
     for (const message of data.messages || []) {
-      addRoomMessage(message);
+      addModeratorChatMessage(message);
     }
 
-    renderModeratorPeople();
+    for (const participant of data.participants || []) {
+      // Moderator only receives media from users.
+      // It does not publish its own media.
+      ensurePeer(participant.id);
+
+      send({
+        type: "requestOffer",
+        to: participant.id
+      });
+    }
 
     return;
   }
 
   if (data.type === "userJoined") {
-    currentRoomParticipants.set(
-      data.participant.id,
-      data.participant
-    );
+    if (currentRoom) {
+      ensurePeer(data.participant.id);
 
-    renderModeratorPeople();
+      send({
+        type: "requestOffer",
+        to: data.participant.id
+      });
+    }
 
     return;
   }
 
   if (data.type === "userLeft") {
-    currentRoomParticipants.delete(data.id);
-
-    removeVideo(data.id);
-
-    renderModeratorPeople();
-
+    removePeer(data.id);
     return;
   }
 
@@ -1431,51 +1956,68 @@ async function handleMessage(data) {
   }
 
   if (data.type === "chatMessage") {
-    addRoomMessage(data.message);
+    addModeratorChatMessage(data.message);
+    return;
+  }
+
+  if (data.type === "kicked") {
+    alert("User kicked.");
+    return;
+  }
+
+  if (data.type === "banned") {
+    alert("User banned.");
     return;
   }
 
   if (data.type === "moderatorAccessCreated") {
     alert(
-      "Moderator access created.\\n\\nPIN: " +
+      "Moderator access created.\\n\\n" +
+      "PIN: " +
       data.pin +
       "\\nDuration: " +
       data.durationText
     );
 
     refreshData();
-
-    return;
-  }
-
-  if (data.type === "moderatorAccessGranted") {
-    alert(
-      "You have been given moderator access.\\nPIN: " +
-      data.pin
-    );
-
     return;
   }
 
   if (data.type === "error") {
-    document.getElementById("loginStatus").textContent =
-      data.message;
-
-    alert(data.message);
-
-    return;
+    alert(data.message || "Something went wrong.");
   }
 }
 
-function updateDashboard(data) {
-  renderRooms(data.rooms || []);
-  renderBans(data.bans || []);
-  renderModeratorAccess(data.moderatorAccess || []);
-  renderLog(data.log || []);
+function renderAll(rooms, bans, access, log) {
+  renderRooms(rooms);
+  renderBans(bans);
+  renderModeratorAccess(access);
+  renderLog(log);
 }
 
 function renderRooms(rooms) {
   const box = document.getElementById("rooms");
+
+  // Keep any currently open View People panels.
+  box.querySelectorAll(
+    ".people[data-room-code]"
+  ).forEach(function(panel) {
+    openPeopleRooms.add(
+      panel.dataset.roomCode
+    );
+  });
+
+  const existingCodes = new Set(
+    rooms.map(function(room) {
+      return room.code;
+    })
+  );
+
+  for (const code of Array.from(openPeopleRooms)) {
+    if (!existingCodes.has(code)) {
+      openPeopleRooms.delete(code);
+    }
+  }
 
   box.innerHTML = "";
 
@@ -1485,502 +2027,349 @@ function renderRooms(rooms) {
   }
 
   for (const room of rooms) {
-
     const div = document.createElement("div");
     div.className = "room";
 
-    const title = document.createElement("h3");
-
+    const title = document.createElement("div");
+    title.className = "room-title";
     title.textContent =
-      room.name + " — " +
-      room.code +
-      " (" +
-      room.participants.length +
-      ")";
+      room.name + " (" + room.code + ")";
+
+    const info = document.createElement("div");
+    info.className = "small";
+    info.textContent =
+      room.participantCount +
+      " participant(s)";
 
     div.appendChild(title);
+    div.appendChild(info);
 
-    const view = document.createElement("button");
+    const viewButton = document.createElement("button");
+    viewButton.className = "secondary";
+    viewButton.textContent = "View People";
 
-    view.className = "secondary";
-    view.textContent = "View People";
-
-    view.onclick = () => {
-      // IMPORTANT:
-      // View People ONLY opens the people list.
-      // It does NOT open ban controls.
-      showPeople(room);
+    viewButton.onclick = function() {
+      togglePeople(room, div);
     };
 
-    div.appendChild(view);
+    div.appendChild(viewButton);
 
-    const join = document.createElement("button");
+    const joinButton = document.createElement("button");
+    joinButton.className = "primary";
+    joinButton.textContent = "Join";
 
-    join.className = "primary";
-    join.textContent = "Join";
-
-    join.onclick = () => {
-      joinModerator(room.code, false);
+    joinButton.onclick = function() {
+      joinModeratorRoom(
+        room.code,
+        false
+      );
     };
 
-    div.appendChild(join);
+    div.appendChild(joinButton);
 
-    const anonymous = document.createElement("button");
+    const anonymousButton =
+      document.createElement("button");
 
-    anonymous.className = "secondary";
-    anonymous.textContent = "Join Anonymous";
+    anonymousButton.className = "secondary";
+    anonymousButton.textContent =
+      "Join Anonymous";
 
-    anonymous.onclick = () => {
-      joinModerator(room.code, true);
+    anonymousButton.onclick = function() {
+      joinModeratorRoom(
+        room.code,
+        true
+      );
     };
 
-    div.appendChild(anonymous);
+    div.appendChild(anonymousButton);
+
+    if (openPeopleRooms.has(room.code)) {
+      showPeople(
+        room,
+        div,
+        false
+      );
+    }
 
     box.appendChild(div);
   }
 }
 
-function showPeople(room) {
-  const existing = document.getElementById(
-    "people-" + room.code
-  );
+function togglePeople(room, parent) {
+  const existing =
+    parent.querySelector(
+      ".people[data-room-code='" +
+      CSS.escape(room.code) +
+      "']"
+    );
 
   if (existing) {
     existing.remove();
+    openPeopleRooms.delete(room.code);
     return;
   }
 
-  const people = document.createElement("div");
+  openPeopleRooms.add(room.code);
 
-  people.id = "people-" + room.code;
+  showPeople(
+    room,
+    parent,
+    false
+  );
+}
+
+function showPeople(room, parent, markOpen) {
+  if (markOpen !== false) {
+    openPeopleRooms.add(room.code);
+  }
+
+  const existing =
+    parent.querySelector(
+      ".people[data-room-code='" +
+      CSS.escape(room.code) +
+      "']"
+    );
+
+  if (existing) {
+    existing.remove();
+  }
+
+  const people =
+    document.createElement("div");
+
   people.className = "people";
+  people.dataset.roomCode = room.code;
 
-  if (!room.participants.length) {
+  if (!room.participantCount) {
     people.textContent = "No participants.";
   }
 
-  for (const person of room.participants) {
+  // The room list only has counts.
+  // Ask the server for the current people.
+  const loading =
+    document.createElement("div");
 
-    const row = document.createElement("div");
+  loading.textContent =
+    "Loading people...";
+
+  people.appendChild(loading);
+
+  parent.appendChild(people);
+
+  send({
+    type: "getRoomPeople",
+    roomCode: room.code
+  });
+}
+
+function renderPeople(roomCode, peopleList) {
+  const panel =
+    document.querySelector(
+      ".people[data-room-code='" +
+      CSS.escape(roomCode) +
+      "']"
+    );
+
+  if (!panel) return;
+
+  panel.innerHTML = "";
+
+  if (!peopleList.length) {
+    panel.textContent = "No participants.";
+    return;
+  }
+
+  for (const person of peopleList) {
+    const row =
+      document.createElement("div");
+
     row.className = "person";
 
-    const name = document.createElement("b");
+    const name =
+      document.createElement("div");
 
+    name.className = "person-name";
     name.textContent = person.name;
 
     row.appendChild(name);
 
-    const kick = document.createElement("button");
+    const kick =
+      document.createElement("button");
 
-    kick.className = "warning";
+    kick.className = "danger";
     kick.textContent = "Kick";
 
-    // NO confirmation.
-    kick.onclick = () => {
+    kick.onclick = function() {
+      // Intentionally NO confirmation.
       send({
-        type:"kick",
-        targetId:person.id
+        type: "kick",
+        targetId: person.id
       });
     };
 
     row.appendChild(kick);
 
-    const ban = document.createElement("button");
+    const ban =
+      document.createElement("button");
 
     ban.className = "danger";
     ban.textContent = "Ban";
 
-    const controls = document.createElement("div");
+    const controls =
+      document.createElement("div");
 
-    controls.className = "ban-controls hidden";
+    controls.className =
+      "ban-controls hidden";
 
-    controls.innerHTML = \`
-      <label>Ban Duration</label>
+    controls.innerHTML =
+      '<div>Ban Duration</div>' +
+      '<div class="duration-grid">' +
+      '<input type="number" min="0" class="ban-seconds" placeholder="Seconds">' +
+      '<input type="number" min="0" class="ban-minutes" placeholder="Minutes">' +
+      '<input type="number" min="0" class="ban-hours" placeholder="Hours">' +
+      '<input type="number" min="0" class="ban-days" placeholder="Days">' +
+      '<input type="number" min="0" class="ban-weeks" placeholder="Weeks">' +
+      '<input type="number" min="0" class="ban-months" placeholder="Months">' +
+      '<input type="number" min="0" class="ban-years" placeholder="Years">' +
+      '</div>' +
+      '<label>' +
+      '<input type="checkbox" class="ban-permanent">' +
+      ' Permanent' +
+      '</label><br>' +
+      '<button class="danger ban-submit">Ban User</button>';
 
-      <div class="duration-grid">
-
-        <input type="number"
-          min="0"
-          placeholder="Seconds"
-          class="ban-seconds">
-
-        <input type="number"
-          min="0"
-          placeholder="Minutes"
-          class="ban-minutes">
-
-        <input type="number"
-          min="0"
-          placeholder="Hours"
-          class="ban-hours">
-
-        <input type="number"
-          min="0"
-          placeholder="Days"
-          class="ban-days">
-
-        <input type="number"
-          min="0"
-          placeholder="Weeks"
-          class="ban-weeks">
-
-        <input type="number"
-          min="0"
-          placeholder="Months"
-          class="ban-months">
-
-        <input type="number"
-          min="0"
-          placeholder="Years"
-          class="ban-years">
-
-      </div>
-
-      <label>
-        <input type="checkbox" class="ban-permanent">
-        Permanent
-      </label>
-
-      <br>
-
-      <button class="danger ban-submit">
-        Ban User
-      </button>
-    \`;
-
-    ban.onclick = () => {
+    ban.onclick = function() {
       controls.classList.toggle("hidden");
-    };
-
-    const submit = controls.querySelector(".ban-submit");
-
-    submit.onclick = () => {
-
-      const permanent =
-        controls.querySelector(".ban-permanent").checked;
-
-      const seconds =
-        controls.querySelector(".ban-seconds").value;
-
-      const minutes =
-        controls.querySelector(".ban-minutes").value;
-
-      const hours =
-        controls.querySelector(".ban-hours").value;
-
-      const days =
-        controls.querySelector(".ban-days").value;
-
-      const weeks =
-        controls.querySelector(".ban-weeks").value;
-
-      const months =
-        controls.querySelector(".ban-months").value;
-
-      const years =
-        controls.querySelector(".ban-years").value;
-
-      if (
-        !permanent &&
-        !seconds &&
-        !minutes &&
-        !hours &&
-        !days &&
-        !weeks &&
-        !months &&
-        !years
-      ) {
-        alert("Enter a ban duration or select Permanent.");
-        return;
-      }
-
-      send({
-        type:"ban",
-        targetId:person.id,
-        seconds,
-        minutes,
-        hours,
-        days,
-        weeks,
-        months,
-        years,
-        permanent
-      });
-
-      controls.classList.add("hidden");
     };
 
     row.appendChild(ban);
     row.appendChild(controls);
 
-    people.appendChild(row);
-  }
+    controls
+      .querySelector(".ban-submit")
+      .onclick = function() {
+        send({
+          type: "ban",
+          targetId: person.id,
+          seconds:
+            controls.querySelector(
+              ".ban-seconds"
+            ).value,
+          minutes:
+            controls.querySelector(
+              ".ban-minutes"
+            ).value,
+          hours:
+            controls.querySelector(
+              ".ban-hours"
+            ).value,
+          days:
+            controls.querySelector(
+              ".ban-days"
+            ).value,
+          weeks:
+            controls.querySelector(
+              ".ban-weeks"
+            ).value,
+          months:
+            controls.querySelector(
+              ".ban-months"
+            ).value,
+          years:
+            controls.querySelector(
+              ".ban-years"
+            ).value,
+          permanent:
+            controls.querySelector(
+              ".ban-permanent"
+            ).checked
+        });
 
-  room.__peopleElement = people;
+        controls.classList.add("hidden");
+      };
 
-  const parent =
-    [...document.querySelectorAll(".room")]
-      .find(el => el.textContent.includes(room.code));
+    // Master-only Give Moderator.
+    if (moderatorLevel === "master") {
+      const give =
+        document.createElement("button");
 
-  if (parent) {
-    parent.appendChild(people);
-  }
-}
+      give.className = "success";
+      give.textContent = "Give Moderator";
 
-function renderModeratorPeople() {
-  // Current room people list is intentionally separate
-  // from the dashboard View People controls.
-}
+      give.onclick = function() {
+        giveModerator(person.id, person.name);
+      };
 
-function joinModerator(code, anonymous) {
-  currentRoomParticipants.clear();
-
-  send({
-    type:"moderatorJoinRoom",
-    roomCode:code,
-    anonymous:!!anonymous
-  });
-}
-
-function leaveRoom() {
-  send({
-    type:"leaveRoom"
-  });
-
-  currentRoomCode = null;
-
-  for (const peer of peers.values()) {
-    peer.pc.close();
-  }
-
-  peers.clear();
-
-  currentRoomParticipants.clear();
-
-  document.getElementById("moderatorVideos").innerHTML = "";
-  document.getElementById("roomMessages").innerHTML = "";
-  document.getElementById("currentRoom").textContent = "";
-}
-
-function getPeer(id) {
-  if (peers.has(id)) {
-    return peers.get(id);
-  }
-
-  const pc = new RTCPeerConnection({
-    iceServers:[
-      {
-        urls:"stun:stun.l.google.com:19302"
-      }
-    ]
-  });
-
-  const peer = {
-    pc,
-    iceQueue:[]
-  };
-
-  peers.set(id, peer);
-
-  // MODERATOR IS RECEIVE-ONLY.
-  pc.addTransceiver("audio", {
-    direction:"recvonly"
-  });
-
-  pc.addTransceiver("video", {
-    direction:"recvonly"
-  });
-
-  pc.onicecandidate = event => {
-    if (event.candidate) {
-      send({
-        type:"signal",
-        target:id,
-        signalType:"ice",
-        data:event.candidate
-      });
+      row.appendChild(give);
     }
-  };
 
-  pc.ontrack = event => {
+    panel.appendChild(row);
+  }
+}
 
-    let tile = document.getElementById(
-      "mod-video-" + id
+function giveModerator(targetId, targetName) {
+  const pin = prompt(
+    "Create a moderator PIN for " +
+    targetName +
+    ":"
+  );
+
+  if (pin === null) return;
+
+  if (pin.trim().length < 4) {
+    alert("PIN must be at least 4 characters.");
+    return;
+  }
+
+  const duration =
+    prompt(
+      "Enter duration in this format:\\n" +
+      "seconds,minutes,hours,days,weeks,months,years\\n\\n" +
+      "Example: 0,0,2,0,0,0,0 = 2 hours\\n" +
+      "Use PERMANENT for permanent access."
     );
 
-    if (!tile) {
+  if (duration === null) return;
 
-      tile = document.createElement("div");
-
-      tile.id = "mod-video-" + id;
-
-      const title = document.createElement("div");
-
-      const person =
-        currentRoomParticipants.get(id);
-
-      title.textContent =
-        person ? person.name : "Participant";
-
-      const video = document.createElement("video");
-
-      video.id = "mod-video-element-" + id;
-      video.autoplay = true;
-      video.playsInline = true;
-
-      tile.appendChild(title);
-      tile.appendChild(video);
-
-      document
-        .getElementById("moderatorVideos")
-        .appendChild(tile);
-    }
-
-    const video =
-      document.getElementById(
-        "mod-video-element-" + id
-      );
-
-    if (event.streams && event.streams[0]) {
-      video.srcObject = event.streams[0];
-    }
-
-    video.play().catch(()=>{});
-  };
-
-  return peer;
-}
-
-async function handleSignal(data) {
-
-  const id = data.from;
-
-  const peer = getPeer(id);
-  const pc = peer.pc;
-
-  if (data.signalType === "offer") {
-
-    await pc.setRemoteDescription(data.data);
-
-    const answer =
-      await pc.createAnswer();
-
-    await pc.setLocalDescription(answer);
-
+  if (
+    duration.trim().toUpperCase() ===
+    "PERMANENT"
+  ) {
     send({
-      type:"signal",
-      target:id,
-      signalType:"answer",
-      data:pc.localDescription
+      type: "giveModerator",
+      targetId: targetId,
+      pin: pin,
+      permanent: true
     });
 
-    while (peer.iceQueue.length) {
-
-      const candidate =
-        peer.iceQueue.shift();
-
-      try {
-        await pc.addIceCandidate(candidate);
-      } catch(e){}
-    }
+    return;
   }
 
-  else if (data.signalType === "ice") {
+  const parts =
+    duration.split(",").map(function(x) {
+      return Number(x.trim()) || 0;
+    });
 
-    if (pc.remoteDescription) {
-
-      try {
-        await pc.addIceCandidate(data.data);
-      } catch(e){}
-
-    } else {
-      peer.iceQueue.push(data.data);
-    }
+  while (parts.length < 7) {
+    parts.push(0);
   }
-}
-
-function addRoomMessage(message) {
-  const box =
-    document.getElementById("roomMessages");
-
-  const div =
-    document.createElement("div");
-
-  const b =
-    document.createElement("b");
-
-  b.textContent =
-    message.name + ": ";
-
-  const text =
-    document.createElement("span");
-
-  text.textContent =
-    message.text;
-
-  div.appendChild(b);
-  div.appendChild(text);
-
-  box.appendChild(div);
-
-  box.scrollTop =
-    box.scrollHeight;
-}
-
-function removeVideo(id) {
-
-  const tile =
-    document.getElementById("mod-video-" + id);
-
-  if (tile) {
-    tile.remove();
-  }
-
-  const peer = peers.get(id);
-
-  if (peer) {
-    peer.pc.close();
-    peers.delete(id);
-  }
-}
-
-function refreshData() {
-  send({
-    type:"getModeratorData"
-  });
-}
-
-function showCreateRoom() {
-  document
-    .getElementById("createRoomBox")
-    .classList.remove("hidden");
-}
-
-function hideCreateRoom() {
-  document
-    .getElementById("createRoomBox")
-    .classList.add("hidden");
-}
-
-function createModeratorRoom() {
-
-  const name =
-    document.getElementById("newRoomName").value;
-
-  const code =
-    document.getElementById("newRoomCode").value;
 
   send({
-    type:"moderatorCreateRoom",
-    roomName:name,
-    roomCode:code
+    type: "giveModerator",
+    targetId: targetId,
+    pin: pin,
+    seconds: parts[0],
+    minutes: parts[1],
+    hours: parts[2],
+    days: parts[3],
+    weeks: parts[4],
+    months: parts[5],
+    years: parts[6],
+    permanent: false
   });
-
-  hideCreateRoom();
 }
 
 function renderBans(bans) {
-
   const box =
     document.getElementById("bans");
 
@@ -1991,249 +2380,736 @@ function renderBans(bans) {
     return;
   }
 
+  const table =
+    document.createElement("table");
+
+  table.innerHTML =
+    "<tr>" +
+    "<th>Name</th>" +
+    "<th>Duration</th>" +
+    "<th>Moderator</th>" +
+    "<th>Action</th>" +
+    "</tr>";
+
   for (const ban of bans) {
+    const row =
+      document.createElement("tr");
 
-    const div =
-      document.createElement("div");
-
-    div.className = "room";
-
-    div.textContent =
-      ban.name +
-      " — " +
-      ban.durationText;
+    row.innerHTML =
+      "<td>" +
+      escapeHtml(ban.name) +
+      "</td>" +
+      "<td>" +
+      escapeHtml(ban.durationText) +
+      "</td>" +
+      "<td>" +
+      escapeHtml(ban.moderatorName) +
+      "</td>" +
+      "<td></td>";
 
     const button =
       document.createElement("button");
 
-    button.className = "secondary";
+    button.className = "success";
     button.textContent = "Unban";
 
-    button.onclick = () => {
-
+    button.onclick = function() {
       send({
-        type:"unban",
-        banId:ban.id
+        type: "unban",
+        banId: ban.id
       });
-
     };
 
-    div.appendChild(button);
+    row.lastElementChild.appendChild(button);
 
-    box.appendChild(div);
+    table.appendChild(row);
   }
+
+  box.appendChild(table);
 }
 
-function renderModeratorAccess(accessList) {
-
+function renderModeratorAccess(access) {
   const box =
-    document.getElementById("moderatorAccess");
+    document.getElementById(
+      "moderatorAccess"
+    );
 
   box.innerHTML = "";
 
-  if (!accessList.length) {
+  if (!access.length) {
     box.textContent =
       "No delegated moderator access.";
     return;
   }
 
-  for (const access of accessList) {
+  const table =
+    document.createElement("table");
 
-    const div =
-      document.createElement("div");
+  table.innerHTML =
+    "<tr>" +
+    "<th>Name</th>" +
+    "<th>Created By</th>" +
+    "<th>Duration</th>" +
+    "<th>Action</th>" +
+    "</tr>";
 
-    div.className = "room";
+  for (const item of access) {
+    const row =
+      document.createElement("tr");
 
-    div.textContent =
-      access.name +
-      " — " +
-      access.durationText;
+    row.innerHTML =
+      "<td>" +
+      escapeHtml(item.name) +
+      "</td>" +
+      "<td>" +
+      escapeHtml(item.createdBy) +
+      "</td>" +
+      "<td>" +
+      escapeHtml(item.durationText) +
+      "</td>" +
+      "<td></td>";
 
-    if (
-      moderator &&
-      moderator.moderatorLevel === "master"
-    ) {
-
+    if (moderatorLevel === "master") {
       const button =
         document.createElement("button");
 
       button.className = "danger";
       button.textContent = "Revoke";
 
-      button.onclick = () => {
-
+      button.onclick = function() {
         send({
-          type:"revokeModerator",
-          accessId:access.id
+          type: "revokeModerator",
+          accessId: item.id
         });
-
       };
 
-      div.appendChild(button);
+      row.lastElementChild.appendChild(button);
     }
 
-    box.appendChild(div);
+    table.appendChild(row);
   }
+
+  box.appendChild(table);
 }
 
 function renderLog(log) {
-
   const box =
     document.getElementById("log");
 
   box.innerHTML = "";
 
-  for (const item of log) {
+  if (!log.length) {
+    box.textContent = "No moderation history.";
+    return;
+  }
 
+  for (const item of log) {
     const div =
       document.createElement("div");
 
-    div.className = "room";
+    div.className = "person";
 
-    div.textContent =
-      item.action +
-      " — " +
-      item.target +
-      " — " +
-      item.details;
+    div.innerHTML =
+      "<strong>" +
+      escapeHtml(item.action) +
+      "</strong><br>" +
+      escapeHtml(item.details) +
+      "<br><span class='small'>" +
+      new Date(item.time).toLocaleString() +
+      "</span>";
 
     box.appendChild(div);
   }
 }
 
-connect();
+function escapeHtml(value) {
+  const div =
+    document.createElement("div");
+
+  div.textContent =
+    String(value == null ? "" : value);
+
+  return div.innerHTML;
+}
+
+function joinModeratorRoom(
+  roomCode,
+  anonymous
+) {
+  send({
+    type: "moderatorJoinRoom",
+    roomCode: roomCode,
+    anonymous: anonymous
+  });
+}
+
+function leaveModeratorRoom() {
+  send({
+    type: "leaveRoom"
+  });
+
+  currentRoom = null;
+
+  for (const peer of peers.values()) {
+    try {
+      peer.pc.close();
+    } catch {}
+  }
+
+  peers.clear();
+
+  document.getElementById(
+    "moderatorVideoGrid"
+  ).innerHTML = "";
+
+  document.getElementById(
+    "moderatorChat"
+  ).innerHTML = "";
+
+  document.getElementById(
+    "currentRoomInfo"
+  ).textContent =
+    "No room selected.";
+
+  document
+    .getElementById(
+      "leaveModeratorRoomButton"
+    )
+    .classList.add("hidden");
+}
+
+function ensurePeer(remoteId) {
+  if (peers.has(remoteId)) {
+    return peers.get(remoteId);
+  }
+
+  const pc =
+    new RTCPeerConnection({
+      iceServers: [
+        {
+          urls: "stun:stun.l.google.com:19302"
+        }
+      ]
+    });
+
+  // Moderator is RECEIVE-ONLY.
+  pc.addTransceiver(
+    "audio",
+    {
+      direction: "recvonly"
+    }
+  );
+
+  pc.addTransceiver(
+    "video",
+    {
+      direction: "recvonly"
+    }
+  );
+
+  const peer = {
+    pc: pc,
+    remoteStream: new MediaStream(),
+    iceQueue: []
+  };
+
+  peers.set(remoteId, peer);
+
+  pc.onicecandidate = function(event) {
+    if (event.candidate) {
+      send({
+        type: "signal",
+        to: remoteId,
+        signalType: "ice",
+        candidate: event.candidate
+      });
+    }
+  };
+
+  pc.ontrack = function(event) {
+    if (event.streams && event.streams[0]) {
+      peer.remoteStream =
+        event.streams[0];
+    } else {
+      peer.remoteStream.addTrack(
+        event.track
+      );
+    }
+
+    renderModeratorVideo(
+      remoteId,
+      peer.remoteStream
+    );
+  };
+
+  pc.onconnectionstatechange =
+    function() {
+      if (
+        pc.connectionState ===
+          "failed" ||
+        pc.connectionState ===
+          "closed"
+      ) {
+        removePeer(remoteId);
+      }
+    };
+
+  return peer;
+}
+
+async function handleSignal(data) {
+  if (!data.from) return;
+
+  const peer =
+    ensurePeer(data.from);
+
+  const pc = peer.pc;
+
+  try {
+    if (data.signalType === "offer") {
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(
+          data.description
+        )
+      );
+
+      while (peer.iceQueue.length) {
+        const candidate =
+          peer.iceQueue.shift();
+
+        try {
+          await pc.addIceCandidate(
+            candidate
+          );
+        } catch {}
+      }
+
+      const answer =
+        await pc.createAnswer();
+
+      await pc.setLocalDescription(
+        answer
+      );
+
+      send({
+        type: "signal",
+        to: data.from,
+        signalType: "answer",
+        description:
+          pc.localDescription
+      });
+
+      return;
+    }
+
+    if (data.signalType === "answer") {
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(
+          data.description
+        )
+      );
+
+      while (peer.iceQueue.length) {
+        const candidate =
+          peer.iceQueue.shift();
+
+        try {
+          await pc.addIceCandidate(
+            candidate
+          );
+        } catch {}
+      }
+
+      return;
+    }
+
+    if (data.signalType === "ice") {
+      const candidate =
+        new RTCIceCandidate(
+          data.candidate
+        );
+
+      if (pc.remoteDescription) {
+        await pc.addIceCandidate(
+          candidate
+        );
+      } else {
+        peer.iceQueue.push(candidate);
+      }
+    }
+  } catch (err) {
+    console.error(
+      "Moderator signal error:",
+      err
+    );
+  }
+}
+
+function renderModeratorVideo(
+  id,
+  stream
+) {
+  const grid =
+    document.getElementById(
+      "moderatorVideoGrid"
+    );
+
+  let tile =
+    document.getElementById(
+      "moderator-tile-" + id
+    );
+
+  if (!tile) {
+    tile =
+      document.createElement("div");
+
+    tile.className =
+      "video-tile";
+
+    tile.id =
+      "moderator-tile-" + id;
+
+    const video =
+      document.createElement("video");
+
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = false;
+
+    const label =
+      document.createElement("div");
+
+    label.className =
+      "video-name";
+
+    label.textContent =
+      "Participant";
+
+    tile.appendChild(video);
+    tile.appendChild(label);
+
+    grid.appendChild(tile);
+  }
+
+  const video =
+    tile.querySelector("video");
+
+  video.srcObject = stream;
+
+  video.play().catch(function() {});
+}
+
+function removePeer(id) {
+  const peer = peers.get(id);
+
+  if (peer) {
+    try {
+      peer.pc.close();
+    } catch {}
+  }
+
+  peers.delete(id);
+
+  const tile =
+    document.getElementById(
+      "moderator-tile-" + id
+    );
+
+  if (tile) {
+    tile.remove();
+  }
+}
+
+function sendModeratorChat() {
+  const input =
+    document.getElementById(
+      "moderatorChatInput"
+    );
+
+  const text =
+    input.value.trim();
+
+  if (!text || !currentRoom) {
+    return;
+  }
+
+  send({
+    type: "chatMessage",
+    text: text
+  });
+
+  input.value = "";
+}
+
+function clearModeratorChat() {
+  document.getElementById(
+    "moderatorChat"
+  ).innerHTML = "";
+}
+
+function addModeratorChatMessage(
+  message
+) {
+  const chat =
+    document.getElementById(
+      "moderatorChat"
+    );
+
+  const row =
+    document.createElement("div");
+
+  row.className =
+    "chat-message";
+
+  const name =
+    document.createElement("span");
+
+  name.className =
+    "chat-name";
+
+  name.textContent =
+    message.name + ": ";
+
+  const text =
+    document.createElement("span");
+
+  text.textContent =
+    message.text;
+
+  row.appendChild(name);
+  row.appendChild(text);
+
+  chat.appendChild(row);
+
+  chat.scrollTop =
+    chat.scrollHeight;
+}
+
+function createModeratorRoom() {
+  const roomName =
+    document.getElementById(
+      "newRoomName"
+    ).value.trim();
+
+  const roomCode =
+    document.getElementById(
+      "newRoomCode"
+    ).value.trim();
+
+  if (!roomName || !roomCode) {
+    alert(
+      "Enter a room name and room code."
+    );
+
+    return;
+  }
+
+  send({
+    type: "moderatorCreateRoom",
+    roomName: roomName,
+    roomCode: roomCode
+  });
+}
+
+function refreshData() {
+  send({
+    type: "getModeratorData"
+  });
+}
+
+function logout() {
+  if (ws) {
+    ws.close();
+  }
+
+  location.reload();
+}
+
+document
+  .getElementById(
+    "moderatorChatInput"
+  )
+  .addEventListener(
+    "keydown",
+    function(event) {
+      if (event.key === "Enter") {
+        sendModeratorChat();
+      }
+    }
+  );
+
+setInterval(function() {
+  if (
+    ws &&
+    ws.readyState === WebSocket.OPEN
+  ) {
+    refreshData();
+  }
+}, 5000);
 </script>
 
 </body>
 </html>`;
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(
+  function(req, res) {
+    if (
+      req.url === "/" ||
+      req.url === "/index.html"
+    ) {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8"
+      });
 
-  if (req.url === "/" || req.url === "/index.html") {
-    res.writeHead(200, {
-      "Content-Type":"text/html; charset=utf-8"
-    });
+      res.end(INDEX_HTML);
+      return;
+    }
 
-    res.end(INDEX_HTML);
-    return;
+    if (
+      req.url === "/blueberry" ||
+      req.url === "/blueberry.html"
+    ) {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8"
+      });
+
+      res.end(BLUEBERRY_HTML);
+      return;
+    }
+
+    if (req.url === "/health") {
+      res.writeHead(200, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(
+        JSON.stringify({
+          ok: true,
+          rooms: rooms.size
+        })
+      );
+
+      return;
+    }
+
+    res.writeHead(404);
+    res.end("Not found");
   }
-
-  if (
-    req.url === "/blueberry" ||
-    req.url === "/blueberry.html"
-  ) {
-    res.writeHead(200, {
-      "Content-Type":"text/html; charset=utf-8"
-    });
-
-    res.end(BLUEBERRY_HTML);
-    return;
-  }
-
-  if (req.url === "/health") {
-    res.writeHead(200, {
-      "Content-Type":"application/json"
-    });
-
-    res.end(JSON.stringify({
-      ok:true
-    }));
-
-    return;
-  }
-
-  res.writeHead(404);
-  res.end("Not found");
-});
+);
 
 const wss = new WebSocket.Server({
   server,
-  path:"/ws"
+  path: "/ws"
 });
 
-wss.on("connection", ws => {
-
+wss.on("connection", function(ws) {
   const client = {
-    id:makeId("client"),
-    userId:makeId("user"),
-    name:"Anonymous",
-    role:"user",
-    moderatorLevel:null,
-    moderatorAccessId:null,
-    roomCode:null,
+    id: makeId("client_"),
+    userId: makeId("user_"),
+    name: "Anonymous",
+    role: "user",
+    moderatorLevel: null,
+    moderatorAccessId: null,
+    anonymousModerator: false,
+    roomCode: null,
     ws
   };
 
   clients.set(client.id, client);
 
-  send(ws, {
-    type:"registered",
-    id:client.id,
-    userId:client.userId
-  });
-
-  ws.on("message", raw => {
-
+  ws.on("message", function(raw) {
     let data;
 
     try {
       data = JSON.parse(raw.toString());
     } catch {
-      sendError(ws, "Invalid message.");
+      send(client, {
+        type: "error",
+        message: "Invalid message."
+      });
+
       return;
     }
 
-    handleMessage(client, data);
+    handleClientMessage(client, data);
   });
 
-  ws.on("close", () => {
-    removeClient(client);
-    broadcastModeratorData();
+  ws.on("close", function() {
+    removeFromRoom(client, "disconnected");
+    clients.delete(client.id);
+
+    broadcastRoomList();
   });
 });
 
-function handleMessage(client, data) {
-
-  cleanExpiredBans();
-  cleanExpiredModeratorAccess();
+function handleClientMessage(client, data) {
+  if (!data || typeof data.type !== "string") {
+    return;
+  }
 
   if (data.type === "register") {
+    if (client.role === "moderator") {
+      return;
+    }
+
+    client.name = cleanName(data.name);
 
     const ban = getBan(client.userId);
 
     if (ban) {
-      send(client.ws, {
-        type:"banned",
-        durationText:ban.durationText
+      send(client, {
+        type: "banned",
+        durationText: ban.durationText
       });
 
       client.ws.close();
       return;
     }
 
-    client.role = "user";
+    send(client, {
+      type: "registered",
+      id: client.id,
+      userId: client.userId,
+      name: client.name
+    });
 
     return;
   }
 
   if (data.type === "moderatorAuth") {
-
+    const name = cleanName(data.name);
     const pin = cleanPin(data.pin);
 
-    if (pin === MASTER_PIN) {
+    if (!name) {
+      send(client, {
+        type: "error",
+        message: "Moderator name is required."
+      });
 
+      return;
+    }
+
+    if (pin === MASTER_PIN) {
       client.role = "moderator";
       client.moderatorLevel = "master";
       client.moderatorAccessId = null;
+      client.name = name;
 
-      send(client.ws, {
-        type:"moderatorAuthSuccess",
-        moderatorLevel:"master",
-        rooms:getRoomList(),
-        bans:getBanList(),
-        moderatorAccess:getModeratorAccessList(),
-        log:getModeratorLog()
+      send(client, {
+        type: "moderatorAuthSuccess",
+        id: client.id,
+        name: client.name,
+        level: "master",
+        rooms: getRoomList(),
+        bans: getBanList(),
+        moderatorAccess: getModeratorAccessList(),
+        log: getModeratorLog()
       });
+
+      addLog(
+        "Master moderator login",
+        client.name + " logged in."
+      );
 
       return;
     }
@@ -2242,120 +3118,112 @@ function handleMessage(client, data) {
       getModeratorAccessByPin(pin);
 
     if (!access) {
-      sendError(client.ws, "Invalid moderator PIN.");
+      send(client, {
+        type: "error",
+        message: "Invalid or expired moderator PIN."
+      });
+
       return;
     }
 
     client.role = "moderator";
     client.moderatorLevel = "delegated";
     client.moderatorAccessId = access.id;
+    client.name = name;
 
-    send(client.ws, {
-      type:"moderatorAuthSuccess",
-      moderatorLevel:"delegated",
-      rooms:getRoomList(),
-      bans:getBanList(),
-      moderatorAccess:getModeratorAccessList(),
-      log:getModeratorLog()
+    send(client, {
+      type: "moderatorAuthSuccess",
+      id: client.id,
+      name: client.name,
+      level: "delegated",
+      rooms: getRoomList(),
+      bans: getBanList(),
+      moderatorAccess: getModeratorAccessList(),
+      log: getModeratorLog()
     });
 
-    return;
-  }
-
-  if (data.type === "setName") {
-
-    if (client.role !== "user") return;
-
-    client.name =
-      cleanName(data.name);
-
-    return;
-  }
-
-  if (data.type === "createRoom") {
-
-    if (client.role !== "user") {
-      sendError(client.ws, "Not allowed.");
-      return;
-    }
-
-    const room =
-      createRoom(
-        data.roomName,
-        data.roomCode
-      );
-
-    if (!room) {
-      sendError(
-        client.ws,
-        "That room code is already in use."
-      );
-      return;
-    }
-
-    send(client.ws, {
-      type:"roomCreated",
-      roomName:room.name,
-      roomCode:room.code
-    });
-
-    joinRoom(
-      client,
-      room.code,
-      false
+    addLog(
+      "Moderator login",
+      client.name + " logged in using delegated moderator access."
     );
 
     return;
   }
 
-  if (data.type === "moderatorCreateRoom") {
+  if (data.type === "setName") {
+    client.name = cleanName(data.name);
+    return;
+  }
 
+  if (data.type === "createRoom") {
+    if (client.role !== "user") return;
+
+    if (!client.name || client.name === "Anonymous") {
+      client.name = cleanName(data.name);
+    }
+
+    const room =
+      createRoom(
+        client,
+        data.roomName,
+        data.roomCode
+      );
+
+    if (!room) return;
+
+    joinRoom(client, room.code, false);
+
+    send(client, {
+      type: "roomCreated",
+      roomCode: room.code,
+      roomName: room.name
+    });
+
+    return;
+  }
+
+  if (data.type === "moderatorCreateRoom") {
     if (!canModerate(client)) {
-      sendError(client.ws, "Moderator access required.");
+      send(client, {
+        type: "error",
+        message: "Moderator access required."
+      });
+
       return;
     }
 
     const room =
       createRoom(
+        client,
         data.roomName,
         data.roomCode
       );
 
-    if (!room) {
-      sendError(
-        client.ws,
-        "That room code is already in use."
-      );
-      return;
-    }
+    if (!room) return;
 
-    send(client.ws, {
-      type:"roomCreated",
-      roomName:room.name,
-      roomCode:room.code
+    addLog(
+      "Moderator created room",
+      client.name +
+        " created " +
+        room.name +
+        " (" +
+        room.code +
+        ")"
+    );
+
+    send(client, {
+      type: "roomCreated",
+      roomCode: room.code,
+      roomName: room.name
     });
 
-    broadcastModeratorData();
+    broadcastRoomList();
 
     return;
   }
 
   if (data.type === "joinRoom") {
-
-    if (client.role !== "user") {
-      sendError(client.ws, "Not allowed.");
-      return;
-    }
-
-    const ban = getBan(client.userId);
-
-    if (ban) {
-      send(client.ws, {
-        type:"banned",
-        durationText:ban.durationText
-      });
-      return;
-    }
+    if (client.role !== "user") return;
 
     joinRoom(
       client,
@@ -2367,11 +3235,17 @@ function handleMessage(client, data) {
   }
 
   if (data.type === "moderatorJoinRoom") {
-
     if (!canModerate(client)) {
-      sendError(client.ws, "Moderator access required.");
+      send(client, {
+        type: "error",
+        message: "Moderator access required."
+      });
+
       return;
     }
+
+    client.anonymousModerator =
+      data.anonymous === true;
 
     joinRoom(
       client,
@@ -2383,35 +3257,53 @@ function handleMessage(client, data) {
   }
 
   if (data.type === "leaveRoom") {
+    removeFromRoom(client, "left");
+    return;
+  }
 
-    removeFromRoom(client);
+  if (data.type === "requestOffer") {
+    // Moderator asks a normal participant to initiate
+    // a connection. The participant's client handles this
+    // by creating an offer.
+    const target = clients.get(data.to);
+
+    if (
+      target &&
+      target.role === "user" &&
+      client.role === "moderator"
+    ) {
+      send(target, {
+        type: "moderatorReady",
+        id: client.id
+      });
+    }
+
     return;
   }
 
   if (data.type === "signal") {
-
-    const target =
-      clients.get(data.target);
+    const target = clients.get(data.to);
 
     if (!target) return;
 
-    if (!client.roomCode ||
-        target.roomCode !== client.roomCode) {
+    if (!client.roomCode) return;
+
+    if (target.roomCode !== client.roomCode) {
       return;
     }
 
-    send(target.ws, {
-      type:"signal",
-      from:client.id,
-      signalType:data.signalType,
-      data:data.data
+    send(target, {
+      type: "signal",
+      from: client.id,
+      signalType: data.signalType,
+      description: data.description,
+      candidate: data.candidate
     });
 
     return;
   }
 
   if (data.type === "chatMessage") {
-
     if (!client.roomCode) return;
 
     const room =
@@ -2419,19 +3311,27 @@ function handleMessage(client, data) {
 
     if (!room) return;
 
-    const text =
-      String(data.text || "")
-        .trim()
-        .slice(0, 500);
+    let text =
+      String(data.text || "").trim();
 
     if (!text) return;
 
+    text = text.slice(0, 1000);
+
+    // IMPORTANT:
+    // Moderators explicitly identify themselves in chat.
+    const displayName =
+      client.role === "moderator"
+        ? client.name + " (Moderator)"
+        : client.name;
+
     const message = {
-      id:makeId("message"),
-      userId:client.userId,
-      name:client.name,
+      id: makeId("msg_"),
+      name: displayName,
       text,
-      createdAt:Date.now()
+      time: Date.now(),
+      isModerator:
+        client.role === "moderator"
     };
 
     room.messages.push(message);
@@ -2440,18 +3340,69 @@ function handleMessage(client, data) {
       room.messages.shift();
     }
 
-    broadcastRoom(room, {
-      type:"chatMessage",
-      message
+    broadcastRoom(
+      room,
+      {
+        type: "chatMessage",
+        message
+      },
+      {
+        includeUsers: true,
+        includeModerators: true
+      }
+    );
+
+    return;
+  }
+
+  if (data.type === "getRoomPeople") {
+    if (!canModerate(client)) {
+      return;
+    }
+
+    const room =
+      rooms.get(
+        cleanRoomCode(data.roomCode)
+      );
+
+    if (!room) {
+      send(client, {
+        type: "roomPeople",
+        roomCode: data.roomCode,
+        people: []
+      });
+
+      return;
+    }
+
+    const people = [];
+
+    for (const id of room.participants) {
+      const target = clients.get(id);
+
+      if (
+        target &&
+        target.role === "user"
+      ) {
+        people.push({
+          id: target.id,
+          userId: target.userId,
+          name: target.name
+        });
+      }
+    }
+
+    send(client, {
+      type: "roomPeople",
+      roomCode: room.code,
+      people
     });
 
     return;
   }
 
   if (data.type === "kick") {
-
     if (!canModerate(client)) {
-      sendError(client.ws, "Moderator access required.");
       return;
     }
 
@@ -2461,37 +3412,37 @@ function handleMessage(client, data) {
     if (!target) return;
 
     if (!canControlTarget(client, target)) {
-      sendError(
-        client.ws,
-        "You cannot control this user."
-      );
       return;
     }
 
-    const roomCode =
-      target.roomCode;
+    if (
+      client.roomCode &&
+      target.roomCode !== client.roomCode
+    ) {
+      return;
+    }
 
     addLog(
-      "KICK",
-      client.name,
-      target.name,
-      roomCode,
-      "User kicked"
+      "Kick",
+      client.name +
+        " kicked " +
+        target.name
     );
 
-    send(target.ws, {
-      type:"kicked"
+    send(target, {
+      type: "kicked"
     });
 
-    removeFromRoom(target);
+    removeFromRoom(
+      target,
+      "kicked"
+    );
 
     return;
   }
 
   if (data.type === "ban") {
-
     if (!canModerate(client)) {
-      sendError(client.ws, "Moderator access required.");
       return;
     }
 
@@ -2501,41 +3452,28 @@ function handleMessage(client, data) {
     if (!target) return;
 
     if (!canControlTarget(client, target)) {
-      sendError(
-        client.ws,
-        "You cannot ban this user."
-      );
+      return;
+    }
+
+    if (
+      client.roomCode &&
+      target.roomCode !== client.roomCode
+    ) {
       return;
     }
 
     const duration =
       calculateDuration(data);
 
-    if (
-      duration === 0 &&
-      !data.permanent
-    ) {
-      sendError(
-        client.ws,
-        "Enter a ban duration."
-      );
-      return;
-    }
-
-    const expiresAt =
-      duration === null
-        ? null
-        : Date.now() + duration;
-
     const ban = {
-      id:makeId("ban"),
-      userId:target.userId,
-      name:target.name,
-      moderatorId:client.userId,
-      moderatorName:client.name,
-      createdAt:Date.now(),
-      expiresAt,
-      durationText:formatDuration(duration)
+      id: makeId("ban_"),
+      userId: target.userId,
+      name: target.name,
+      moderatorId: client.id,
+      moderatorName: client.name,
+      createdAt: Date.now(),
+      expiresAt: duration.expiresAt,
+      durationText: duration.durationText
     };
 
     bannedUsers.set(
@@ -2544,33 +3482,36 @@ function handleMessage(client, data) {
     );
 
     addLog(
-      "BAN",
-      client.name,
-      target.name,
-      target.roomCode,
-      ban.durationText
+      "Ban",
+      client.name +
+        " banned " +
+        target.name +
+        " for " +
+        ban.durationText
     );
 
-    send(target.ws, {
-      type:"banned",
-      durationText:ban.durationText
+    send(target, {
+      type: "banned",
+      durationText:
+        ban.durationText
     });
 
-    removeFromRoom(target);
+    removeFromRoom(
+      target,
+      "banned"
+    );
 
     try {
       target.ws.close();
     } catch {}
 
-    broadcastModeratorData();
+    broadcastRoomList();
 
     return;
   }
 
   if (data.type === "unban") {
-
     if (!canModerate(client)) {
-      sendError(client.ws, "Moderator access required.");
       return;
     }
 
@@ -2582,36 +3523,48 @@ function handleMessage(client, data) {
     bannedUsers.delete(data.banId);
 
     addLog(
-      "UNBAN",
-      client.name,
-      ban.name,
-      "",
-      "Ban removed"
+      "Unban",
+      client.name +
+        " unbanned " +
+        ban.name
     );
 
-    broadcastModeratorData();
+    broadcastRoomList();
 
     return;
   }
 
   if (data.type === "giveModerator") {
-
     if (!isMasterModerator(client)) {
-      sendError(
-        client.ws,
-        "Only the master moderator can give moderator access."
-      );
+      send(client, {
+        type: "error",
+        message:
+          "Only the master moderator can give moderator access."
+      });
+
       return;
     }
 
     const target =
       clients.get(data.targetId);
 
-    if (!target || target.role !== "user") {
-      sendError(
-        client.ws,
-        "Target user not found."
-      );
+    if (!target) {
+      send(client, {
+        type: "error",
+        message:
+          "That user is no longer connected."
+      });
+
+      return;
+    }
+
+    if (target.role !== "user") {
+      send(client, {
+        type: "error",
+        message:
+          "That user is already a moderator."
+      });
+
       return;
     }
 
@@ -2619,41 +3572,27 @@ function handleMessage(client, data) {
       cleanPin(data.pin);
 
     if (pin.length < 4) {
-      sendError(
-        client.ws,
-        "Moderator PIN must be at least 4 characters."
-      );
+      send(client, {
+        type: "error",
+        message:
+          "Moderator PIN must be at least 4 characters."
+      });
+
       return;
     }
 
     const duration =
       calculateDuration(data);
 
-    if (
-      duration === 0 &&
-      !data.permanent
-    ) {
-      sendError(
-        client.ws,
-        "Enter a moderator access duration."
-      );
-      return;
-    }
-
-    const expiresAt =
-      duration === null
-        ? null
-        : Date.now() + duration;
-
     const access = {
-      id:makeId("mod"),
-      pinHash:hashPin(pin),
-      name:target.name,
-      targetUserId:target.userId,
-      createdBy:client.userId,
-      createdAt:Date.now(),
-      expiresAt,
-      durationText:formatDuration(duration)
+      id: makeId("mod_"),
+      pinHash: hashPin(pin),
+      name: target.name,
+      targetUserId: target.userId,
+      createdBy: client.name,
+      createdAt: Date.now(),
+      expiresAt: duration.expiresAt,
+      durationText: duration.durationText
     };
 
     moderatorAccess.set(
@@ -2661,43 +3600,42 @@ function handleMessage(client, data) {
       access
     );
 
-    send(client.ws, {
-      type:"moderatorAccessCreated",
-      pin,
-      durationText:access.durationText
-    });
-
-    send(target.ws, {
-      type:"moderatorAccessGranted",
-      pin,
-      durationText:access.durationText
-    });
-
     addLog(
-      "GIVE MODERATOR",
-      client.name,
-      target.name,
-      target.roomCode,
-      access.durationText
+      "Moderator access granted",
+      client.name +
+        " gave moderator access to " +
+        target.name +
+        " for " +
+        access.durationText
     );
 
-    broadcastModeratorData();
+    send(client, {
+      type: "moderatorAccessCreated",
+      pin: pin,
+      durationText:
+        access.durationText
+    });
+
+    send(target, {
+      type: "moderatorAccessGranted",
+      durationText:
+        access.durationText
+    });
+
+    broadcastRoomList();
 
     return;
   }
 
   if (data.type === "revokeModerator") {
-
     if (!isMasterModerator(client)) {
-      sendError(
-        client.ws,
-        "Only the master moderator can revoke moderator access."
-      );
       return;
     }
 
     const access =
-      moderatorAccess.get(data.accessId);
+      moderatorAccess.get(
+        data.accessId
+      );
 
     if (!access) return;
 
@@ -2705,62 +3643,61 @@ function handleMessage(client, data) {
       data.accessId
     );
 
-    for (const other of clients.values()) {
+    addLog(
+      "Moderator access revoked",
+      client.name +
+        " revoked moderator access for " +
+        access.name
+    );
 
+    for (const target of clients.values()) {
       if (
-        other.role === "moderator" &&
-        other.moderatorAccessId === data.accessId
+        target.role === "moderator" &&
+        target.moderatorAccessId ===
+          data.accessId
       ) {
-
-        send(other.ws, {
-          type:"error",
-          message:"Your moderator access has been revoked."
+        send(target, {
+          type: "moderatorAccessRevoked"
         });
 
         try {
-          other.ws.close();
+          target.ws.close();
         } catch {}
       }
     }
 
-    addLog(
-      "REVOKE MODERATOR",
-      client.name,
-      access.name,
-      "",
-      "Moderator access revoked"
-    );
-
-    broadcastModeratorData();
+    broadcastRoomList();
 
     return;
   }
 
   if (data.type === "getModeratorData") {
-
     if (!canModerate(client)) {
-      sendError(client.ws, "Moderator access required.");
       return;
     }
 
-    send(client.ws, {
-      type:"moderatorData",
-      rooms:getRoomList(),
-      bans:getBanList(),
-      moderatorAccess:getModeratorAccessList(),
-      log:getModeratorLog()
+    send(client, {
+      type: "moderatorData",
+      rooms: getRoomList(),
+      bans: getBanList(),
+      moderatorAccess:
+        getModeratorAccessList(),
+      log: getModeratorLog()
     });
 
     return;
   }
 }
 
-setInterval(() => {
-  cleanExpiredBans();
+setInterval(function() {
   cleanExpiredModeratorAccess();
-  broadcastModeratorData();
+  cleanExpiredBans();
+  broadcastRoomList();
 }, 5000);
 
-server.listen(PORT, () => {
-  console.log("Video chat server running on port " + PORT);
+server.listen(PORT, function() {
+  console.log(
+    "Video chat server running on port " +
+      PORT
+  );
 });

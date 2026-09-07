@@ -1,4 +1,3 @@
-```js
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -50,9 +49,7 @@ function makeRoomCode() {
     code = "";
 
     for (let i = 0; i < 5; i++) {
-      code += chars[
-        Math.floor(Math.random() * chars.length)
-      ];
+      code += chars[Math.floor(Math.random() * chars.length)];
     }
   } while (rooms.has(code));
 
@@ -614,4 +611,3 @@ server.listen(
     );
   }
 );
-```

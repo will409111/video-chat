@@ -1,12 +1,11 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const WebSocket = require("ws");
+const crypto = require("crypto");
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 
-// MASTER MODERATOR PIN
 const MASTER_PIN = "230323038227";
 
 const rooms = new Map();
@@ -27,16 +26,22 @@ const server = http.createServer((req, res) => {
   }
 
   if (requestPath === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store"
+    });
+
     res.end(JSON.stringify({
       ok: true,
       rooms: rooms.size,
-      users: clients.size
+      clients: clients.size
     }));
+
     return;
   }
 
-  const filePath = path.join(__dirname, requestPath);
+  const safePath = path.normalize(requestPath).replace(/^(\.\.[/\\])+/, "");
+  const filePath = path.join(__dirname, safePath);
 
   if (!filePath.startsWith(__dirname)) {
     res.writeHead(403);
@@ -46,7 +51,10 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.writeHead(404, {
+        "Content-Type": "text/plain"
+      });
+
       res.end("Not found");
       return;
     }
@@ -55,15 +63,15 @@ const server = http.createServer((req, res) => {
 
     if (filePath.endsWith(".js")) {
       contentType = "application/javascript";
-    } else if (filePath.endsWith(".css")) {
+    }
+
+    if (filePath.endsWith(".css")) {
       contentType = "text/css";
-    } else if (filePath.endsWith(".json")) {
-      contentType = "application/json";
     }
 
     res.writeHead(200, {
       "Content-Type": contentType,
-      "Cache-Control": "no-cache"
+      "Cache-Control": "no-store"
     });
 
     res.end(data);
@@ -75,8 +83,8 @@ const wss = new WebSocket.Server({
   path: "/ws"
 });
 
-function makeId() {
-  return crypto.randomBytes(12).toString("hex");
+function makeId(prefix = "id") {
+  return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
 }
 
 function hashPin(pin) {
@@ -86,53 +94,89 @@ function hashPin(pin) {
     .digest("hex");
 }
 
-function cleanName(name) {
-  let value = String(name || "").trim();
+function cleanName(value) {
+  let name = String(value || "").trim();
 
-  if (!value) {
-    value = "Guest";
+  if (!name) {
+    name = "Guest";
   }
 
-  return value.slice(0, 30);
+  return name.slice(0, 40);
 }
 
-function cleanRoomName(name) {
-  let value = String(name || "").trim();
+function cleanRoomName(value) {
+  let name = String(value || "").trim();
 
-  if (!value) {
-    value = "Untitled Room";
+  if (!name) {
+    name = "Room";
   }
 
-  return value.slice(0, 50);
+  return name.slice(0, 60);
 }
 
-function cleanRoomCode(code) {
-  return String(code || "")
+function cleanRoomCode(value) {
+  return String(value || "")
     .trim()
+    .toUpperCase()
     .replace(/\s+/g, "")
-    .slice(0, 30);
+    .slice(0, 24);
 }
 
-function cleanPin(pin) {
-  return String(pin || "")
+function cleanChat(value) {
+  return String(value || "")
+    .trim()
+    .slice(0, 500);
+}
+
+function cleanPin(value) {
+  return String(value || "")
     .trim()
     .slice(0, 100);
 }
 
-function send(ws, message) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(message));
+function send(client, data) {
+  if (!client || !client.ws) return;
+
+  if (client.ws.readyState !== WebSocket.OPEN) return;
+
+  try {
+    client.ws.send(JSON.stringify(data));
+  } catch (_) {}
+}
+
+function broadcastRoom(room, data, exceptId = null) {
+  if (!room) return;
+
+  for (const clientId of room.members) {
+    if (clientId === exceptId) continue;
+
+    const client = clients.get(clientId);
+
+    if (client) {
+      send(client, data);
+    }
   }
 }
 
-function addLog(action, moderator, target, durationText = "") {
+function addLog(action, moderator, target, extra = {}) {
   moderationLog.unshift({
-    id: makeId(),
+    id: makeId("log"),
     action,
-    moderator: moderator || "System",
-    target: target || "",
-    durationText,
-    createdAt: Date.now()
+    moderator: moderator
+      ? {
+          id: moderator.id,
+          name: moderator.name,
+          level: moderator.moderatorLevel || "moderator"
+        }
+      : null,
+    target: target
+      ? {
+          id: target.id,
+          name: target.name
+        }
+      : null,
+    time: Date.now(),
+    ...extra
   });
 
   if (moderationLog.length > 500) {
@@ -142,26 +186,16 @@ function addLog(action, moderator, target, durationText = "") {
   broadcastModeratorData();
 }
 
-function formatDuration(unit, amount) {
-  const n = Number(amount) || 0;
-
-  if (unit === "seconds") return `${n} second${n === 1 ? "" : "s"}`;
-  if (unit === "minutes") return `${n} minute${n === 1 ? "" : "s"}`;
-  if (unit === "hours") return `${n} hour${n === 1 ? "" : "s"}`;
-  if (unit === "days") return `${n} day${n === 1 ? "" : "s"}`;
-  if (unit === "weeks") return `${n} week${n === 1 ? "" : "s"}`;
-  if (unit === "months") return `${n} month${n === 1 ? "" : "s"}`;
-  if (unit === "years") return `${n} year${n === 1 ? "" : "s"}`;
-
-  return "Permanent";
-}
-
-function calculateDuration(unit, amount, permanent) {
+function calculateDuration(amount, unit, permanent) {
   if (permanent) {
     return null;
   }
 
-  const n = Math.max(1, Number(amount) || 1);
+  const n = Number(amount);
+
+  if (!Number.isFinite(n) || n <= 0) {
+    return null;
+  }
 
   const multipliers = {
     seconds: 1000,
@@ -173,46 +207,62 @@ function calculateDuration(unit, amount, permanent) {
     years: 365 * 24 * 60 * 60 * 1000
   };
 
-  return Date.now() + n * (multipliers[unit] || multipliers.minutes);
+  if (!multipliers[unit]) {
+    return null;
+  }
+
+  return Date.now() + n * multipliers[unit];
+}
+
+function formatDuration(amount, unit, permanent) {
+  if (permanent) {
+    return "Permanent";
+  }
+
+  return `${amount} ${unit}`;
+}
+
+function cleanExpiredBans() {
+  const now = Date.now();
+
+  for (const [banId, ban] of bannedUsers) {
+    if (ban.expiresAt !== null && ban.expiresAt <= now) {
+      bannedUsers.delete(banId);
+    }
+  }
 }
 
 function cleanExpiredModeratorAccess() {
-  for (const [id, access] of moderatorAccess) {
-    if (access.expiresAt && access.expiresAt <= Date.now()) {
-      moderatorAccess.delete(id);
+  const now = Date.now();
+
+  for (const [accessId, access] of moderatorAccess) {
+    if (access.expiresAt !== null && access.expiresAt <= now) {
+      moderatorAccess.delete(accessId);
 
       for (const client of clients.values()) {
         if (
           client.role === "moderator" &&
-          client.moderatorAccessId === id
+          client.moderatorAccessId === accessId
         ) {
-          send(client.ws, {
+          send(client, {
             type: "moderatorAccessRevoked",
-            reason: "Your moderator access expired."
+            reason: "Your moderator access has expired."
           });
 
           try {
             client.ws.close();
-          } catch {}
+          } catch (_) {}
         }
       }
     }
   }
 }
 
-function cleanExpiredBans() {
-  for (const [id, ban] of bannedUsers) {
-    if (ban.expiresAt && ban.expiresAt <= Date.now()) {
-      bannedUsers.delete(id);
-    }
-  }
-}
-
-function getBan(userId) {
+function getBanForUser(userId) {
   cleanExpiredBans();
 
   for (const ban of bannedUsers.values()) {
-    if (ban.userId === userId || ban.id === userId) {
+    if (ban.userId === userId) {
       return ban;
     }
   }
@@ -235,30 +285,103 @@ function getModeratorAccessByPin(pin) {
 }
 
 function getRoomInfo(room) {
+  if (!room) return null;
+
+  const participants = [];
+
+  for (const id of room.members) {
+    const client = clients.get(id);
+
+    if (!client) continue;
+
+    /*
+      IMPORTANT:
+      Anonymous moderators are deliberately excluded from the participant
+      list sent to normal users.
+
+      Moderators still get the moderator information separately.
+    */
+    if (client.role === "moderator") {
+      continue;
+    }
+
+    participants.push({
+      id: client.id,
+      name: client.name,
+      role: "user"
+    });
+  }
+
   return {
     code: room.code,
     name: room.name,
-    createdAt: room.createdAt,
-    participants: [...room.participants]
-      .map(id => clients.get(id))
-      .filter(Boolean)
-      .map(client => ({
-        id: client.id,
-        name: client.name,
-        role: client.role,
-        moderatorLevel: client.moderatorLevel || null
-      }))
+    participants,
+    messages: room.messages.slice(-100)
+  };
+}
+
+function getModeratorRoomInfo(room) {
+  if (!room) return null;
+
+  const participants = [];
+
+  for (const id of room.members) {
+    const client = clients.get(id);
+
+    if (!client) continue;
+
+    participants.push({
+      id: client.id,
+      name: client.name,
+      role: client.role,
+      moderatorLevel: client.moderatorLevel || null,
+      anonymous: client.role === "moderator"
+    });
+  }
+
+  return {
+    code: room.code,
+    name: room.name,
+    participants,
+    messages: room.messages.slice(-100)
   };
 }
 
 function getRoomList() {
-  return [...rooms.values()].map(getRoomInfo);
+  const list = [];
+
+  for (const room of rooms.values()) {
+    let normalCount = 0;
+    let moderatorCount = 0;
+
+    for (const id of room.members) {
+      const client = clients.get(id);
+
+      if (!client) continue;
+
+      if (client.role === "moderator") {
+        moderatorCount++;
+      } else {
+        normalCount++;
+      }
+    }
+
+    list.push({
+      code: room.code,
+      name: room.name,
+      participants: normalCount,
+      moderators: moderatorCount,
+      total: normalCount + moderatorCount
+    });
+  }
+
+  return list;
 }
 
 function getBanList() {
   cleanExpiredBans();
 
-  return [...bannedUsers.values()].map(ban => ({
+  return Array.from(bannedUsers.values()).map(ban => ({
     id: ban.id,
     userId: ban.userId,
     name: ban.name,
@@ -272,7 +395,7 @@ function getBanList() {
 function getModeratorAccessList() {
   cleanExpiredModeratorAccess();
 
-  return [...moderatorAccess.values()].map(access => ({
+  return Array.from(moderatorAccess.values()).map(access => ({
     id: access.id,
     name: access.name,
     targetUserId: access.targetUserId,
@@ -284,24 +407,27 @@ function getModeratorAccessList() {
 }
 
 function getModeratorLog() {
-  return moderationLog.slice(0, 500);
+  return moderationLog.slice(0, 200);
 }
 
 function broadcastRoomList() {
-  const message = {
+  const data = {
     type: "roomList",
     rooms: getRoomList()
   };
 
   for (const client of clients.values()) {
     if (client.role === "moderator") {
-      send(client.ws, message);
+      send(client, data);
     }
   }
 }
 
 function broadcastModeratorData() {
-  const message = {
+  cleanExpiredBans();
+  cleanExpiredModeratorAccess();
+
+  const data = {
     type: "moderatorData",
     rooms: getRoomList(),
     bans: getBanList(),
@@ -311,62 +437,143 @@ function broadcastModeratorData() {
 
   for (const client of clients.values()) {
     if (client.role === "moderator") {
-      send(client.ws, message);
+      send(client, data);
     }
   }
+}
+
+function broadcastRoomParticipants(room) {
+  if (!room) return;
+
+  /*
+    Normal users get ONLY normal users.
+
+    Anonymous moderators are intentionally invisible.
+  */
+  const normalParticipants = [];
+
+  for (const id of room.members) {
+    const client = clients.get(id);
+
+    if (!client) continue;
+
+    if (client.role === "user") {
+      normalParticipants.push({
+        id: client.id,
+        name: client.name,
+        role: "user"
+      });
+    }
+  }
+
+  for (const id of room.members) {
+    const client = clients.get(id);
+
+    if (!client) continue;
+
+    if (client.role === "moderator") {
+      /*
+        Moderator gets everybody, including other moderators.
+      */
+      send(client, {
+        type: "participants",
+        participants: Array.from(room.members)
+          .map(memberId => clients.get(memberId))
+          .filter(Boolean)
+          .map(member => ({
+            id: member.id,
+            name: member.name,
+            role: member.role,
+            moderatorLevel: member.moderatorLevel || null,
+            anonymous: member.role === "moderator"
+          }))
+      });
+    } else {
+      send(client, {
+        type: "participants",
+        participants: normalParticipants
+      });
+    }
+  }
+}
+
+function createRoom(client, roomName, requestedCode) {
+  const name = cleanRoomName(roomName);
+  let code = cleanRoomCode(requestedCode);
+
+  if (!code) {
+    code = makeRoomCode();
+  }
+
+  if (!/^[A-Z0-9_-]{3,24}$/.test(code)) {
+    send(client, {
+      type: "error",
+      message:
+        "Room code must be 3-24 characters and use only letters, numbers, - or _."
+    });
+
+    return null;
+  }
+
+  if (rooms.has(code)) {
+    send(client, {
+      type: "error",
+      message: "That room code is already in use."
+    });
+
+    return null;
+  }
+
+  const room = {
+    code,
+    name,
+    ownerId: client.id,
+    members: new Set(),
+    messages: []
+  };
+
+  rooms.set(code, room);
+
+  /*
+    Creator is automatically joined.
+    There is intentionally no second client-side joinRoom() call.
+  */
+  client.roomCode = code;
+  room.members.add(client.id);
+
+  send(client, {
+    type: "roomCreated",
+    roomCode: room.code,
+    roomName: room.name,
+    room: getRoomInfo(room)
+  });
+
+  send(client, {
+    type: "roomJoined",
+    room: getRoomInfo(room)
+  });
+
+  broadcastRoomParticipants(room);
+  broadcastRoomList();
+
+  return room;
 }
 
 function makeRoomCode() {
   let code;
 
   do {
-    code = Math.random()
-      .toString(36)
-      .substring(2, 8)
+    code = crypto
+      .randomBytes(3)
+      .toString("hex")
       .toUpperCase();
   } while (rooms.has(code));
 
   return code;
 }
 
-function createRoom(name, requestedCode) {
-  const roomName = cleanRoomName(name);
-  let code = cleanRoomCode(requestedCode);
-
-  /*
-   * IMPORTANT:
-   * If the user entered a code, USE THAT CODE.
-   * Only generate a code when the field is blank.
-   */
-  if (!code) {
-    code = makeRoomCode();
-  }
-
-  if (rooms.has(code)) {
-    return {
-      error: "That room code is already in use."
-    };
-  }
-
-  const room = {
-    code,
-    name: roomName,
-    createdAt: Date.now(),
-    participants: new Set(),
-    messages: []
-  };
-
-  rooms.set(code, room);
-
-  return {
-    room
-  };
-}
-
-function removeFromRoom(client) {
-  if (!client.roomCode) {
-    return;
-  }
+function removeFromRoom(client, notify = true) {
+  if (!client.roomCode) return;
 
   const room = rooms.get(client.roomCode);
 
@@ -375,23 +582,22 @@ function removeFromRoom(client) {
     return;
   }
 
-  room.participants.delete(client.id);
-
-  for (const participantId of room.participants) {
-    const participant = clients.get(participantId);
-
-    if (participant) {
-      send(participant.ws, {
-        type: "userLeft",
-        id: client.id
-      });
-    }
-  }
-
+  room.members.delete(client.id);
   client.roomCode = null;
 
-  if (room.participants.size === 0) {
+  if (notify) {
+    send(client, {
+      type: "leftRoom"
+    });
+  }
+
+  /*
+    Empty rooms are temporary and disappear.
+  */
+  if (room.members.size === 0) {
     rooms.delete(room.code);
+  } else {
+    broadcastRoomParticipants(room);
   }
 
   broadcastRoomList();
@@ -403,62 +609,77 @@ function joinRoom(client, roomCode) {
   const room = rooms.get(code);
 
   if (!room) {
-    send(client.ws, {
+    send(client, {
       type: "error",
       message: "Room not found."
     });
+
     return;
   }
 
-  const ban = getBan(client.id);
+  const ban = getBanForUser(client.id);
 
   if (ban) {
-    send(client.ws, {
+    send(client, {
       type: "banned",
-      message: "You are banned from this service.",
       expiresAt: ban.expiresAt,
-      durationText: ban.durationText
+      durationText: ban.durationText,
+      message: `You are banned from this service.`
     });
 
     return;
   }
 
-  if (client.roomCode) {
-    removeFromRoom(client);
+  if (client.roomCode && client.roomCode !== code) {
+    removeFromRoom(client, false);
   }
 
-  const existingParticipants = [...room.participants]
-    .map(id => clients.get(id))
-    .filter(Boolean);
-
-  room.participants.add(client.id);
   client.roomCode = code;
+  room.members.add(client.id);
 
-  send(client.ws, {
+  send(client, {
     type: "roomJoined",
-    room: {
-      code: room.code,
-      name: room.name
-    },
-    participants: existingParticipants.map(p => ({
-      id: p.id,
-      name: p.name,
-      role: p.role
-    })),
-    messages: room.messages.slice(-100)
+    room: getRoomInfo(room)
   });
 
-  for (const participant of existingParticipants) {
-    send(participant.ws, {
-      type: "userJoined",
-      participant: {
-        id: client.id,
-        name: client.name,
-        role: client.role
-      }
-    });
+  broadcastRoomParticipants(room);
+  broadcastRoomList();
+  broadcastModeratorData();
+}
+
+function moderatorJoinRoom(client, roomCode) {
+  if (client.role !== "moderator") {
+    return;
   }
 
+  const code = cleanRoomCode(roomCode);
+  const room = rooms.get(code);
+
+  if (!room) {
+    send(client, {
+      type: "error",
+      message: "Room not found."
+    });
+
+    return;
+  }
+
+  if (client.roomCode && client.roomCode !== code) {
+    removeFromRoom(client, false);
+  }
+
+  client.roomCode = code;
+  room.members.add(client.id);
+
+  /*
+    Moderator gets the complete room information, including previous chat.
+  */
+  send(client, {
+    type: "moderatorRoomJoined",
+    room: getModeratorRoomInfo(room)
+  });
+
+  broadcastRoomParticipants(room);
   broadcastRoomList();
   broadcastModeratorData();
 }
@@ -472,9 +693,7 @@ function isMasterModerator(client) {
 }
 
 function canControlTarget(client, target) {
-  if (!target) {
-    return false;
-  }
+  if (!target) return false;
 
   if (target.role === "moderator") {
     return false;
@@ -484,126 +703,113 @@ function canControlTarget(client, target) {
 }
 
 wss.on("connection", ws => {
-  let currentClient = null;
+  const client = {
+    ws,
+    id: makeId("user"),
+    name: "Guest",
+    role: "user",
+    moderatorLevel: null,
+    moderatorAccessId: null,
+    roomCode: null
+  };
+
+  clients.set(client.id, client);
+
+  send(client, {
+    type: "connected",
+    id: client.id
+  });
 
   ws.on("message", raw => {
-    let message;
+    let data;
 
     try {
-      message = JSON.parse(raw.toString());
-    } catch {
-      send(ws, {
-        type: "error",
-        message: "Invalid message."
-      });
+      data = JSON.parse(raw.toString());
+    } catch (_) {
       return;
     }
 
-    const type = message.type;
+    const type = data.type;
 
-    /*
-     * NORMAL USER REGISTRATION
-     */
     if (type === "register") {
-      if (currentClient) {
-        return;
-      }
+      /*
+        Do not allow clients to claim moderator status.
+        Only moderatorAuth can create a moderator session.
+      */
 
-      const requestedId = String(message.id || "").trim();
-      const id = requestedId || makeId();
-      const name = cleanName(message.name);
+      client.name = cleanName(data.name);
+      client.role = "user";
+      client.moderatorLevel = null;
+      client.moderatorAccessId = null;
 
-      const existingBan = getBan(id);
+      const ban = getBanForUser(client.id);
 
-      if (existingBan) {
-        send(ws, {
+      if (ban) {
+        send(client, {
           type: "banned",
-          message: "You are banned from this service.",
-          expiresAt: existingBan.expiresAt,
-          durationText: existingBan.durationText
+          expiresAt: ban.expiresAt,
+          durationText: ban.durationText,
+          message: "You are banned."
         });
 
         return;
       }
 
-      const client = {
-        id,
-        name,
-        ws,
-        role: "user",
-        moderatorLevel: null,
-        moderatorAccessId: null,
-        roomCode: null
-      };
-
-      clients.set(id, client);
-      currentClient = client;
-
-      send(ws, {
+      send(client, {
         type: "registered",
-        id,
-        name
+        id: client.id,
+        name: client.name
       });
 
-      broadcastModeratorData();
       return;
     }
 
-    /*
-     * MODERATOR LOGIN
-     */
     if (type === "moderatorAuth") {
-      if (currentClient) {
-        return;
-      }
-
-      const pin = cleanPin(message.pin);
-      const requestedId = String(message.id || "").trim();
-      const name = cleanName(message.name || "Moderator");
-
-      let moderatorLevel = null;
-      let accessId = null;
+      const name = cleanName(data.name);
+      const pin = cleanPin(data.pin);
 
       if (pin === MASTER_PIN) {
-        moderatorLevel = "master";
-      } else {
-        const access = getModeratorAccessByPin(pin);
+        client.name = name || "Master Moderator";
+        client.role = "moderator";
+        client.moderatorLevel = "master";
+        client.moderatorAccessId = null;
 
-        if (access) {
-          moderatorLevel = "delegated";
-          accessId = access.id;
-        }
+        send(client, {
+          type: "moderatorAuthSuccess",
+          id: client.id,
+          name: client.name,
+          level: "master",
+          rooms: getRoomList(),
+          bans: getBanList(),
+          moderatorAccess: getModeratorAccessList(),
+          logs: getModeratorLog()
+        });
+
+        broadcastModeratorData();
+        return;
       }
 
-      if (!moderatorLevel) {
-        send(ws, {
-          type: "moderatorAuthFailed",
-          message: "Incorrect moderator PIN."
+      const access = getModeratorAccessByPin(pin);
+
+      if (!access) {
+        send(client, {
+          type: "error",
+          message: "Invalid moderator PIN."
         });
 
         return;
       }
 
-      const id = requestedId || makeId();
+      client.name = name || access.name || "Moderator";
+      client.role = "moderator";
+      client.moderatorLevel = "delegated";
+      client.moderatorAccessId = access.id;
 
-      const client = {
-        id,
-        name,
-        ws,
-        role: "moderator",
-        moderatorLevel,
-        moderatorAccessId: accessId,
-        roomCode: null
-      };
-
-      clients.set(id, client);
-      currentClient = client;
-
-      send(ws, {
+      send(client, {
         type: "moderatorAuthSuccess",
-        id,
-        name,
-        moderatorLevel,
+        id: client.id,
+        name: client.name,
+        level: "delegated",
         rooms: getRoomList(),
         bans: getBanList(),
         moderatorAccess: getModeratorAccessList(),
@@ -614,520 +820,432 @@ wss.on("connection", ws => {
       return;
     }
 
-    if (!currentClient) {
-      send(ws, {
-        type: "error",
-        message: "You are not registered."
-      });
-      return;
-    }
-
-    /*
-     * CHANGE NAME
-     */
     if (type === "setName") {
-      const oldName = currentClient.name;
-      currentClient.name = cleanName(message.name);
-
-      if (currentClient.roomCode) {
-        const room = rooms.get(currentClient.roomCode);
-
-        if (room) {
-          for (const participantId of room.participants) {
-            const participant = clients.get(participantId);
-
-            if (participant) {
-              send(participant.ws, {
-                type: "userNameChanged",
-                id: currentClient.id,
-                name: currentClient.name
-              });
-            }
-          }
-        }
-      }
-
-      if (
-        currentClient.role === "moderator" &&
-        oldName !== currentClient.name
-      ) {
-        broadcastModeratorData();
-      }
-
+      client.name = cleanName(data.name);
       return;
     }
 
-    /*
-     * NORMAL USER CREATE ROOM
-     */
     if (type === "createRoom") {
-      if (currentClient.role !== "user") {
-        send(ws, {
+      if (client.role !== "user") {
+        send(client, {
           type: "error",
-          message: "Use the moderator room creator."
+          message: "Use moderator room creation from the moderator dashboard."
         });
+
         return;
       }
 
-      /*
-       * IMPORTANT:
-       * message.roomName and message.roomCode come directly
-       * from the normal user's form.
-       */
-      const result = createRoom(
-        message.roomName,
-        message.roomCode
+      createRoom(
+        client,
+        data.roomName,
+        data.roomCode
       );
 
-      if (result.error) {
-        send(ws, {
-          type: "error",
-          message: result.error
-        });
-        return;
-      }
-
-      send(ws, {
-        type: "roomCreated",
-        room: {
-          name: result.room.name,
-          code: result.room.code
-        }
-      });
-
-      /*
-       * Automatically join the room.
-       */
-      joinRoom(currentClient, result.room.code);
       return;
     }
 
-    /*
-     * MODERATOR CREATE ROOM
-     */
     if (type === "moderatorCreateRoom") {
-      if (!canModerate(currentClient)) {
+      if (!canModerate(client)) {
+        send(client, {
+          type: "error",
+          message: "Moderator access required."
+        });
+
         return;
       }
 
-      const result = createRoom(
-        message.roomName,
-        message.roomCode
+      const room = createRoom(
+        client,
+        data.roomName,
+        data.roomCode
       );
 
-      if (result.error) {
-        send(ws, {
-          type: "error",
-          message: result.error
+      if (room) {
+        /*
+          A moderator-created room is still a normal room.
+          The moderator is simply already inside it.
+        */
+
+        send(client, {
+          type: "moderatorRoomCreated",
+          roomCode: room.code,
+          roomName: room.name,
+          room: getModeratorRoomInfo(room)
         });
-        return;
       }
 
-      send(ws, {
-        type: "moderatorRoomCreated",
-        room: {
-          name: result.room.name,
-          code: result.room.code
-        }
-      });
-
-      broadcastModeratorData();
       return;
     }
 
-    /*
-     * NORMAL JOIN
-     */
     if (type === "joinRoom") {
-      if (currentClient.role !== "user") {
+      if (client.role !== "user") {
+        send(client, {
+          type: "error",
+          message: "Use moderatorJoinRoom for moderators."
+        });
+
         return;
       }
 
-      joinRoom(currentClient, message.roomCode);
+      joinRoom(client, data.roomCode);
       return;
     }
 
-    /*
-     * MODERATOR JOIN
-     *
-     * Moderators do NOT publish camera/mic automatically.
-     * They still receive the WebRTC streams published by users.
-     */
     if (type === "moderatorJoinRoom") {
-      if (!canModerate(currentClient)) {
-        return;
-      }
-
-      joinRoom(currentClient, message.roomCode);
+      moderatorJoinRoom(client, data.roomCode);
       return;
     }
 
-    /*
-     * LEAVE ROOM
-     */
     if (type === "leaveRoom") {
-      removeFromRoom(currentClient);
-
-      send(ws, {
-        type: "roomLeft"
-      });
-
+      removeFromRoom(client, true);
       return;
     }
 
     /*
-     * WEBRTC SIGNALING
-     */
+      WebRTC signaling.
+
+      We do NOT send media through the server.
+      Only SDP/ICE signaling travels through WebSocket.
+    */
     if (type === "signal") {
-      const targetId = String(message.target || "");
-      const target = clients.get(targetId);
+      const target = clients.get(data.target);
 
       if (!target) {
         return;
       }
 
-      if (
-        currentClient.roomCode &&
-        target.roomCode === currentClient.roomCode
-      ) {
-        send(target.ws, {
-          type: "signal",
-          from: currentClient.id,
-          signal: message.signal
-        });
+      if (!client.roomCode || client.roomCode !== target.roomCode) {
+        return;
       }
+
+      send(target, {
+        type: "signal",
+        from: client.id,
+        fromName: client.name,
+        fromRole: client.role,
+        signal: data.signal
+      });
 
       return;
     }
 
     /*
-     * TEXT CHAT
-     */
+      Room chat.
+      Messages are stored only in memory while the room exists.
+    */
     if (type === "chatMessage") {
-      if (!currentClient.roomCode) {
+      if (!client.roomCode) {
         return;
       }
 
-      const room = rooms.get(currentClient.roomCode);
+      const room = rooms.get(client.roomCode);
 
       if (!room) {
         return;
       }
 
-      let text = String(message.text || "").trim();
+      const text = cleanChat(data.text);
 
       if (!text) {
         return;
       }
 
-      text = text.slice(0, 1000);
-
-      const chatMessage = {
-        id: makeId(),
-        userId: currentClient.id,
-        name: currentClient.name,
+      const message = {
+        id: makeId("msg"),
+        userId: client.id,
+        name: client.name,
         text,
-        createdAt: Date.now(),
-        moderator: currentClient.role === "moderator"
+        timestamp: Date.now(),
+        moderator: client.role === "moderator"
       };
 
-      room.messages.push(chatMessage);
+      room.messages.push(message);
 
-      if (room.messages.length > 200) {
-        room.messages.shift();
+      if (room.messages.length > 100) {
+        room.messages.splice(0, room.messages.length - 100);
       }
 
-      for (const participantId of room.participants) {
-        const participant = clients.get(participantId);
-
-        if (participant) {
-          send(participant.ws, {
-            type: "chatMessage",
-            message: chatMessage
-          });
-        }
-      }
-
-      return;
-    }
-
-    /*
-     * KICK
-     */
-    if (type === "kick") {
-      if (!canModerate(currentClient)) {
-        return;
-      }
-
-      const target = clients.get(String(message.targetId || ""));
-
-      if (!target || !canControlTarget(currentClient, target)) {
-        return;
-      }
-
-      addLog(
-        "Kick",
-        currentClient.name,
-        target.name
-      );
-
-      send(target.ws, {
-        type: "kicked",
-        message: "You were kicked by a moderator."
+      /*
+        Everyone currently in the room receives the message,
+        including anonymous moderators.
+      */
+      broadcastRoom(room, {
+        type: "chatMessage",
+        message
       });
 
-      removeFromRoom(target);
-
-      broadcastModeratorData();
       return;
     }
 
-    /*
-     * BAN
-     */
+    if (type === "kick") {
+      if (!canModerate(client)) {
+        return;
+      }
+
+      const target = clients.get(data.targetId);
+
+      if (!target || target.roomCode !== client.roomCode) {
+        return;
+      }
+
+      if (!canControlTarget(client, target)) {
+        return;
+      }
+
+      addLog("kick", client, target);
+
+      send(target, {
+        type: "kicked",
+        message: "You were removed from the room by a moderator."
+      });
+
+      removeFromRoom(target, false);
+
+      try {
+        target.ws.close();
+      } catch (_) {}
+
+      return;
+    }
+
     if (type === "ban") {
-      if (!canModerate(currentClient)) {
+      if (!canModerate(client)) {
         return;
       }
 
-      const target = clients.get(String(message.targetId || ""));
+      const target = clients.get(data.targetId);
 
-      if (!target || !canControlTarget(currentClient, target)) {
+      if (!target) {
         return;
       }
 
-      const permanent = Boolean(message.permanent);
-      const unit = String(message.unit || "minutes");
-      const amount = Math.max(1, Number(message.amount) || 1);
+      if (!canControlTarget(client, target)) {
+        return;
+      }
 
-      const durationText = permanent
-        ? "Permanent"
-        : formatDuration(unit, amount);
+      const permanent = Boolean(data.permanent);
 
       const expiresAt = calculateDuration(
-        unit,
-        amount,
+        data.amount,
+        data.unit,
         permanent
       );
 
+      if (!permanent && expiresAt === null) {
+        send(client, {
+          type: "error",
+          message: "Invalid ban duration."
+        });
+
+        return;
+      }
+
       const ban = {
-        id: makeId(),
+        id: makeId("ban"),
         userId: target.id,
         name: target.name,
-        moderatorId: currentClient.id,
-        moderatorName: currentClient.name,
+        moderatorId: client.id,
+        moderatorName: client.name,
         createdAt: Date.now(),
         expiresAt,
-        durationText
+        durationText: formatDuration(
+          data.amount,
+          data.unit,
+          permanent
+        )
       };
 
       bannedUsers.set(ban.id, ban);
 
-      addLog(
-        "Ban",
-        currentClient.name,
-        target.name,
-        durationText
-      );
-
-      send(target.ws, {
-        type: "banned",
-        message: `You were banned. Duration: ${durationText}.`,
-        expiresAt,
-        durationText
+      addLog("ban", client, target, {
+        durationText: ban.durationText,
+        expiresAt
       });
 
-      removeFromRoom(target);
+      send(target, {
+        type: "banned",
+        expiresAt,
+        durationText: ban.durationText,
+        message: "You have been banned."
+      });
+
+      removeFromRoom(target, false);
 
       try {
         target.ws.close();
-      } catch {}
+      } catch (_) {}
 
       broadcastModeratorData();
+
       return;
     }
 
-    /*
-     * UNBAN
-     */
     if (type === "unban") {
-      if (!canModerate(currentClient)) {
+      if (!canModerate(client)) {
         return;
       }
 
-      const banId = String(message.banId || "");
+      const ban = bannedUsers.get(data.banId);
 
-      if (!bannedUsers.has(banId)) {
+      if (!ban) {
         return;
       }
 
-      const ban = bannedUsers.get(banId);
+      bannedUsers.delete(data.banId);
 
-      bannedUsers.delete(banId);
-
-      addLog(
-        "Unban",
-        currentClient.name,
-        ban.name
-      );
+      addLog("unban", client, {
+        id: ban.userId,
+        name: ban.name
+      });
 
       broadcastModeratorData();
+
       return;
     }
 
-    /*
-     * GIVE MODERATOR
-     */
     if (type === "giveModerator") {
-      if (!isMasterModerator(currentClient)) {
-        send(ws, {
+      if (!isMasterModerator(client)) {
+        send(client, {
           type: "error",
           message: "Only the master moderator can give moderator access."
         });
+
         return;
       }
 
-      const target = clients.get(String(message.targetId || ""));
+      const target = clients.get(data.targetId);
 
-      if (!target || target.role === "moderator") {
+      if (!target || target.role !== "user") {
+        send(client, {
+          type: "error",
+          message: "That user is no longer connected."
+        });
+
         return;
       }
 
-      const customPin = cleanPin(message.pin);
+      const pin = cleanPin(data.pin);
 
-      if (customPin.length < 4) {
-        send(ws, {
+      if (pin.length < 4) {
+        send(client, {
           type: "error",
           message: "Moderator PIN must be at least 4 characters."
         });
+
         return;
       }
 
-      if (customPin === MASTER_PIN) {
-        send(ws, {
-          type: "error",
-          message: "That PIN cannot be used."
-        });
-        return;
-      }
-
-      if (getModeratorAccessByPin(customPin)) {
-        send(ws, {
-          type: "error",
-          message: "That moderator PIN is already being used."
-        });
-        return;
-      }
-
-      const permanent = Boolean(message.permanent);
-      const unit = String(message.unit || "hours");
-      const amount = Math.max(1, Number(message.amount) || 1);
-
-      const durationText = permanent
-        ? "Permanent"
-        : formatDuration(unit, amount);
+      const permanent = Boolean(data.permanent);
 
       const expiresAt = calculateDuration(
-        unit,
-        amount,
+        data.amount,
+        data.unit,
         permanent
       );
 
+      if (!permanent && expiresAt === null) {
+        send(client, {
+          type: "error",
+          message: "Invalid moderator duration."
+        });
+
+        return;
+      }
+
       const access = {
-        id: makeId(),
-        pinHash: hashPin(customPin),
+        id: makeId("mod"),
+        pinHash: hashPin(pin),
         name: target.name,
         targetUserId: target.id,
-        createdBy: currentClient.name,
+        createdBy: client.name,
         createdAt: Date.now(),
         expiresAt,
-        durationText
+        durationText: formatDuration(
+          data.amount,
+          data.unit,
+          permanent
+        )
       };
 
       moderatorAccess.set(access.id, access);
 
-      send(currentClient.ws, {
+      send(client, {
         type: "moderatorAccessCreated",
         access: {
           id: access.id,
           name: access.name,
-          targetUserId: access.targetUserId,
-          createdBy: access.createdBy,
-          createdAt: access.createdAt,
-          expiresAt: access.expiresAt,
-          durationText: access.durationText
+          pin,
+          durationText: access.durationText,
+          expiresAt: access.expiresAt
         }
       });
 
-      send(target.ws, {
+      send(target, {
         type: "moderatorAccessGranted",
-        message: `You have been given moderator access for ${durationText}.`
+        name: target.name,
+        durationText: access.durationText,
+        expiresAt: access.expiresAt
       });
 
-      addLog(
-        "Give Moderator",
-        currentClient.name,
-        target.name,
-        durationText
-      );
+      addLog("giveModerator", client, target, {
+        durationText: access.durationText,
+        expiresAt: access.expiresAt
+      });
 
       broadcastModeratorData();
+
       return;
     }
 
-    /*
-     * REVOKE MODERATOR
-     */
     if (type === "revokeModerator") {
-      if (!isMasterModerator(currentClient)) {
+      if (!isMasterModerator(client)) {
         return;
       }
 
-      const accessId = String(message.accessId || "");
-
-      const access = moderatorAccess.get(accessId);
+      const access = moderatorAccess.get(data.accessId);
 
       if (!access) {
         return;
       }
 
-      moderatorAccess.delete(accessId);
+      moderatorAccess.delete(data.accessId);
 
-      for (const client of clients.values()) {
+      for (const other of clients.values()) {
         if (
-          client.role === "moderator" &&
-          client.moderatorAccessId === accessId
+          other.role === "moderator" &&
+          other.moderatorAccessId === data.accessId
         ) {
-          send(client.ws, {
+          send(other, {
             type: "moderatorAccessRevoked",
             reason: "Your moderator access was revoked."
           });
 
           try {
-            client.ws.close();
-          } catch {}
+            other.ws.close();
+          } catch (_) {}
         }
       }
 
       addLog(
-        "Revoke Moderator",
-        currentClient.name,
-        access.name
+        "revokeModerator",
+        client,
+        {
+          id: access.targetUserId,
+          name: access.name
+        }
       );
 
       broadcastModeratorData();
+
       return;
     }
 
-    /*
-     * GET MODERATOR DATA
-     */
     if (type === "getModeratorData") {
-      if (!canModerate(currentClient)) {
+      if (!canModerate(client)) {
         return;
       }
 
-      send(ws, {
+      send(client, {
         type: "moderatorData",
         rooms: getRoomList(),
         bans: getBanList(),
@@ -1140,16 +1258,21 @@ wss.on("connection", ws => {
   });
 
   ws.on("close", () => {
-    if (!currentClient) {
-      return;
+    const room = client.roomCode
+      ? rooms.get(client.roomCode)
+      : null;
+
+    if (room) {
+      room.members.delete(client.id);
+
+      if (room.members.size === 0) {
+        rooms.delete(room.code);
+      } else {
+        broadcastRoomParticipants(room);
+      }
     }
 
-    const client = clients.get(currentClient.id);
-
-    if (client === currentClient) {
-      removeFromRoom(currentClient);
-      clients.delete(currentClient.id);
-    }
+    clients.delete(client.id);
 
     broadcastRoomList();
     broadcastModeratorData();
@@ -1161,13 +1284,21 @@ setInterval(() => {
   cleanExpiredModeratorAccess();
 
   for (const room of rooms.values()) {
-    if (room.participants.size === 0) {
+    /*
+      Remove dead client IDs.
+    */
+    for (const id of room.members) {
+      if (!clients.has(id)) {
+        room.members.delete(id);
+      }
+    }
+
+    if (room.members.size === 0) {
       rooms.delete(room.code);
     }
   }
 
   broadcastRoomList();
-  broadcastModeratorData();
 }, 5000);
 
 server.listen(PORT, () => {

@@ -15,21 +15,17 @@ function makeId() {
 }
 
 function cleanName(name) {
-  const result = String(name || "")
+  return String(name || "")
     .trim()
     .replace(/\s+/g, " ")
-    .slice(0, 30);
-
-  return result || "Guest";
+    .slice(0, 30) || "Guest";
 }
 
 function cleanRoomName(name) {
-  const result = String(name || "")
+  return String(name || "")
     .trim()
     .replace(/\s+/g, " ")
-    .slice(0, 40);
-
-  return result || "Untitled Room";
+    .slice(0, 40) || "Untitled Room";
 }
 
 function cleanRoomCode(code) {
@@ -42,7 +38,6 @@ function cleanRoomCode(code) {
 
 function makeRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
   let code;
 
   do {
@@ -110,7 +105,7 @@ function createRoom(name, requestedCode) {
   }
 
   const room = {
-    code: code,
+    code,
     name: cleanRoomName(name),
     users: new Set(),
     createdAt: Date.now()
@@ -176,6 +171,7 @@ function addToRoom(client, roomCode, anonymous) {
   const existingUsers = Array.from(room.users)
     .map(id => clients.get(id))
     .filter(Boolean)
+    .filter(user => user.id !== client.id)
     .map(user => ({
       id: user.id,
       name: user.name,
@@ -230,19 +226,14 @@ function addToRoom(client, roomCode, anonymous) {
 const server = http.createServer((req, res) => {
   let fileName;
 
-  if (
-    req.url === "/" ||
-    req.url === "/index.html"
-  ) {
+  if (req.url === "/" || req.url === "/index.html") {
     fileName = "index.html";
   } else if (
     req.url === "/moderator" ||
     req.url === "/moderator.html"
   ) {
     fileName = "moderator.html";
-  } else if (
-    req.url === "/health"
-  ) {
+  } else if (req.url === "/health") {
     res.writeHead(200, {
       "Content-Type": "text/plain"
     });
@@ -255,40 +246,32 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const filePath = path.join(
-    __dirname,
-    fileName
-  );
+  const filePath = path.join(__dirname, fileName);
 
-  fs.readFile(
-    filePath,
-    (error, data) => {
-      if (error) {
-        console.error(error);
-
-        res.writeHead(500);
-        res.end("Server error");
-        return;
-      }
-
-      res.writeHead(200, {
-        "Content-Type":
-          "text/html; charset=utf-8"
-      });
-
-      res.end(data);
+  fs.readFile(filePath, (error, data) => {
+    if (error) {
+      console.error(error);
+      res.writeHead(500);
+      res.end("Server error");
+      return;
     }
-  );
+
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8"
+    });
+
+    res.end(data);
+  });
 });
 
 const wss = new WebSocket.Server({
-  server: server,
+  server,
   path: "/ws"
 });
 
 wss.on("connection", ws => {
   const client = {
-    ws: ws,
+    ws,
     id: null,
     name: "Guest",
     role: "user",
@@ -300,22 +283,38 @@ wss.on("connection", ws => {
     let message;
 
     try {
-      message = JSON.parse(
-        raw.toString()
-      );
-    } catch (error) {
-      console.error(
-        "Invalid WebSocket message"
-      );
+      message = JSON.parse(raw.toString());
+    } catch {
       return;
     }
 
     switch (message.type) {
-
       case "register": {
-        client.id = String(
+        const newId = String(
           message.id || makeId()
         );
+
+        const oldClient = clients.get(newId);
+
+        /*
+         * If this same browser reconnects while
+         * an old connection still exists, remove
+         * the old connection completely first.
+         */
+        if (
+          oldClient &&
+          oldClient.ws !== ws
+        ) {
+          removeFromRoom(oldClient);
+
+          try {
+            oldClient.ws.close();
+          } catch {}
+
+          clients.delete(newId);
+        }
+
+        client.id = newId;
 
         client.name = cleanName(
           message.name
@@ -326,9 +325,7 @@ wss.on("connection", ws => {
             ? "moderator"
             : "user";
 
-        if (
-          bannedUsers.has(client.id)
-        ) {
+        if (bannedUsers.has(client.id)) {
           send(ws, {
             type: "banned",
             message: "You are banned."
@@ -338,14 +335,9 @@ wss.on("connection", ws => {
           return;
         }
 
-        clients.set(
-          client.id,
-          client
-        );
+        clients.set(client.id, client);
 
-        if (
-          client.role === "moderator"
-        ) {
+        if (client.role === "moderator") {
           send(ws, {
             type: "roomList",
             rooms: getRoomList()
@@ -366,23 +358,18 @@ wss.on("connection", ws => {
           message.name
         );
 
-        broadcastRoomList();
-
         if (client.room) {
           const room = rooms.get(
             client.room
           );
 
           if (room) {
-            for (
-              const id of room.users
-            ) {
+            for (const id of room.users) {
               if (id === client.id) {
                 continue;
               }
 
-              const other =
-                clients.get(id);
+              const other = clients.get(id);
 
               if (other) {
                 send(other.ws, {
@@ -394,6 +381,8 @@ wss.on("connection", ws => {
             }
           }
         }
+
+        broadcastRoomList();
 
         break;
       }
@@ -425,9 +414,7 @@ wss.on("connection", ws => {
       }
 
       case "moderatorCreateRoom": {
-        if (
-          client.role !== "moderator"
-        ) {
+        if (client.role !== "moderator") {
           return;
         }
 
@@ -461,13 +448,9 @@ wss.on("connection", ws => {
           return;
         }
 
-        const code = cleanRoomCode(
-          message.code
-        );
-
         addToRoom(
           client,
-          code,
+          cleanRoomCode(message.code),
           false
         );
 
@@ -475,19 +458,13 @@ wss.on("connection", ws => {
       }
 
       case "moderatorJoinRoom": {
-        if (
-          client.role !== "moderator"
-        ) {
+        if (client.role !== "moderator") {
           return;
         }
 
-        const code = cleanRoomCode(
-          message.code
-        );
-
         addToRoom(
           client,
-          code,
+          cleanRoomCode(message.code),
           !!message.anonymous
         );
 
@@ -496,6 +473,11 @@ wss.on("connection", ws => {
 
       case "leaveRoom": {
         removeFromRoom(client);
+
+        send(ws, {
+          type: "roomLeft"
+        });
+
         break;
       }
 
@@ -528,9 +510,7 @@ wss.on("connection", ws => {
       }
 
       case "kick": {
-        if (
-          client.role !== "moderator"
-        ) {
+        if (client.role !== "moderator") {
           return;
         }
 
@@ -553,9 +533,7 @@ wss.on("connection", ws => {
       }
 
       case "ban": {
-        if (
-          client.role !== "moderator"
-        ) {
+        if (client.role !== "moderator") {
           return;
         }
 
@@ -585,13 +563,18 @@ wss.on("connection", ws => {
   });
 
   ws.on("close", () => {
-    removeFromRoom(client);
-
-    if (client.id) {
+    /*
+     * Only remove the client if this socket is
+     * still the active socket for that ID.
+     */
+    if (
+      client.id &&
+      clients.get(client.id)?.ws === ws
+    ) {
+      removeFromRoom(client);
       clients.delete(client.id);
+      broadcastRoomList();
     }
-
-    broadcastRoomList();
   });
 
   ws.on("error", error => {
